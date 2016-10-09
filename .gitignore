@@ -1,0 +1,5 @@
+*.pyc
+*.log
+.*.swp
+.dropbox.attr
+.ipynb_checkpoints
