@@ -126,7 +126,7 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     if visualize:
        displays.append(utils.viz(exposure, 60, 2))
 
-    viz_objects = [displays, fp_low, fp_high, exposure, 
-                   exp_clone, mi_clone_smooth]
+    viz_objects = [displays, fp_low, fp_high, fp_med, 
+                   exposure, exp_clone, mi_clone_smooth]
 
     return viz_objects if visualize else None
