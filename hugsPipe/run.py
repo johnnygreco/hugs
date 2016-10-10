@@ -2,8 +2,8 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
+from . import utils
 from . import primitives as prim
-from ..utils import pixscale
 
 __all__ = ['run']
 
@@ -51,7 +51,6 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     Returns
     -------
     """
-    import lsstutils
 
     ############################################################
     # Get parameters and setup the mask planes. We don't need
@@ -69,8 +68,8 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     # Smooth image at psf scale.
     ############################################################
 
-    psf_sigma = prim.get_psf_sigma(exposure)
-    mi_smooth = lsstutils.imgproc.smooth_gauss(mi, psf_sigma)
+    psf_sigma = utils.get_psf_sigma(exposure)
+    mi_smooth = utils.smooth_gauss(mi, psf_sigma)
     rgrow = int(2.4*psf_sigma + 0.5)
 
     ############################################################
@@ -107,15 +106,14 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     mi_clone.getImage().getArray()[assoc!=0] = noise_array[assoc!=0]
     if visualize:
         displays = []
-        displays.append(prim.viz(exp_clone, 75, 1))
-
+        displays.append(utils.viz(exp_clone, 75, 1)) 
     ############################################################
     # Smooth with large kernel for detection.
     ############################################################
 
-    fwhm = kern_fwhm/0.168 # pixels
+    fwhm = kern_fwhm/utils.pixscale # pixels
     sigma = fwhm/(2*np.sqrt(2*np.log(2)))
-    mi_clone_smooth = lsstutils.imgproc.smooth_gauss(mi_clone, sigma)
+    mi_clone_smooth = utils.smooth_gauss(mi_clone, sigma)
 
     ############################################################
     # Image thresholding at medium threshold for detection.
@@ -126,6 +124,9 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
         plane_name='DETECTED', npix=npix['med'])
 
     if visualize:
-       displays.append(prim.viz(exposure, 60, 2))
+       displays.append(utils.viz(exposure, 60, 2))
 
-    return (displays, fp_low, fp_high, exposure) if visualize else None
+    viz_objects = [displays, fp_low, fp_high, exposure, 
+                   exp_clone, mi_clone_smooth]
+
+    return viz_objects if visualize else None
