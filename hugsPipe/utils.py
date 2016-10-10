@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+import lsst.afw.math as afwMath
 
 __all__ = ['pixscale', 'annuli', 'smooth_gauss', 'get_psf_sigma', 'viz']
 
@@ -68,7 +69,6 @@ def smooth_gauss(masked_image, sigma, nsigma=7.0):
     convolved_image : lsst.afw.image.imageLib.MaskedImageF
         The convolved masked image
     """
-    import lsst.afw.math as afwMath
     width = (int(sigma*nsigma + 0.5) // 2)*2 + 1 # make sure it is odd
     gauss_func = afwMath.GaussianFunction1D(sigma)
     gauss_kern = afwMath.SeparableKernel(width, width, gauss_func, gauss_func)

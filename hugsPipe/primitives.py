@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+import lsst.afw.detection as afwDetect
 from . import utils
 
 __all__ = ['associate', 'image_threshold']
@@ -90,7 +91,6 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
     fp : lsst.afw.detection.detectionLib.FootprintSet
         Footprints assoicated with detected objects.
     """
-    import lsst.afw.detection as afwDetect
 
     mask = masked_image.getMask() if mask is None else mask
     thresh_type = getattr(afwDetect.Threshold, thresh_type.upper())
