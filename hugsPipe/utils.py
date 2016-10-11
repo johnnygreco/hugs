@@ -100,6 +100,9 @@ def get_psf_sigma(exposure):
 
 def viz(image, transparency=75, frame=1, 
         colors=[('THRESH_HIGH', 'magenta'), ('THRESH_LOW', 'yellow')]):
+    """
+    Visualize retsults with ds9.
+    """
     import lsst.afw.display as afwDisplay
     disp = afwDisplay.Display(frame)
     for name, color in colors:

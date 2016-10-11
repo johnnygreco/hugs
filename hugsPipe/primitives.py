@@ -1,14 +1,15 @@
 from __future__ import division, print_function
 
 import numpy as np
+import lsst.afw.image
 import lsst.afw.detection as afwDetect
 from . import utils
 
-__all__ = ['associate', 'image_threshold']
+__all__ = ['associate', 'image_threshold', 'postage_stamps']
 
 
 def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
-              min_pix=1, plane_name='THRESH_HIGH'):
+              min_pix=1, plane_name='THRESH_HIGH', dilate=None):
     """
     Associate footprints in fpset with footprints in mask plane 
     'plane_name'. A footprint is associated with an object if 
@@ -33,6 +34,9 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
         to ignore this option.
     plane_name : string, optional
         Name of the bit plane in mask to associate footprints with. 
+    dilate : int, optional
+        If not None, dilate association image with array of shape 
+        (dilate, dilate). 
 
     Returns
     -------
@@ -54,7 +58,7 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
         peaks = np.array([[p.getCentroid()[0]-x0, 
                            p.getCentroid()[1]-y0] for p in foot.getPeaks()])
         xc, yc = peaks.mean(axis=0)
-        rows, cols = utils.annuli(yc, xc, r_in, r_out, shape=mask.getArray().shape)
+        rows, cols = utils.annuli(yc, xc, r_in, r_out, shape=shape)
         ann_pix = mask.getArray()[rows, cols]
         on_bits = (ann_pix & mask.getPlaneBitMask(plane_name))!=0
         on_bits |= (ann_pix & mask.getPlaneBitMask('BRIGHT_OBJECT'))!=0
@@ -62,6 +66,11 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
             seg_assoc[seg==foot.getId()] = 1
         elif foot.getNpix() < min_pix:
             seg_assoc[seg==foot.getId()] = 1
+    if dilate is not None:
+        from scipy import ndimage
+        dilator = np.ones((dilate, dilate))
+        seg_assoc = ndimage.binary_dilation(seg_assoc, dilator)
+        seg_assoc = seg_assoc.astype(int)
     return seg_assoc
 
 
@@ -69,7 +78,7 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
                     rgrow=None, isogrow=False, plane_name='', mask=None,
                     clear_mask=True):
     """
-    Image thresholding. As bit mask will be set with name 'plane_name'.
+    Image thresholding. A bit mask will be set with name 'plane_name'.
 
     Parameters
     ----------
@@ -98,7 +107,6 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
     fp : lsst.afw.detection.detectionLib.FootprintSet
         Footprints assoicated with detected objects.
     """
-
     mask = masked_image.getMask() if mask is None else mask
     thresh_type = getattr(afwDetect.Threshold, thresh_type.upper())
     thresh = afwDetect.Threshold(thresh, thresh_type)
@@ -111,3 +119,22 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
             mask.clearMaskPlane(mask.getMaskPlane(plane_name))
         fp.setMask(mask, plane_name)
     return fp
+
+
+def postage_stamps(exposure, fpset, grow=10):
+    """
+    Cutout postage stamps of given footprints. 
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+    stamps = []
+    for foot in fpset.getFootprints:
+        bbox = foot.getBBox()
+        if grow:
+            bbox.grow(grow)
+        exp_cutout = exposure.Factory(exposure, bbox, lsst.afw.image.PARENT) 
+        stamps.append(exp_cutout)
