@@ -8,7 +8,7 @@ __all__ = ['associate', 'image_threshold']
 
 
 def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
-              plane_name='THRESH_HIGH'):
+              min_pix=1, plane_name='THRESH_HIGH'):
     """
     Associate footprints in fpset with footprints in mask plane 
     'plane_name'. A footprint is associated with an object if 
@@ -28,6 +28,9 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
         Outer radius in pixels of the association annulus.
     max_on_bit : int, optional
         Maximum number of on bits to consider as associated.
+    min_pix : int, optional
+        Footprints with less pixels will be masked. Set to 1 
+        to ignore this option.
     plane_name : string, optional
         Name of the bit plane in mask to associate footprints with. 
 
@@ -44,7 +47,9 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
     """
     x0, y0 = mask.getXY0()
     # False --> use footprint ids
-    seg_assoc = fpset.insertIntoImage(False).getArray().copy() 
+    seg = fpset.insertIntoImage(False).getArray().copy()
+    shape = seg.shape
+    seg_assoc = np.zeros(shape, dtype=int)
     for foot in fpset.getFootprints():
         peaks = np.array([[p.getCentroid()[0]-x0, 
                            p.getCentroid()[1]-y0] for p in foot.getPeaks()])
@@ -53,8 +58,10 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
         ann_pix = mask.getArray()[rows, cols]
         on_bits = (ann_pix & mask.getPlaneBitMask(plane_name))!=0
         on_bits |= (ann_pix & mask.getPlaneBitMask('BRIGHT_OBJECT'))!=0
-        if np.sum(on_bits)<max_on_bit:
-            seg_assoc[seg_assoc==foot.getId()] = 0
+        if np.sum(on_bits) > max_on_bit:
+            seg_assoc[seg==foot.getId()] = 1
+        elif foot.getNpix() < min_pix:
+            seg_assoc[seg==foot.getId()] = 1
     return seg_assoc
 
 
