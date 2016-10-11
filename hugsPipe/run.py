@@ -5,6 +5,7 @@ import numpy as np
 from . import utils
 from . import primitives as prim
 
+
 __all__ = ['run']
 
 ############################################################
@@ -14,7 +15,9 @@ __all__ = ['run']
 HSC_DIR = os.environ.get('HSC_DIR')
 THRESH = {'high': 15.0, 'low':3.0, 'med':3.5}
 NPIX = {'high': 1, 'low':50, 'med':100}
-ASSOC = {'r_in': 5, 'r_out': 15, 'max_on_bit': 10}
+ASSOC = {'r_in': 5, 'r_out': 15, 'max_on_bit': 10, 
+        'min_pix': '6 psf sigma', 'dilate': None, 
+        'plane_name': 'THRESH_HIGH'}
 DEFAULTS = [THRESH, NPIX, ASSOC]
 
 
@@ -98,15 +101,18 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     # footprints. Then, replace these sources with noise.
     ############################################################
 
-    assoc = prim.associate(
-        mask, fp_low, r_in=assoc['r_in'], r_out=assoc['r_out'],
-        max_on_bit=assoc['max_on_bit'], plane_name='THRESH_HIGH')
+    if 'psf sigma' in str(assoc['min_pix']):
+        nsig = int(assoc['min_pix'].split()[0])
+        assoc['min_pix'] = np.pi*(nsig*psf_sigma)**2
+    assoc = prim.associate(mask, fp_low, **assoc)
+        
     exp_clone = exposure.clone()
     mi_clone = exp_clone.getMaskedImage()
     mi_clone.getImage().getArray()[assoc!=0] = noise_array[assoc!=0]
     if visualize:
         displays = []
         displays.append(utils.viz(exp_clone, 75, 1)) 
+
     ############################################################
     # Smooth with large kernel for detection.
     ############################################################
@@ -123,10 +129,10 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
         mi_clone_smooth, thresh['med'], mask=mask,
         plane_name='DETECTED', npix=npix['med'])
 
+    return_objects = [fp_low, fp_high, fp_med, exposure, 
+                      exp_clone, mi_clone_smooth]
     if visualize:
        displays.append(utils.viz(exposure, 60, 2))
+       return_objects.append(displays)
 
-    viz_objects = [displays, fp_low, fp_high, fp_med, 
-                   exposure, exp_clone, mi_clone_smooth]
-
-    return viz_objects if visualize else None
+    return return_objects
