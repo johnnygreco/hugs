@@ -13,8 +13,8 @@ __all__ = ['run']
 ############################################################
 
 HSC_DIR = os.environ.get('HSC_DIR')
-THRESH = {'high': 15.0, 'low':3.0, 'med':3.5}
-NPIX = {'high': 1, 'low':50, 'med':100}
+THRESH = {'high': 15.0, 'low':3.0, 'det':3.5}
+NPIX = {'high': 1, 'low':50, 'det':100}
 ASSOC = {'r_in': 5, 'r_out': 15, 'max_on_bit': 10, 
         'min_pix': '6 psf sigma', 'dilate': None, 
         'plane_name': 'THRESH_HIGH'}
@@ -125,11 +125,11 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     # Image thresholding at medium threshold for detection.
     ############################################################
 
-    fp_med = prim.image_threshold(
-        mi_clone_smooth, thresh['med'], mask=mask,
-        plane_name='DETECTED', npix=npix['med'])
+    fp_det = prim.image_threshold(
+        mi_clone_smooth, thresh['det'], mask=mask,
+        plane_name='DETECTED', npix=npix['det'])
 
-    return_objects = [fp_low, fp_high, fp_med, exposure, 
+    return_objects = [fp_low, fp_high, fp_det, exposure, 
                       exp_clone, mi_clone_smooth]
     if visualize:
        displays.append(utils.viz(exposure, 60, 2))

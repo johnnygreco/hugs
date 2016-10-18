@@ -121,6 +121,18 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
     return fp
 
 
+def measure(exposure, fpset, wcs=None):
+    """
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
+    from photutils import source_properties
+    pass
+
+
 def postage_stamps(exposure, fpset, grow=10):
     """
     Cutout postage stamps of given footprints. 
@@ -138,3 +150,4 @@ def postage_stamps(exposure, fpset, grow=10):
             bbox.grow(grow)
         exp_cutout = exposure.Factory(exposure, bbox, lsst.afw.image.PARENT) 
         stamps.append(exp_cutout)
+    return stamps
