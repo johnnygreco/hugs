@@ -2,9 +2,9 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
+import lsst.pipe.base
 from . import utils
 from . import primitives as prim
-
 
 __all__ = ['run']
 
@@ -28,11 +28,13 @@ def _get_params(dataID, thresh, npix, assoc, butler, data_dir):
     if type(dataID)==str:
         import lsst.afw.image
         exposure = lsst.afw.image.ExposureF(dataID)
+        fn = dataID
     else:
         if butler is None:
             import lsst.daf.persistence
             butler = lsst.daf.persistence.Butler(data_dir)
         exposure = butler.get('deepCoadd_calexp', dataID, immediate=True)
+        fn = butler.get('deepCoadd_calexp_filename', dataID, immediate=True)[0]
     params = [thresh, npix, assoc]
     for i in range(len(params)):
         for k,v in list(params[i].items()):
@@ -40,11 +42,12 @@ def _get_params(dataID, thresh, npix, assoc, butler, data_dir):
             DEFAULTS[i][k] = v
         params[i] = DEFAULTS[i].copy()
     params.append(exposure)
+    params.append(utils.get_astropy_wcs(fn))
     return params
 
 
 def run(dataID, thresh={}, npix={}, assoc={}, butler=None, 
-        kern_fwhm=3.5, data_dir=HSC_DIR, visualize=True):
+        kern_fwhm=3.5, data_dir=HSC_DIR, debug_return=False):
     """
     Run pipeline.
 
@@ -60,12 +63,13 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
     # the negative detection mask.
     ############################################################
 
-    thresh, npix, assoc, exposure = _get_params(dataID, thresh, npix, 
-                                                assoc, butler, data_dir)
+    thresh, npix, assoc, exposure, exp_wcs = _get_params(dataID, thresh, npix, 
+                                                         assoc, butler, data_dir)
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     mask.clearMaskPlane(mask.getMaskPlane('DETECTED'))
-    mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True) 
+    if 'DETECTED_NEGATIVE' in list(mask.getMaskPlaneDict().keys()):
+        mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
 
     ############################################################
     # Smooth image at psf scale.
@@ -106,12 +110,9 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
         assoc['min_pix'] = np.pi*(nsig*psf_sigma)**2
     assoc = prim.associate(mask, fp_low, **assoc)
         
-    exp_clone = exposure.clone()
-    mi_clone = exp_clone.getMaskedImage()
-    mi_clone.getImage().getArray()[assoc!=0] = noise_array[assoc!=0]
-    if visualize:
-        displays = []
-        displays.append(utils.viz(exp_clone, 75, 1)) 
+    exp_clean = exposure.clone()
+    mi_clean = exp_clean.getMaskedImage()
+    mi_clean.getImage().getArray()[assoc!=0] = noise_array[assoc!=0]
 
     ############################################################
     # Smooth with large kernel for detection.
@@ -119,26 +120,29 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
 
     fwhm = kern_fwhm/utils.pixscale # pixels
     sigma = fwhm/(2*np.sqrt(2*np.log(2)))
-    mi_clone_smooth = utils.smooth_gauss(mi_clone, sigma)
+    mi_clean_smooth = utils.smooth_gauss(mi_clean, sigma)
 
     ############################################################
     # Image thresholding at medium threshold for detection.
     ############################################################
 
     fp_det = prim.image_threshold(
-        mi_clone_smooth, thresh['det'], mask=mask,
+        mi_clean_smooth, thresh['det'], mask=mask,
         plane_name='DETECTED', npix=npix['det'])
 
     ############################################################
-    # Deblend sources in footprints
+    # Deblend sources in 'detected' footprints
     ############################################################
-    
 
+    sources = prim.deblend_stamps(exposure, wcs=exp_wcs)
 
-    return_objects = [fp_low, fp_high, fp_det, exposure, 
-                      exp_clone, mi_clone_smooth]
-    if visualize:
-       displays.append(utils.viz(exposure, 60, 2))
-       return_objects.append(displays)
-
-    return return_objects
+    if debug_return:
+        return lsst.pipe.base.Struct(sources=sources,
+                                     exposure=exposure,
+                                     exp_clean=exp_clean,
+                                     mi_clean_smooth=mi_clean_smooth,
+                                     fp_low=fp_low,
+                                     fp_high=fp_high,
+                                     fp_det=fp_det)
+    else:
+        return sources

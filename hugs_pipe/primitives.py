@@ -5,12 +5,10 @@ import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
 from astropy.table import Table, vstack
 from astropy.convolution import Gaussian2DKernel
-from astropy.io import fits
-from astropy import wcs
 import photutils as phut
 from . import utils
 
-__all__ = ['associate', 'image_threshold', 'deblend_stamps']
+__all__ = ['associate', 'deblend_stamps', 'image_threshold']
 
 
 def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
@@ -79,6 +77,74 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
     return seg_assoc
 
 
+def deblend_stamps(exposure, npixels=5, wcs=None, detect_kwargs={}, deblend_kwargs={}):
+    """
+    Use photutils to deblend sources within "detection" postage stamps.
+
+    Parameters
+    ----------
+    exposure : lsst.afw.ExposureF
+        Exposure object with masks from hugsPipe.run.
+    wcs: astropy.wcs.WCS 
+        World Coordinate System info.
+    npixels : int, optional
+        Number of pixels above required to be an object.
+    detect_kwargs :  dict, optional
+        Kwargs for photutils.detect_sources.
+    deblend_kwargs :  dict, optional
+        Kwargs for photutils.deblend_sources.
+
+    Returns
+    -------
+    table : astropy.table.Table
+        Source measurements. 
+    """
+    mask = exposure.getMaskedImage().getMask()
+    if 'DETECTED_NEGATIVE' in list(mask.getMaskPlaneDict().keys()):
+        mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
+    planes = mask.getPlaneBitMask(['THRESH_LOW', 'DETECTED'])
+    fpset = afwDet.FootprintSet(
+        mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
+    table = Table()
+    kern = Gaussian2DKernel(3, x_size=11, y_size=11)
+    kern.normalize()
+    fp_id = 1
+    for fp in fpset.getFootprints():
+        bbox = fp.getBBox()
+        exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
+        hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
+        pix = hfp.getMaskArray()
+        bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0,
+                (pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0,
+                (pix & mask.getPlaneBitMask(['THRESH_LOW'])!=0).sum()>0,
+                (pix & mask.getPlaneBitMask(['THRESH_HIGH'])!=0).sum()<10]
+        if np.alltrue(bits):
+            img = exp.getMaskedImage().getImage().getArray().copy()
+            x0, y0 = exp.getXY0()
+            thresh = phut.detect_threshold(img, snr=0.5)
+            seg = phut.detect_sources(img, thresh, npixels=npixels, 
+                                      filter_kernel=kern, **detect_kwargs)
+            if seg.nlabels==0: 
+                continue
+            seg_db = phut.deblend_sources(
+                img, seg, npixels=npixels, 
+                filter_kernel=kern, **deblend_kwargs)
+            props = phut.source_properties(img, seg_db, wcs=wcs)
+            props = phut.properties_table(props)
+            props['x_hsc'] = props['xcentroid'] + x0
+            props['y_hsc'] = props['ycentroid'] + y0
+            props['fp_id'] = [fp_id]*len(props)
+            fp_id += 1
+            if len(props)>1:
+                props['is_deblended'] = [True]*len(props)
+            else:
+                props['is_deblended'] = False
+            table = vstack([table, props])
+    for i in range(len(table)):
+        table['id'][i] = i+1
+    return table
+
+
 def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1, 
                     rgrow=None, isogrow=False, plane_name='', mask=None,
                     clear_mask=True):
@@ -109,67 +175,18 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
 
     Returns
     -------
-    fp : lsst.afw.detection.detectionLib.FootprintSet
+    fpset : lsst.afw.detection.detectionLib.FootprintSet
         Footprints assoicated with detected objects.
     """
     mask = masked_image.getMask() if mask is None else mask
     thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
     thresh = afwDet.Threshold(thresh, thresh_type)
-    fp = afwDet.FootprintSet(masked_image, thresh, '', npix)
+    fpset = afwDet.FootprintSet(masked_image, thresh, '', npix)
     if rgrow is not None:
-        fp = afwDet.FootprintSet(fp, rgrow, isogrow)
+        fpset = afwDet.FootprintSet(fpset, rgrow, isogrow)
     if plane_name:
         mask.addMaskPlane(plane_name)
         if clear_mask:
             mask.clearMaskPlane(mask.getMaskPlane(plane_name))
-        fp.setMask(mask, plane_name)
-    return fp
-
-def deblend_stamps(exposure, npixels=5, detect_kwargs={}, deblend_kwargs={}):
-    """
-    Use photutils to deblend sources within "detection" postage stamps.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    """
-    mask = exposure.getMaskedImage().getMask()
-    if 'DETECTED_NEGATIVE' in list(mask.getMaskPlaneDict().keys()):
-        mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
-    planes = mask.getPlaneBitMask(['THRESH_LOW', 'DETECTED'])
-    fpset = afwDet.FootprintSet(
-        mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
-    table = Table()
-    print('num fp =', len(fpset.getFootprints()))
-    for fp in fpset.getFootprints():
-        bbox = fp.getBBox()
-        exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
-        hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
-        pix = hfp.getMaskArray()
-        bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0,
-                (pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0,
-                (pix & mask.getPlaneBitMask(['THRESH_LOW'])!=0).sum()>0,
-                (pix & mask.getPlaneBitMask(['THRESH_HIGH'])!=0).sum()<10]
-        if np.alltrue(bits):
-            img = exp.getMaskedImage().getImage().getArray().copy()
-            x0, y0 = exp.getXY0()
-            kern = Gaussian2DKernel(3, x_size=11, y_size=11)
-            kern.normalize()
-            thresh = phut.detect_threshold(img, snr=0.5)
-            seg = phut.detect_sources(img, thresh, npixels=npixels, 
-                                      filter_kernel=kern, **detect_kwargs)
-            if seg.nlabels==0: 
-                continue
-            seg_db = phut.deblend_sources(
-                img, seg, npixels=npixels, filter_kernel=kern, **deblend_kwargs)
-            print(seg.nlabels, seg_db.nlabels)
-            props = phut.properties_table(phut.source_properties(img, seg_db))
-            props['xcentroid']+=x0
-            props['ycentroid']+=y0
-            table = vstack([table, props])
-    for i in range(len(table)):
-        table['id'][i] = i+1
-
-    return table
+        fpset.setMask(mask, plane_name)
+    return fpset

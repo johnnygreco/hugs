@@ -3,11 +3,9 @@ Tests for hugsPipe.primitives
 """
 
 import os
-import pytest
 import lsst.afw.image
 from .. import primitives as prim
 from .. import utils
-
 
 dataDIR = os.environ.get('TEST_DATA_DIR')
 fn = os.path.join(dataDIR, 'test_exposure.fits')
@@ -19,11 +17,10 @@ mask = masked_image.getMask().clone()
 def test_image_threshold():
     fpset_1 = prim.image_threshold(masked_image, 20)
     assert len(fpset_1.getFootprints()) > 0
-
     fpset_2 = prim.image_threshold(masked_image, 20, npix=50)
     assert len(fpset_2.getFootprints()) > 0
-
     assert len(fpset_2.getFootprints()) < len(fpset_1.getFootprints())
+
 
 def test_associate():
     fpset = prim.image_threshold(masked_image, 30, 
