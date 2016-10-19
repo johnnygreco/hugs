@@ -3,7 +3,8 @@ from __future__ import division, print_function
 import numpy as np
 import lsst.afw.math as afwMath
 
-__all__ = ['pixscale', 'annuli', 'smooth_gauss', 'get_psf_sigma', 'viz']
+__all__ = ['pixscale', 'annuli', 'smooth_gauss', 'get_astropy_wcs',
+           'get_psf_sigma', 'viz']
 
 pixscale = 0.168
 
@@ -96,6 +97,17 @@ def get_psf_sigma(exposure):
     psf = exposure.getPsf()
     sigma = psf.computeShape().getDeterminantRadius()
     return sigma
+
+
+def get_astropy_wcs(fn):
+    """
+    Get an astropy WCS object from fits header.
+    """
+    from astropy import wcs
+    from astropy.io import fits
+    header = fits.open(fn)[1].header
+    exp_wcs = wcs.WCS(header)
+    return exp_wcs
 
 
 def viz(image, transparency=75, frame=1, 
