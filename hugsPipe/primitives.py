@@ -1,11 +1,16 @@
 from __future__ import division, print_function
 
 import numpy as np
-import lsst.afw.image
-import lsst.afw.detection as afwDetect
+import lsst.afw.image as afwImage
+import lsst.afw.detection as afwDet
+from astropy.table import Table, vstack
+from astropy.convolution import Gaussian2DKernel
+from astropy.io import fits
+from astropy import wcs
+import photutils as phut
 from . import utils
 
-__all__ = ['associate', 'image_threshold', 'postage_stamps']
+__all__ = ['associate', 'image_threshold', 'deblend_stamps']
 
 
 def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
@@ -108,11 +113,11 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
         Footprints assoicated with detected objects.
     """
     mask = masked_image.getMask() if mask is None else mask
-    thresh_type = getattr(afwDetect.Threshold, thresh_type.upper())
-    thresh = afwDetect.Threshold(thresh, thresh_type)
-    fp = afwDetect.FootprintSet(masked_image, thresh, '', npix)
+    thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
+    thresh = afwDet.Threshold(thresh, thresh_type)
+    fp = afwDet.FootprintSet(masked_image, thresh, '', npix)
     if rgrow is not None:
-        fp = afwDetect.FootprintSet(fp, rgrow, isogrow)
+        fp = afwDet.FootprintSet(fp, rgrow, isogrow)
     if plane_name:
         mask.addMaskPlane(plane_name)
         if clear_mask:
@@ -120,22 +125,9 @@ def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1,
         fp.setMask(mask, plane_name)
     return fp
 
-
-def measure(exposure, fpset, wcs=None):
+def deblend_stamps(exposure, npixels=5, detect_kwargs={}, deblend_kwargs={}):
     """
-    Parameters
-    ----------
-
-    Returns
-    -------
-    """
-    from photutils import source_properties
-    pass
-
-
-def postage_stamps(exposure, fpset, grow=10):
-    """
-    Cutout postage stamps of given footprints. 
+    Use photutils to deblend sources within "detection" postage stamps.
 
     Parameters
     ----------
@@ -143,11 +135,41 @@ def postage_stamps(exposure, fpset, grow=10):
     Returns
     -------
     """
-    stamps = []
-    for foot in fpset.getFootprints:
-        bbox = foot.getBBox()
-        if grow:
-            bbox.grow(grow)
-        exp_cutout = exposure.Factory(exposure, bbox, lsst.afw.image.PARENT) 
-        stamps.append(exp_cutout)
-    return stamps
+    mask = exposure.getMaskedImage().getMask()
+    if 'DETECTED_NEGATIVE' in list(mask.getMaskPlaneDict().keys()):
+        mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
+    planes = mask.getPlaneBitMask(['THRESH_LOW', 'DETECTED'])
+    fpset = afwDet.FootprintSet(
+        mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
+    table = Table()
+    print('num fp =', len(fpset.getFootprints()))
+    for fp in fpset.getFootprints():
+        bbox = fp.getBBox()
+        exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
+        hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
+        pix = hfp.getMaskArray()
+        bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0,
+                (pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0,
+                (pix & mask.getPlaneBitMask(['THRESH_LOW'])!=0).sum()>0,
+                (pix & mask.getPlaneBitMask(['THRESH_HIGH'])!=0).sum()<10]
+        if np.alltrue(bits):
+            img = exp.getMaskedImage().getImage().getArray().copy()
+            x0, y0 = exp.getXY0()
+            kern = Gaussian2DKernel(3, x_size=11, y_size=11)
+            kern.normalize()
+            thresh = phut.detect_threshold(img, snr=0.5)
+            seg = phut.detect_sources(img, thresh, npixels=npixels, 
+                                      filter_kernel=kern, **detect_kwargs)
+            if seg.nlabels==0: 
+                continue
+            seg_db = phut.deblend_sources(
+                img, seg, npixels=npixels, filter_kernel=kern, **deblend_kwargs)
+            print(seg.nlabels, seg_db.nlabels)
+            props = phut.properties_table(phut.source_properties(img, seg_db))
+            props['xcentroid']+=x0
+            props['ycentroid']+=y0
+            table = vstack([table, props])
+    for i in range(len(table)):
+        table['id'][i] = i+1
+
+    return table

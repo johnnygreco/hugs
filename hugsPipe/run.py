@@ -129,6 +129,12 @@ def run(dataID, thresh={}, npix={}, assoc={}, butler=None,
         mi_clone_smooth, thresh['det'], mask=mask,
         plane_name='DETECTED', npix=npix['det'])
 
+    ############################################################
+    # Deblend sources in footprints
+    ############################################################
+    
+
+
     return_objects = [fp_low, fp_high, fp_det, exposure, 
                       exp_clone, mi_clone_smooth]
     if visualize:
