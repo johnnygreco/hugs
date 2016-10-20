@@ -77,7 +77,8 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
     return seg_assoc
 
 
-def deblend_stamps(exposure, npix=5, wcs=None, detect_kwargs={}, deblend_kwargs={}):
+def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None, 
+                   kern_sig_pix=3, detect_kwargs={}, deblend_kwargs={}):
     """
     Use photutils to deblend sources within "detection" postage stamps.
 
@@ -85,8 +86,13 @@ def deblend_stamps(exposure, npix=5, wcs=None, detect_kwargs={}, deblend_kwargs=
     ----------
     exposure : lsst.afw.ExposureF
         Exposure object with masks from hugsPipe.run.
-    wcs: astropy.wcs.WCS 
+    thresh_snr : float, optional
+        The signal-to-noise ratio per pixel above the background 
+        for which to consider a pixel as possibly being part of a source.
+    wcs: astropy.wcs.WCS, optional 
         World Coordinate System info.
+    kern_sig_pix : float
+        Sigma (in pixels) of Gaussian kernal used to smooth detection image.
     npix : int, optional
         Number of pixels above required to be an object.
     detect_kwargs :  dict, optional
@@ -106,7 +112,7 @@ def deblend_stamps(exposure, npix=5, wcs=None, detect_kwargs={}, deblend_kwargs=
     fpset = afwDet.FootprintSet(
         mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
     table = Table()
-    kern = Gaussian2DKernel(3)
+    kern = Gaussian2DKernel(kern_sig_pix)
     kern.normalize()
     fp_id = 1
     for fp in fpset.getFootprints():
@@ -121,9 +127,11 @@ def deblend_stamps(exposure, npix=5, wcs=None, detect_kwargs={}, deblend_kwargs=
         if np.alltrue(bits):
             img = exp.getMaskedImage().getImage().getArray().copy()
             x0, y0 = exp.getXY0()
-            thresh = phut.detect_threshold(img, snr=0.5)
+            thresh = phut.detect_threshold(img, 
+                                           snr=thresh_snr, 
+                                           **detect_kwargs)
             seg = phut.detect_sources(img, thresh, npixels=npix, 
-                                      filter_kernel=kern, **detect_kwargs)
+                                      filter_kernel=kern)
             if seg.nlabels==0: 
                 continue
             seg_db = phut.deblend_sources(
