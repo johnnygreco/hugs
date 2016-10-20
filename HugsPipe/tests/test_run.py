@@ -1,6 +1,7 @@
 """
 Test hugsPipe.run
 """
+from __future__ import division, print_function
 
 import os
 import yaml

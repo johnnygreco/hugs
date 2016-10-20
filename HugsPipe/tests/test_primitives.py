@@ -1,6 +1,7 @@
 """
 Tests for hugsPipe.primitives
 """
+from __future__ import division, print_function
 
 import os
 import lsst.afw.image
