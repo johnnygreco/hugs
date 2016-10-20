@@ -77,7 +77,7 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
     return seg_assoc
 
 
-def deblend_stamps(exposure, npixels=5, wcs=None, detect_kwargs={}, deblend_kwargs={}):
+def deblend_stamps(exposure, npix=5, wcs=None, detect_kwargs={}, deblend_kwargs={}):
     """
     Use photutils to deblend sources within "detection" postage stamps.
 
@@ -87,7 +87,7 @@ def deblend_stamps(exposure, npixels=5, wcs=None, detect_kwargs={}, deblend_kwar
         Exposure object with masks from hugsPipe.run.
     wcs: astropy.wcs.WCS 
         World Coordinate System info.
-    npixels : int, optional
+    npix : int, optional
         Number of pixels above required to be an object.
     detect_kwargs :  dict, optional
         Kwargs for photutils.detect_sources.
@@ -106,7 +106,7 @@ def deblend_stamps(exposure, npixels=5, wcs=None, detect_kwargs={}, deblend_kwar
     fpset = afwDet.FootprintSet(
         mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
     table = Table()
-    kern = Gaussian2DKernel(3, x_size=11, y_size=11)
+    kern = Gaussian2DKernel(3)
     kern.normalize()
     fp_id = 1
     for fp in fpset.getFootprints():
@@ -122,12 +122,12 @@ def deblend_stamps(exposure, npixels=5, wcs=None, detect_kwargs={}, deblend_kwar
             img = exp.getMaskedImage().getImage().getArray().copy()
             x0, y0 = exp.getXY0()
             thresh = phut.detect_threshold(img, snr=0.5)
-            seg = phut.detect_sources(img, thresh, npixels=npixels, 
+            seg = phut.detect_sources(img, thresh, npixels=npix, 
                                       filter_kernel=kern, **detect_kwargs)
             if seg.nlabels==0: 
                 continue
             seg_db = phut.deblend_sources(
-                img, seg, npixels=npixels, 
+                img, seg, npixels=npix, 
                 filter_kernel=kern, **deblend_kwargs)
             props = phut.source_properties(img, seg_db, wcs=wcs)
             props = phut.properties_table(props)

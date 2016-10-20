@@ -1,0 +1,45 @@
+data_dir: local
+
+thresh_low:
+    thresh: 3.0
+    npix: 50
+    rgrow: 2.4
+    isogrow: False
+    thresh_type: stdev
+    kern_fwhm: psf 
+
+thresh_high:
+    thresh: 20.0
+    npix: 1
+    rgrow: 2.4
+    isogrow: False
+    thresh_type: stdev
+    kern_fwhm: psf
+
+assoc:
+    r_in: 5
+    r_out: 15
+    min_pix: 6 psf sigma
+    max_on_bit: 10
+    dilate: ~
+
+thresh_det:
+    thresh: 4.0
+    npix: 100
+    rgrow: 2.4
+    isogrow: False
+    thresh_type: stdev
+    kern_fwhm: 3.5
+
+deblend_stamps:
+    npix: 5 
+    kern_fwhm: psf
+    photutils_detect:
+        snr: 0.5
+        sigclip_sigma: 3.0
+        sigclip_iters: ~
+    photutils_deblend:
+        nlevels: 32
+        contrast: 0.001
+        mode: exponential
+        connectivity: 8
