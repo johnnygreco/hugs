@@ -11,13 +11,21 @@ __all__ = ['run']
 
 def run(cfg, debug_return=False):
     """
-    Run pipeline.
+    Run hugs pipeline.
 
     Parameters
     ----------
+    cfg : HugsPipe.Config 
+        Configuration object which stores all params 
+        as well as the exposure object. 
+    debug_return : bool, optional
+        If True, return struct with outputs from 
+        every step of pipeline.
 
     Returns
     -------
+    sources : astropy.table.Table 
+        Source catalog.
     """
 
     ############################################################
@@ -62,7 +70,7 @@ def run(cfg, debug_return=False):
     mi_clean_smooth = utils.smooth_gauss(mi_clean, sigma)
 
     ############################################################
-    # Image thresholding at medium threshold for detection.
+    # Image thresholding at final detection threshold 
     ############################################################
 
     fp_det = prim.image_threshold(mi_clean_smooth, plane_name='DETECTED',
@@ -72,8 +80,8 @@ def run(cfg, debug_return=False):
     # Deblend sources in 'detected' footprints
     ############################################################
 
-    sources = prim.deblend_stamps(cfg.exp, wcs=cfg.wcs)
-
+    sources = prim.deblend_stamps(cfg.exp, **cfg.deblend_stamps)
+        
     if debug_return:
         return lsst.pipe.base.Struct(sources=sources,
                                      exposure=cfg.exp,

@@ -14,7 +14,6 @@ exposure = lsst.afw.image.ExposureF(fn)
 dir = os.path.dirname(os.path.realpath(__file__))
 dir = os.path.dirname(dir)
 
-
 def test_run():
     cfg_fn = os.path.join(dir, 'default_config.yaml')
     cfg = Config(cfg_fn)
