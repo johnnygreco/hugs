@@ -145,7 +145,7 @@ def deblend_stamps(exposure, npix=5, wcs=None, detect_kwargs={}, deblend_kwargs=
     return table
 
 
-def image_threshold(masked_image, thresh, thresh_type='stdev', npix=1, 
+def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
                     rgrow=None, isogrow=False, plane_name='', mask=None,
                     clear_mask=True):
     """

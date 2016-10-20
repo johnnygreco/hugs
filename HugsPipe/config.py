@@ -3,6 +3,7 @@ from __future__ import division, print_function
 
 import os
 import yaml
+import numpy as np
 from . import utils
 
 class Config(object):
@@ -59,7 +60,21 @@ class Config(object):
         self.wcs = utils.get_astropy_wcs(self.fn)
         self.mi = self.exp.getMaskedImage()
         self.mask = self.mi.getMask()
+
         self.mask.clearMaskPlane(self.mask.getMaskPlane('DETECTED'))
         if 'DETECTED_NEGATIVE' in list(self.mask.getMaskPlaneDict().keys()):
             self.mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
         self.psf_sigma = utils.get_psf_sigma(self.exp)
+
+        ngrow = self.thresh_low.pop('n_sig_grow')
+        self.thresh_low['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+
+        ngrow = self.thresh_high.pop('n_sig_grow')
+        self.thresh_high['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+
+        ngrow = self.thresh_det.pop('n_sig_grow')
+        self.thresh_det['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+
+        if 'psf sigma' in str(self.assoc['min_pix']):
+            nsig = int(self.assoc['min_pix'].split()[0])
+            self.assoc['min_pix'] = np.pi*(nsig*self.psf_sigma)**2

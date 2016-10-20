@@ -3,19 +3,23 @@ Test hugsPipe.run
 """
 
 import os
+import yaml
 import lsst.afw.image
 from ..run import run
+from ..config import Config
 
 dataDIR = os.environ.get('TEST_DATA_DIR')
 fn = os.path.join(dataDIR, 'test_exposure.fits')
 exposure = lsst.afw.image.ExposureF(fn)
+dir = os.path.dirname(os.path.realpath(__file__))
+dir = os.path.dirname(dir)
 
 
 def test_run():
-    results = run(
-        fn, thresh={'high':20.0, 'det':4.0, 'low':3.0},
-        npix={'det':50}, assoc={'r_in':0, 'min_pix': '6 psf sigma'},
-        kern_fwhm=4.0, debug_return=True)
+    cfg_fn = os.path.join(dir, 'default_config.yaml')
+    cfg = Config(cfg_fn)
+    cfg.set_data_id(fn)
+    results = run(cfg, debug_return=True)
     mask = results.exposure.getMaskedImage().getMask()
     planes = list(mask.getMaskPlaneDict().keys())
     assert 'DETECTED' in planes
