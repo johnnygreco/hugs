@@ -1,4 +1,4 @@
-data_dir: local
+data_dir: hsc
 
 thresh_low:
     thresh: 3.0
@@ -15,28 +15,28 @@ thresh_high:
     thresh_type: stdev
 
 assoc:
-    r_in: 5
+    r_in: 0
     r_out: 15
     min_pix: 6 psf sigma
     max_on_bit: 10
     dilate: ~
 
 thresh_det:
-    thresh: 4.0
-    npix: 100
+    thresh: 3.5
+    npix: 50
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
-    kern_fwhm: 3.5
+    kern_fwhm: 3.5 # arcsec
 
 deblend_stamps:
     npix: 5 
-    kern_fwhm: psf
-    photutils_detect:
-        snr: 0.5
+    kern_sig_pix: 2.5 psf sigma
+    thresh_snr: 0.5
+    detect_kwargs:
         sigclip_sigma: 3.0
         sigclip_iters: ~
-    photutils_deblend:
+    deblend_kwargs:
         nlevels: 32
         contrast: 0.001
         mode: exponential

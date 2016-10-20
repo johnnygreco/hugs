@@ -11,29 +11,32 @@ class Config(object):
     
     """
 
-    def __init__(self, param_fn):
+    def __init__(self, param_fn=None, data_id=None):
+        if param_fn is None:
+            dir = os.path.dirname(os.path.realpath(__file__))
+            param_fn = os.path.join(dir, 'default_config.yaml')
         with open(param_fn, 'r') as f:
             params = yaml.load(f)
-        if params['data_dir']=='local':
-            dir = os.environ.get('LOCAL_DATA')
-            self.data_dir = os.path.join(dir, 'hsc')
-        elif params['data_dir']=='test':
-            self.data_dir = os.environ.get('TEST_DATA_DIR')
+
+        if params['data_dir']=='hsc':
+            self.data_dir = os.environ.get('HSC_DIR')
         else:
             self.data_dir = params['data_dir']
+    
         self._butler = None
-
         self.thresh_low = params['thresh_low']
         self.thresh_high = params['thresh_high']
         self.thresh_det = params['thresh_det']
         self.assoc = params['assoc']
         self.deblend_stamps = params['deblend_stamps']
+        if data_id:
+            self.set_data_id(data_id)
 
     @property
-    def bulter(self):
+    def butler(self):
         """
         """
-        if self._butlter is None:
+        if self._butler is None:
             import lsst.daf.persistence
             self._butler = lsst.daf.persistence.Butler(self.data_dir)
         return self._butler
@@ -44,7 +47,6 @@ class Config(object):
         if type(data_id)==str:
             import lsst.afw.image
             fn = data_id
-            fn = os.path.join(self.data_dir, fn)
             exposure = lsst.afw.image.ExposureF(fn)
         else:
             exposure = self.butler.get('deepCoadd_calexp', 
@@ -78,3 +80,9 @@ class Config(object):
         if 'psf sigma' in str(self.assoc['min_pix']):
             nsig = int(self.assoc['min_pix'].split()[0])
             self.assoc['min_pix'] = np.pi*(nsig*self.psf_sigma)**2
+
+        if 'psf sigma' in self.deblend_stamps['kern_sig_pix']:
+            nsig = float(self.deblend_stamps['kern_sig_pix'].split()[0])
+            self.deblend_stamps['kern_sig_pix'] = nsig*self.psf_sigma
+
+        self.deblend_stamps['wcs'] = self.wcs
