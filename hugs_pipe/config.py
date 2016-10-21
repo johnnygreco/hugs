@@ -27,6 +27,8 @@ class Config(object):
         data_id : dict or string, optional
             The HSC calibrated exposure data id (dict) or 
             filename (string). 
+        log_level : string, optional
+            Level of python logger.
         """
 
         # read parameter file & setup param dicts
