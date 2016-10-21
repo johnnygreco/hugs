@@ -34,8 +34,12 @@ def run(cfg, debug_return=False):
     ############################################################
     
     mi_smooth = utils.smooth_gauss(cfg.mi, cfg.psf_sigma)
+    cfg.logger.info('performing low threshold at '
+                    '{} sigma'.format(cfg.thresh_low['thresh']))
     fp_low = prim.image_threshold(mi_smooth, mask=cfg.mask, 
                                   plane_name='THRESH_LOW', **cfg.thresh_low)
+    cfg.logger.info('performing high threshold at '
+                    '{} sigma'.format(cfg.thresh_high['thresh']))
     fp_high = prim.image_threshold(mi_smooth, mask=cfg.mask, 
                                    plane_name='THRESH_HIGH', **cfg.thresh_high)
 
@@ -54,6 +58,7 @@ def run(cfg, debug_return=False):
     # footprints. Then, replace these sources with noise.
     ############################################################
 
+    cfg.logger.info('associating low & high thresh objects')
     assoc = prim.associate(cfg.mask, fp_low, **cfg.assoc)
         
     exp_clean = cfg.exp.clone()
@@ -65,6 +70,8 @@ def run(cfg, debug_return=False):
     ############################################################
 
     kern_fwhm = cfg.thresh_det.pop('kern_fwhm')
+    cfg.logger.info('smoothing image for detection using gauss '
+                    'with fhwm = {} arcsec'.format(kern_fwhm))
     fwhm = kern_fwhm/utils.pixscale # pixels
     sigma = fwhm/(2*np.sqrt(2*np.log(2)))
     mi_clean_smooth = utils.smooth_gauss(mi_clean, sigma)
@@ -73,6 +80,8 @@ def run(cfg, debug_return=False):
     # Image thresholding at final detection threshold 
     ############################################################
 
+    cfg.logger.info('performing detection threshold at '
+                    '{} sigma'.format(cfg.thresh_det['thresh']))
     fp_det = prim.image_threshold(mi_clean_smooth, plane_name='DETECTED',
                                   mask=cfg.mask, **cfg.thresh_det)
 
@@ -80,6 +89,7 @@ def run(cfg, debug_return=False):
     # Deblend sources in 'detected' footprints
     ############################################################
 
+    cfg.logger.info('building source catalog')
     sources = prim.deblend_stamps(cfg.exp, **cfg.deblend_stamps)
         
     if debug_return:

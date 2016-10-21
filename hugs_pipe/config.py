@@ -1,16 +1,21 @@
 from __future__ import division, print_function
 
-import os
+import os, sys
+import logging
 import yaml
 import numpy as np
 from . import utils
+try:
+    import coloredlogs
+except ImportError:
+    pass
 
 class Config(object):
     """
     Class for parsing the hugs_pipe configuration.
     """
 
-    def __init__(self, param_fn=None, data_id=None):
+    def __init__(self, param_fn=None, data_id=None, log_level='info'):
         """
         Initialization
 
@@ -23,24 +28,40 @@ class Config(object):
             The HSC calibrated exposure data id (dict) or 
             filename (string). 
         """
+
+        # read parameter file & setup param dicts
         if param_fn is None:
             dir = os.path.dirname(os.path.realpath(__file__))
             param_fn = os.path.join(dir, 'default_config.yaml')
         with open(param_fn, 'r') as f:
             params = yaml.load(f)
-
         if params['data_dir']=='hsc':
             self.data_dir = os.environ.get('HSC_DIR')
         else:
             self.data_dir = params['data_dir']
-        self._butler = None
         self.thresh_low = params['thresh_low']
         self.thresh_high = params['thresh_high']
         self.thresh_det = params['thresh_det']
         self.assoc = params['assoc']
         self.deblend_stamps = params['deblend_stamps']
+
+        # set data id if given
         if data_id:
             self.set_data_id(data_id)
+        self._butler = None
+
+        # setup logger
+        self.logger = logging.getLogger('hugs-pipe logger')
+        self.logger.setLevel(getattr(logging, log_level.upper()))
+        fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'
+        try: 
+            formatter = coloredlogs.ColoredFormatter(fmt=fmt, 
+                                                     datefmt='%m/%d %H:%M:%S')
+        except: 
+            formatter = logging.Formatter(fmt=fmt, datefmt='%m/%d %H:%M:%S')
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(formatter)
+        self.logger.addHandler(sh)
 
     @property
     def butler(self):
