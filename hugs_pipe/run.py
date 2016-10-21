@@ -15,7 +15,7 @@ def run(cfg, debug_return=False):
 
     Parameters
     ----------
-    cfg : HugsPipe.Config 
+    cfg : hugs_pipe.Config 
         Configuration object which stores all params 
         as well as the exposure object. 
     debug_return : bool, optional

@@ -7,7 +7,7 @@ from . import utils
 
 class Config(object):
     """
-    Class for parsing the HugsPipe configuration.
+    Class for parsing the hugs_pipe configuration.
     """
 
     def __init__(self, param_fn=None, data_id=None):
@@ -83,7 +83,7 @@ class Config(object):
     def set_data_id(self, data_id):
         """
         Setup the data id. This must be done before passing a 
-        config object to HugsPipe.run.
+        config object to hugs_pipe.run.
 
         Parameters
         ----------

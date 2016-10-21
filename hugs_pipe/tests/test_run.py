@@ -1,5 +1,5 @@
 """
-Test hugsPipe.run
+Test hugs_pipe.run
 """
 from __future__ import division, print_function
 

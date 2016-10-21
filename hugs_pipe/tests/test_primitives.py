@@ -1,5 +1,5 @@
 """
-Tests for hugsPipe.primitives
+Tests for hugs_pipe.primitives
 """
 from __future__ import division, print_function
 
