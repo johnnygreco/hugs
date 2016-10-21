@@ -70,7 +70,7 @@ def run(cfg, debug_return=False):
     ############################################################
 
     kern_fwhm = cfg.thresh_det.pop('kern_fwhm')
-    cfg.logger.info('smoothing image for detection using gauss '
+    cfg.logger.info('gaussian smooth for detection with '
                     'with fhwm = {} arcsec'.format(kern_fwhm))
     fwhm = kern_fwhm/utils.pixscale # pixels
     sigma = fwhm/(2*np.sqrt(2*np.log(2)))
