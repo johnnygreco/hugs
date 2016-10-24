@@ -242,12 +242,13 @@ def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0,
         aperture = phut.EllipticalAperture((x,y), ell_nsig*a, ell_nsig*b, theta)
         flux = phut.aperture_photometry(img, aperture)['aperture_sum'][0]
         mag.append(zpt_mag - 2.5*np.log10(flux))
-    sources['ap_mag_ell'] = mag
+    sources['mag_ell'] = mag
 
     for r in circ_radii:
+        r_arcsec = r*utils.pixscale
         apertures = phut.CircularAperture(pos, r=r)
         flux = phut.aperture_photometry(img, apertures)['aperture_sum']
-        m_i = zpt_mag - 2.5*np.log10(flux)
-        r_arcsec = r*utils.pixscale
-        mu = m_i + 2.5*np.log10(np.pi*r_arcsec**2)
+        mag = zpt_mag - 2.5*np.log10(flux)
+        sources['mag_circ_{}'.format(r)] = mag
+        mu = mag + 2.5*np.log10(np.pi*r_arcsec**2)
         sources['mu_{}'.format(r)] = mu
