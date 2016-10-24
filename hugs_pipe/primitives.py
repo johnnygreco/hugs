@@ -150,6 +150,8 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None,
             table = vstack([table, props])
     for i in range(len(table)):
         table['id'][i] = i+1
+    table.rename_column('ra_icrs_centroid', 'ra')
+    table.rename_column('dec_icrs_centroid', 'dec')
     return table
 
 
