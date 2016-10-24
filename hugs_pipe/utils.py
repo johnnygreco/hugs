@@ -113,7 +113,7 @@ def get_astropy_wcs(fn):
 def viz(image, transparency=75, frame=1, 
         colors=[('THRESH_HIGH', 'magenta'), ('THRESH_LOW', 'yellow')]):
     """
-    Visualize retsults with ds9.
+    Visualize results with ds9.
     """
     import lsst.afw.display as afwDisplay
     disp = afwDisplay.Display(frame)
