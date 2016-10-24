@@ -147,8 +147,7 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
             else:
                 props['is_deblended'] = False
             table = vstack([table, props])
-    for i in range(len(table)):
-        table['id'][i] = i+1
+    table['id'] = np.arange(1, len(table)+1)
     table.remove_column('ra_icrs_centroid')
     table.remove_column('dec_icrs_centroid')
     ra_list = []
