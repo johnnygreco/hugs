@@ -214,8 +214,9 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
 def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0, 
                circ_radii=[3, 6, 9]):
     """
-    Do basic aperture photometry within elliptical apertures. 
-    Results will be saved to the input table.
+    Do basic aperture photometry within cicular apertures and 
+    an elliptical aperture. Results will be saved to the 
+    input table.
 
     Parameters
     ----------
@@ -227,6 +228,8 @@ def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0,
         The zero point magnitude.
     ell_nsig : float, optional
         Number be sigma for major/minor axis sizes.
+    circ_radii : list, optional
+        Radii within which to calculate surface brightness.
     """
 
     pos = [(x, y) for x,y in sources['x_img', 'y_img']] 
