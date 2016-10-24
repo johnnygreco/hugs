@@ -94,7 +94,7 @@ def run(cfg, debug_return=False):
     img = cfg.mi.getImage().getArray()
 
     cfg.logger.info('measuring aperture magnitudes')
-    sources['ap_mag'] = prim.photometry(img, sources, **cfg.photometry)
+    prim.photometry(img, sources, **cfg.photometry)
         
     if debug_return:
         return lsst.pipe.base.Struct(sources=sources,
