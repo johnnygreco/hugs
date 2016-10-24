@@ -62,14 +62,15 @@ class Config(object):
         except: 
             formatter = logging.Formatter(fmt=fmt, datefmt='%m/%d %H:%M:%S')
 
-        sh = logging.StreamHandler(sys.stdout)
-        sh.setFormatter(formatter)
-        self.logger.addHandler(sh)
+        if not self.logger.handlers:
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setFormatter(formatter)
+            self.logger.addHandler(sh)
 
-        if log_fn:
-            fh = logging.FileHandler(log_fn)
-            fh.setFormatter(formatter)
-            self.logger.addHandler(fh)
+            if log_fn:
+                fh = logging.FileHandler(log_fn)
+                fh.setFormatter(formatter)
+                self.logger.addHandler(fh)
 
         # set data id if given
         if data_id:
