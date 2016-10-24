@@ -124,9 +124,8 @@ class Config(object):
             filename (string).
         """
 
-        # get exposure and wcs
+        # get exposure 
         self.exp, self.fn = self.get_exposure(data_id)
-        self.wcs = utils.get_astropy_wcs(self.fn)
         self.mi = self.exp.getMaskedImage()
         self.mask = self.mi.getMask()
 
@@ -155,6 +154,3 @@ class Config(object):
         if 'psf sigma' in self.deblend_stamps['kern_sig_pix']:
             nsig = float(self.deblend_stamps['kern_sig_pix'].split()[0])
             self.deblend_stamps['kern_sig_pix'] = nsig*self.psf_sigma
-        
-        # set wcs to astropy.wcs.WCS object
-        self.deblend_stamps['wcs'] = self.wcs

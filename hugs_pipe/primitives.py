@@ -77,8 +77,8 @@ def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20.,
     return seg_assoc
 
 
-def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None, 
-                   kern_sig_pix=3, detect_kwargs={}, deblend_kwargs={}):
+def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
+                   detect_kwargs={}, deblend_kwargs={}):
     """
     Use photutils to deblend sources within "detection" postage stamps.
 
@@ -89,8 +89,6 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None,
     thresh_snr : float, optional
         The signal-to-noise ratio per pixel above the background 
         for which to consider a pixel as possibly being part of a source.
-    wcs: astropy.wcs.WCS, optional 
-        World Coordinate System info.
     kern_sig_pix : float
         Sigma (in pixels) of Gaussian kernal used to smooth detection image.
     npix : int, optional
@@ -111,6 +109,7 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None,
     planes = mask.getPlaneBitMask(['THRESH_LOW', 'DETECTED'])
     fpset = afwDet.FootprintSet(
         mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
+    wcs = exposure.getWcs()
     table = Table()
     kern = Gaussian2DKernel(kern_sig_pix)
     kern.normalize()
@@ -137,7 +136,7 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None,
             seg_db = phut.deblend_sources(
                 img, seg, npixels=npix, 
                 filter_kernel=kern, **deblend_kwargs)
-            props = phut.source_properties(img, seg_db, wcs=wcs)
+            props = phut.source_properties(img, seg_db)
             props = phut.properties_table(props)
             props['x_hsc'] = props['xcentroid'] + x0
             props['y_hsc'] = props['ycentroid'] + y0
@@ -150,8 +149,18 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, wcs=None,
             table = vstack([table, props])
     for i in range(len(table)):
         table['id'][i] = i+1
-    table.rename_column('ra_icrs_centroid', 'ra')
-    table.rename_column('dec_icrs_centroid', 'dec')
+    table.remove_column('ra_icrs_centroid')
+    table.remove_column('dec_icrs_centroid')
+    ra_list = []
+    dec_list = []
+    for i in range(len(table)):
+        x, y = table['x_hsc', 'y_hsc'][i]
+        ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
+        dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
+        ra_list.append(ra)
+        dec_list.append(dec)
+    table['ra'] = ra_list
+    table['dec'] = dec_list
     return table
 
 
