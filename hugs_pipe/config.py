@@ -49,10 +49,7 @@ class Config(object):
         self.thresh_det = params['thresh_det']
         self.assoc = params['assoc']
         self.deblend_stamps = params['deblend_stamps']
-
-        # set data id if given
-        if data_id:
-            self.set_data_id(data_id)
+        self.photometry = params['photometry']
         self._butler = None
 
         # setup logger
@@ -73,6 +70,10 @@ class Config(object):
             fh = logging.FileHandler(log_fn)
             fh.setFormatter(formatter)
             self.logger.addHandler(fh)
+
+        # set data id if given
+        if data_id:
+            self.set_data_id(data_id)
 
     @property
     def butler(self):

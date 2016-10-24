@@ -8,7 +8,7 @@ from astropy.convolution import Gaussian2DKernel
 import photutils as phut
 from . import utils
 
-__all__ = ['associate', 'deblend_stamps', 'image_threshold']
+__all__ = ['associate', 'deblend_stamps', 'image_threshold', 'photometry']
 
 
 def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
@@ -159,6 +159,8 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         dec_list.append(dec)
     table['ra'] = ra_list
     table['dec'] = dec_list
+    table['x_img'] = table['x_hsc'] - exposure.getX0() 
+    table['y_img'] = table['y_hsc'] - exposure.getY0() 
     return table
 
 
@@ -176,7 +178,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
         Threshold value.
     thresh_type : string, optional
         Threshold type: stdev, pixel_stdev, bitmask, value,
-        or variace.
+        or variance.
     npix : int, optional
         Minimum number of touching pixels in an object.
     rgrow : int, optional
@@ -193,7 +195,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     Returns
     -------
     fpset : lsst.afw.detection.detectionLib.FootprintSet
-        Footprints assoicated with detected objects.
+        Footprints associated with detected objects.
     """
     mask = masked_image.getMask() if mask is None else mask
     thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
@@ -207,3 +209,42 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
             mask.clearMaskPlane(mask.getMaskPlane(plane_name))
         fpset.setMask(mask, plane_name)
     return fpset
+
+
+def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0, 
+               circ_radii=[3, 6, 9]):
+    """
+    Do basic aperture photometry within elliptical apertures. 
+    Results will be saved to the input table.
+
+    Parameters
+    ----------
+    img : 2D ndarray
+        The image data.
+    sources : astropy.table.Table
+        Output table from deblend_stamps.
+    zpt_mag : float, optional
+        The zero point magnitude.
+    ell_nsig : float, optional
+        Number be sigma for major/minor axis sizes.
+    """
+
+    pos = [(x, y) for x,y in sources['x_img', 'y_img']] 
+
+    mag = []
+    for idx in range(len(sources)):
+        x, y = pos[idx]
+        a, b = sources['semimajor_axis_sigma', 'semiminor_axis_sigma'][idx]
+        theta = sources['orientation'][idx]
+        aperture = phut.EllipticalAperture((x,y), ell_nsig*a, ell_nsig*b, theta)
+        flux = phut.aperture_photometry(img, aperture)['aperture_sum'][0]
+        mag.append(zpt_mag - 2.5*np.log10(flux))
+    sources['ap_mag_ell'] = mag
+
+    for r in circ_radii:
+        apertures = phut.CircularAperture(pos, r=r)
+        flux = phut.aperture_photometry(img, apertures)['aperture_sum']
+        m_i = zpt_mag - 2.5*np.log10(flux)
+        r_arcsec = r*utils.pixscale
+        mu = m_i + 2.5*np.log10(np.pi*r_arcsec**2)
+        sources['mu_{}'.format(r)] = mu

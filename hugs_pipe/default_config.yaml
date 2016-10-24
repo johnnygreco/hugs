@@ -41,3 +41,7 @@ deblend_stamps:
         contrast: 0.001
         mode: exponential
         connectivity: 8
+
+photometry:
+    ell_nsig: 4.0
+    circ_radii: [3, 6, 9]
