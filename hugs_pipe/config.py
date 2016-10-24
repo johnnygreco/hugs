@@ -15,7 +15,8 @@ class Config(object):
     Class for parsing the hugs_pipe configuration.
     """
 
-    def __init__(self, param_fn=None, data_id=None, log_level='info'):
+    def __init__(self, param_fn=None, data_id=None, log_level='info',
+                 log_fn=None):
         """
         Initialization
 
@@ -29,6 +30,8 @@ class Config(object):
             filename (string). 
         log_level : string, optional
             Level of python logger.
+        log_fn : string, optional
+            Log file name.
         """
 
         # read parameter file & setup param dicts
@@ -61,9 +64,15 @@ class Config(object):
                                                      datefmt='%m/%d %H:%M:%S')
         except: 
             formatter = logging.Formatter(fmt=fmt, datefmt='%m/%d %H:%M:%S')
+
         sh = logging.StreamHandler(sys.stdout)
         sh.setFormatter(formatter)
         self.logger.addHandler(sh)
+
+        if log_fn:
+            fh = logging.FileHandler(log_fn)
+            fh.setFormatter(formatter)
+            self.logger.addHandler(fh)
 
     @property
     def butler(self):
@@ -81,7 +90,7 @@ class Config(object):
 
         Parameters
         ----------
-        data_id : dict or string, optional
+        data_id : dict or string
             The HSC calibrated exposure data id (dict) or 
             filename (string).
 
