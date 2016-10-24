@@ -153,8 +153,7 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     table.remove_column('dec_icrs_centroid')
     ra_list = []
     dec_list = []
-    for i in range(len(table)):
-        x, y = table['x_hsc', 'y_hsc'][i]
+    for x, y in table['x_hsc', 'y_hsc']:
         ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
         dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
         ra_list.append(ra)
