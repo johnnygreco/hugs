@@ -15,14 +15,14 @@ class Config(object):
     Class for parsing the hugs_pipe configuration.
     """
 
-    def __init__(self, param_fn=None, data_id=None, log_level='info',
+    def __init__(self, config_fn=None, data_id=None, log_level='info',
                  log_fn=None):
         """
         Initialization
 
         Parameters
         ----------
-        param_fn : string, optional
+        config_fn : string, optional
             The parameter file name (must be a yaml file).
             If None, will use default config.
         data_id : dict or string, optional
@@ -35,10 +35,10 @@ class Config(object):
         """
 
         # read parameter file & setup param dicts
-        if param_fn is None:
+        if config_fn is None:
             dir = os.path.dirname(os.path.realpath(__file__))
-            param_fn = os.path.join(dir, 'default_config.yaml')
-        with open(param_fn, 'r') as f:
+            config_fn = os.path.join(dir, 'default_config.yaml')
+        with open(config_fn, 'r') as f:
             params = yaml.load(f)
         if params['data_dir']=='hsc':
             self.data_dir = os.environ.get('HSC_DIR')
