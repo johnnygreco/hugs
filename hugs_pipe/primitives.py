@@ -120,9 +120,7 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
         pix = hfp.getMaskArray()
         bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0,
-                (pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0,
-                (pix & mask.getPlaneBitMask(['THRESH_LOW'])!=0).sum()>0]
-                
+                (pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0]
         if np.alltrue(bits):
             img = exp.getMaskedImage().getImage().getArray().copy()
             x0, y0 = exp.getXY0()
