@@ -9,7 +9,7 @@ hscdir = os.environ.get('HSC_DIR')
 
 def get_cutout(center, size, exp=None, data_id=None, butler=None):
     """
-    Generate a cutout of exposure. Most give exposure object or 
+    Generate a cutout of exposure. Must give exposure object or 
     data_id and, optionally, a butler.
      
     Parameters
