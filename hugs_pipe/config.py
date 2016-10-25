@@ -62,8 +62,11 @@ class Config(object):
         """
         Setup the python logger.
         """
-        t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
-        name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)
+        if type(data_id)==str:
+            name = data_id
+        else:
+            t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
+            name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)
         self.logger = logging.getLogger(name)
         self.logger.setLevel(getattr(logging, self.log_level.upper()))
         fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'
