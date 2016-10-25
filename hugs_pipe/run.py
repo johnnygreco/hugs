@@ -64,6 +64,7 @@ def run(cfg, debug_return=False):
     exp_clean = cfg.exp.clone()
     mi_clean = exp_clean.getMaskedImage()
     mi_clean.getImage().getArray()[assoc!=0] = noise_array[assoc!=0]
+    mask_clean = mi_clean.getMask()
 
     ############################################################
     # Smooth with large kernel for detection.
@@ -83,18 +84,21 @@ def run(cfg, debug_return=False):
     cfg.logger.info('performing detection threshold at '
                     '{} sigma'.format(cfg.thresh_det['thresh']))
     fp_det = prim.image_threshold(mi_clean_smooth, plane_name='DETECTED',
-                                  mask=cfg.mask, **cfg.thresh_det)
+                                  mask=mask_clean, **cfg.thresh_det)
+    fp_det.setMask(cfg.mask, 'DETECTED')
 
     ############################################################
     # Deblend sources in 'detected' footprints
     ############################################################
 
     cfg.logger.info('building source catalog')
-    sources = prim.deblend_stamps(cfg.exp, **cfg.deblend_stamps)
+    sources = prim.deblend_stamps(exp_clean, **cfg.deblend_stamps)
     img = cfg.mi.getImage().getArray()
 
     cfg.logger.info('measuring aperture magnitudes')
     prim.photometry(img, sources, **cfg.photometry)
+
+    cfg.logger.info('task complete')
         
     if debug_return:
         return lsst.pipe.base.Struct(sources=sources,
