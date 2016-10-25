@@ -44,17 +44,28 @@ class Config(object):
             self.data_dir = os.environ.get('HSC_DIR')
         else:
             self.data_dir = params['data_dir']
-        self.thresh_low = params['thresh_low']
-        self.thresh_high = params['thresh_high']
-        self.thresh_det = params['thresh_det']
-        self.assoc = params['assoc']
-        self.deblend_stamps = params['deblend_stamps']
-        self.photometry = params['photometry']
+        self._thresh_low = params['thresh_low']
+        self._thresh_high = params['thresh_high']
+        self._thresh_det = params['thresh_det']
+        self._deblend_stamps = params['deblend_stamps']
+        self._assoc = params['assoc']
+        self._photometry = params['photometry']
         self._butler = None
+        self.log_fn = log_fn
+        self.log_level = log_level
 
-        # setup logger
-        self.logger = logging.getLogger('hugs-pipe logger')
-        self.logger.setLevel(getattr(logging, log_level.upper()))
+        # set data id if given
+        if data_id:
+            self.set_data_id(data_id)
+
+    def setup_logger(self, data_id):
+        """
+        Setup the python logger.
+        """
+        t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
+        name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(getattr(logging, self.log_level.upper()))
         fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'
         try: 
             formatter = coloredlogs.ColoredFormatter(fmt=fmt, 
@@ -67,14 +78,10 @@ class Config(object):
             sh.setFormatter(formatter)
             self.logger.addHandler(sh)
 
-            if log_fn:
-                fh = logging.FileHandler(log_fn)
+            if self.log_fn:
+                fh = logging.FileHandler(self.log_fn)
                 fh.setFormatter(formatter)
                 self.logger.addHandler(fh)
-
-        # set data id if given
-        if data_id:
-            self.set_data_id(data_id)
 
     @property
     def butler(self):
@@ -125,6 +132,16 @@ class Config(object):
             The HSC calibrated exposure data id (dict) or 
             filename (string).
         """
+
+        self.setup_logger(data_id)
+
+        # careful not to modify parameters
+        self.thresh_low = self._thresh_low.copy()
+        self.thresh_high = self._thresh_high.copy()
+        self.thresh_det = self._thresh_det.copy()
+        self.assoc = self._assoc.copy()
+        self.deblend_stamps = self._deblend_stamps.copy()
+        self.photometry = self._photometry.copy()
 
         # get exposure 
         self.exp, self.fn = self.get_exposure(data_id)
