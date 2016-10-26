@@ -11,6 +11,8 @@ from .. import imtools
 from ..utils import pixscale
 hscdir = os.environ.get('HSC_DIR')
 
+__all__ = ['view_candy']
+
 def view_candy(cat, butler=None):
     """
     View postage stamps of objects in catalog, which 

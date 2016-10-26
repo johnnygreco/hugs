@@ -7,6 +7,8 @@ import lsst.afw.display as afwDisp
 import lsst.afw.geom as afwGeom
 hscdir = os.environ.get('HSC_DIR')
 
+__all__ = ['get_cutout']
+
 def get_cutout(center, size, exp=None, data_id=None, butler=None):
     """
     Generate a cutout of exposure. Must give exposure object or 
