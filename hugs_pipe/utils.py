@@ -4,7 +4,7 @@ import numpy as np
 import lsst.afw.math as afwMath
 
 __all__ = ['pixscale', 'annuli', 'smooth_gauss', 'get_astropy_wcs',
-           'get_psf_sigma', 'viz']
+           'get_psf_sigma', 'viz', 'get_test_exp']
 
 pixscale = 0.168
 
@@ -122,3 +122,15 @@ def viz(image, transparency=75, frame=1,
     disp.setMaskTransparency(transparency)
     disp.mtv(image)
     return disp
+
+
+def get_test_exp():
+    """
+    Return a small test exposure for testing.
+    """
+    import os
+    import lsst.afw.image
+    dataDIR = os.environ.get('TEST_DATA_DIR')
+    fn = os.path.join(dataDIR, 'test_exposure.fits')
+    exposure = lsst.afw.image.ExposureF(fn)
+    return exposure

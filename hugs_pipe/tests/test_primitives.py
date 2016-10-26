@@ -1,20 +1,15 @@
 """
-Tests for hugs_pipe.primitives
+Unit tests for hugs_pipe.primitives
 """
 from __future__ import division, print_function
 
-import os
-import lsst.afw.image
 from .. import primitives as prim
 from .. import utils
 
-dataDIR = os.environ.get('TEST_DATA_DIR')
-fn = os.path.join(dataDIR, 'test_exposure.fits')
-exposure = lsst.afw.image.ExposureF(fn)
+exposure = utils.get_test_exp()
 masked_image = exposure.getMaskedImage().clone()
 mask = masked_image.getMask().clone()
 sources = prim.deblend_stamps(exposure)
-
 
 def test_associate():
     fpset = prim.image_threshold(masked_image, 30, 

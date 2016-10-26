@@ -1,5 +1,5 @@
 """
-Test hugs_pipe.run
+Unit test hugs_pipe.run
 """
 from __future__ import division, print_function
 
@@ -8,10 +8,11 @@ import yaml
 import lsst.afw.image
 from ..run import run
 from ..config import Config
+from .. import utils
 
+exposure = utils.get_test_exp()
 dataDIR = os.environ.get('TEST_DATA_DIR')
 fn = os.path.join(dataDIR, 'test_exposure.fits')
-exposure = lsst.afw.image.ExposureF(fn)
 dir = os.path.dirname(os.path.realpath(__file__))
 dir = os.path.dirname(dir)
 
