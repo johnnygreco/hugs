@@ -12,13 +12,15 @@ hscdir = os.environ.get('HSC_DIR')
 
 def view_candy(cat, butler=None):
     """
+    View postage stamps of objects in catalog, which 
+    must be the output of hugs-pipe.run.
 
     Parameters
     ----------
-
-    Returns
-    -------
-
+    cat : astropy.table.Table
+        Object catalog.
+    butler : lsst.daf.persistence.Butler, optional
+        The butler. 
     """
 
     if butler is None:
