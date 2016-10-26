@@ -8,6 +8,7 @@ import os
 import lsst.afw.display as afwDisp
 import lsst.afw.geom as afwGeom
 from .. import imtools
+from ..utils import pixscale
 hscdir = os.environ.get('HSC_DIR')
 
 def view_candy(cat, butler=None):
@@ -35,8 +36,8 @@ def view_candy(cat, butler=None):
     tract_old = None
     patch_old = None
 
-    cat['size'] = 3*0.168*cat['semimajor_axis_sigma']
-    cat['r_circ'] = 0.168*cat['equivalent_radius']
+    cat['size'] = 3*pixscale*cat['semimajor_axis_sigma']
+    cat['r_circ'] = pixscale*cat['equivalent_radius']
 
     for i, source in enumerate(cat): 
 
