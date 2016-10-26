@@ -4,3 +4,4 @@
 .dropbox.attr
 .ipynb_checkpoints
 .cache/
+slurm*.out
