@@ -10,6 +10,7 @@ hscdir = os.environ.get('HSC_DIR')
 
 __all__ = ['get_cutout', 'smooth_gauss']
 
+
 def get_cutout(center, size, exp=None, data_id=None, butler=None):
     """
     Generate a cutout of exposure. Must give exposure object or 
