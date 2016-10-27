@@ -3,8 +3,8 @@ from __future__ import division, print_function
 import numpy as np
 import lsst.afw.math as afwMath
 
-__all__ = ['pixscale', 'annuli', 'smooth_gauss', 'get_astropy_wcs',
-           'get_psf_sigma', 'viz', 'get_test_exp']
+__all__ = ['pixscale', 'annuli', 'get_astropy_wcs',
+           'get_psf_sigma', 'get_test_exp']
 
 pixscale = 0.168
 
@@ -52,33 +52,6 @@ def annuli(row_c, col_c, r_in, r_out, shape):
     return row_idx, col_idx
 
 
-def smooth_gauss(masked_image, sigma, nsigma=7.0):
-    """
-    Smooth image with a Gaussian kernel. 
-
-    Parameters
-    ----------
-    masked_image : lsst.afw.image.imageLib.MaskedImageF
-        Masked image object to be smoothed
-    sigma : float
-        Standard deviation of Gaussian
-    nsigma : float, optional
-        Number of sigma for kernel width
-
-    Returns
-    -------
-    convolved_image : lsst.afw.image.imageLib.MaskedImageF
-        The convolved masked image
-    """
-    width = (int(sigma*nsigma + 0.5) // 2)*2 + 1 # make sure it is odd
-    gauss_func = afwMath.GaussianFunction1D(sigma)
-    gauss_kern = afwMath.SeparableKernel(width, width, gauss_func, gauss_func)
-    convolved_image = masked_image.Factory(masked_image.getBBox())
-    afwMath.convolve(convolved_image, masked_image, gauss_kern,
-                     afwMath.ConvolutionControl())
-    return convolved_image
-
-
 def get_psf_sigma(exposure):
     """
     Get sigma of point-spread function.
@@ -108,20 +81,6 @@ def get_astropy_wcs(fn):
     header = fits.open(fn)[1].header
     exp_wcs = wcs.WCS(header)
     return exp_wcs
-
-
-def viz(image, transparency=75, frame=1, 
-        colors=[('THRESH_HIGH', 'magenta'), ('THRESH_LOW', 'yellow')]):
-    """
-    Visualize results with ds9.
-    """
-    import lsst.afw.display as afwDisplay
-    disp = afwDisplay.Display(frame)
-    for name, color in colors:
-        disp.setMaskPlaneColor(name, color)
-    disp.setMaskTransparency(transparency)
-    disp.mtv(image)
-    return disp
 
 
 def get_test_exp():

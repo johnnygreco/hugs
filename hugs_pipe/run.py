@@ -4,6 +4,7 @@ import os
 import numpy as np
 import lsst.pipe.base
 from . import utils
+from . import imtools
 from . import primitives as prim
 
 __all__ = ['run']
@@ -33,7 +34,7 @@ def run(cfg, debug_return=False):
     # cases, the image is smoothed at the psf scale.
     ############################################################
     
-    mi_smooth = utils.smooth_gauss(cfg.mi, cfg.psf_sigma)
+    mi_smooth = imtools.smooth_gauss(cfg.mi, cfg.psf_sigma)
     cfg.logger.info('performing low threshold at '
                     '{} sigma'.format(cfg.thresh_low['thresh']))
     fp_low = prim.image_threshold(mi_smooth, mask=cfg.mask, 
@@ -75,7 +76,7 @@ def run(cfg, debug_return=False):
                     'with fhwm = {} arcsec'.format(kern_fwhm))
     fwhm = kern_fwhm/utils.pixscale # pixels
     sigma = fwhm/(2*np.sqrt(2*np.log(2)))
-    mi_clean_smooth = utils.smooth_gauss(mi_clean, sigma)
+    mi_clean_smooth = imtools.smooth_gauss(mi_clean, sigma)
 
     ############################################################
     # Image thresholding at final detection threshold 
