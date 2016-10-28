@@ -52,7 +52,7 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
     return cutout
 
 
-def smooth_gauss(masked_image, sigma, nsigma=7.0):
+def smooth_gauss(masked_image, sigma, nsigma=7.0, inplace=False):
     """
     Smooth image with a Gaussian kernel. 
 
@@ -64,6 +64,9 @@ def smooth_gauss(masked_image, sigma, nsigma=7.0):
         Standard deviation of Gaussian
     nsigma : float, optional
         Number of sigma for kernel width
+    inplace : bool, optional
+        If True, smooth the image inplace. Else, return a clone 
+        of the masked image. 
 
     Returns
     -------
@@ -73,7 +76,10 @@ def smooth_gauss(masked_image, sigma, nsigma=7.0):
     width = (int(sigma*nsigma + 0.5) // 2)*2 + 1 # make sure it is odd
     gauss_func = afwMath.GaussianFunction1D(sigma)
     gauss_kern = afwMath.SeparableKernel(width, width, gauss_func, gauss_func)
-    convolved_image = masked_image.Factory(masked_image.getBBox())
+    if inplace:
+        convolved_image = masked_image
+    else:
+        convolved_image = masked_image.Factory(masked_image.getBBox())
     afwMath.convolve(convolved_image, masked_image, gauss_kern,
                      afwMath.ConvolutionControl())
     return convolved_image
