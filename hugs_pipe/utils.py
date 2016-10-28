@@ -93,3 +93,12 @@ def get_test_exp():
     fn = os.path.join(dataDIR, 'test_exposure.fits')
     exposure = lsst.afw.image.ExposureF(fn)
     return exposure
+
+
+def mkdir_if_needed(directory):
+    """"
+    Create directory if it does not exist.
+    """
+    import os
+    if not os.path.isdir(directory):
+        os.mkdir(directory)

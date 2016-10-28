@@ -8,8 +8,7 @@ import hugs_pipe
 def main(tract, patch, config_fn, outdir):
     data_id = {'tract': tract, 'patch': patch, 'filter': 'HSC-I'}
 
-    if not os.path.isdir(outdir):
-        os.mkdir(outdir)
+    hugs_pipe.utils.mkdir_if_needed(outdir)
 
     prefix = os.path.join(outdir, 'hugs-pipe_{}_{}'.format(tract, patch))
     config = hugs_pipe.Config(data_id=data_id, 
