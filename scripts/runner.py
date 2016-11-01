@@ -10,7 +10,7 @@ def main(tract, patch, config_fn, outdir):
 
     hugs_pipe.utils.mkdir_if_needed(outdir)
 
-    prefix = os.path.join(outdir, 'hugs-pipe_{}_{}'.format(tract, patch))
+    prefix = os.path.join(outdir, 'hugs-pipe-{}-{}'.format(tract, patch))
     config = hugs_pipe.Config(data_id=data_id, 
                               config_fn=config_fn, 
                               log_fn=prefix+'.log')
