@@ -99,8 +99,11 @@ def run(cfg, debug_return=False):
     cfg.logger.info('measuring aperture magnitudes')
     prim.photometry(img, sources, **cfg.photometry)
 
-    tract, patch = cfg.data_id['tract'], cfg.data_id['patch']
-    utils.add_cat_params(sources, tract, patch)
+    if type(cfg.data_id)==str:
+        utils.add_cat_params(sources)
+    else:
+        tract, patch = cfg.data_id['tract'], cfg.data_id['patch']
+        utils.add_cat_params(sources, tract, patch)
 
     cfg.logger.info('task complete')
         
