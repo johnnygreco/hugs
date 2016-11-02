@@ -5,7 +5,7 @@ import numpy as np
 import lsst.afw.math as afwMath
 
 __all__ = ['io', 'pixscale', 'annuli', 'get_astropy_wcs',
-           'get_psf_sigma', 'get_test_exp']
+           'get_psf_sigma', 'get_test_exp', 'add_cat_params']
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
@@ -104,3 +104,16 @@ def mkdir_if_needed(directory):
     import os
     if not os.path.isdir(directory):
         os.mkdir(directory)
+
+
+def add_cat_params(sources, tract=None, patch=None):
+    """
+    Add useful params to final catalog.
+    """
+    if tract:
+        sources['tract'] = [tract]*len(sources)
+    if patch:
+        sources['patch'] = [patch]*len(sources)
+    sources['a_3_sig'] = 3.0*pixscale*sources['semimajor_axis_sigma']
+    sources['b_3_sig'] = 3.0*pixscale*sources['semiminor_axis_sigma']
+    sources['r_circ'] = pixscale*sources['equivalent_radius']

@@ -8,7 +8,10 @@ from astropy.convolution import Gaussian2DKernel
 import photutils as phut
 from . import utils
 
-__all__ = ['associate', 'deblend_stamps', 'image_threshold', 'photometry']
+__all__ = ['associate', 
+           'deblend_stamps', 
+           'image_threshold', 
+           'photometry']
 
 
 def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
