@@ -1,11 +1,13 @@
 from __future__ import division, print_function
 
+import os
 import numpy as np
 import lsst.afw.math as afwMath
 
-__all__ = ['pixscale', 'annuli', 'get_astropy_wcs',
+__all__ = ['io', 'pixscale', 'annuli', 'get_astropy_wcs',
            'get_psf_sigma', 'get_test_exp']
 
+io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
 
 def annuli(row_c, col_c, r_in, r_out, shape):
