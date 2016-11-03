@@ -203,7 +203,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     mask = masked_image.getMask() if mask is None else mask
     thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
     thresh = afwDet.Threshold(thresh, thresh_type)
-    fpset = afwDet.FootprintSet(masked_image, thresh, '', npix)
+    fpset = afwDet.FootprintSet(masked_image, thresh, plane_name, npix)
     if rgrow is not None:
         fpset = afwDet.FootprintSet(fpset, rgrow, isogrow)
     if plane_name:
