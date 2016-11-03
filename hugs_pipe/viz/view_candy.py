@@ -5,15 +5,47 @@ Display candidates with ds9.
 from __future__ import division, print_function
 
 import os
+import lsst.afw.image as afwImage
 import lsst.afw.display as afwDisp
 import lsst.afw.geom as afwGeom
 from .. import imtools
 from ..utils import pixscale
 hscdir = os.environ.get('HSC_DIR')
 
-__all__ = ['view_candy']
+__all__ = ['display_candies', 'view_stamps_on_tiger']
 
-def view_candy(cat, butler=None):
+
+def display_candies(sources, data_id):
+    """
+    """
+
+    if type(data_id)==str:
+        exp = afwImage.ExposureF(data_id)
+    elif type(data_id)==afwImage.ExposureF:
+        exp = data_id
+    else:
+        butler = lsst.daf.persistence.Butler(hscdir)
+        exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
+
+    disp = afwDisp.Display(1)
+    disp.setMaskTransparency(75)
+    disp.setMaskPlaneColor('THRESH_HIGH', 'magenta')
+    disp.setMaskPlaneColor('THRESH_LOW', 'yellow')
+    disp.setMaskPlaneColor('FAKE', 'green')
+    disp.mtv(exp)
+
+    with disp.Buffering():
+        for s in sources:
+            x, y = s['x_hsc'], s['y_hsc']
+            a, b = s['semimajor_axis_sigma'], s['semiminor_axis_sigma']
+            theta = s['orientation']
+            ell = afwGeom.ellipses.Axes(3*a, 3*b, theta)
+            disp.dot(ell, x, y, ctype=afwDisp.CYAN)
+
+    return disp
+
+
+def view_stamps_on_tiger(cat, butler=None):
     """
     View postage stamps of objects in catalog, which 
     must be the output of hugs-pipe.run.
@@ -38,12 +70,9 @@ def view_candy(cat, butler=None):
     tract_old = None
     patch_old = None
 
-    cat['size'] = 3*pixscale*cat['semimajor_axis_sigma']
-    cat['r_circ'] = pixscale*cat['equivalent_radius']
-
     for i, source in enumerate(cat): 
 
-        print(cat['tract', 'patch', 'size', 'mu_3', 'mag_ell', 'r_circ'][i])
+        print(cat['tract', 'patch', 'a_3_sig', 'mu_3', 'mag_ell', 'r_circ'][i])
 
         tract = source['tract']
         patch = source['patch'][0]+','+source['patch'][-1]

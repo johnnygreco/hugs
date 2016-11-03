@@ -1,2 +1,2 @@
 
-from .view_candy import view_candy
+from .view_candy import *
