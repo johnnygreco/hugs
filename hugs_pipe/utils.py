@@ -5,7 +5,8 @@ import numpy as np
 import lsst.afw.math as afwMath
 
 __all__ = ['io', 'pixscale', 'annuli', 'get_astropy_wcs',
-           'get_psf_sigma', 'get_test_exp', 'add_cat_params']
+           'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
+           'get_time_label']
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
@@ -104,6 +105,15 @@ def mkdir_if_needed(directory):
     import os
     if not os.path.isdir(directory):
         os.mkdir(directory)
+
+
+def get_time_label():
+    """
+    Return time label for new files & directories.
+    """
+    import time
+    label = time.strftime("%Y%m%d-%H%M%S")
+    return label
 
 
 def add_cat_params(sources, tract=None, patch=None):
