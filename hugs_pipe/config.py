@@ -135,7 +135,8 @@ class Config(object):
             The HSC calibrated exposure data id (dict) or 
             filename (string).
         """
-
+        
+        self.data_id = data_id
         self.setup_logger(data_id)
 
         # careful not to modify parameters
