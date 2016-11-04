@@ -8,76 +8,59 @@ from astropy.convolution import Gaussian2DKernel
 import photutils as phut
 from . import utils
 
-__all__ = ['associate', 
+__all__ = ['clean', 
            'deblend_stamps', 
            'image_threshold', 
            'photometry']
 
 
-def associate(mask, fpset, r_in=5, r_out=15, max_on_bit=20., 
-              min_pix=1, plane_name='THRESH_HIGH', dilate=None):
+def clean(exposure, fpset_low, min_pix_low_thresh=100, 
+          name_high='THRESH_HIGH', max_frac_high_thresh=0.3, rgrow=None):
     """
-    Associate footprints in fpset with footprints in mask plane 
-    'plane_name'. A footprint is associated with an object if 
-    an on bit falls within an annulus centered with respect to 
-    all its peaks.
-    
 
     Parameters
     ----------
-    mask : lsst.afw.image.imageLib.MaskU
-        Mask object with plane named 'plane_name'.
-    fpset : lsst.afw.detection.detectionLib.FootprintSet
-        Set of footprints to associate with objects in mask.
-    r_in : float, optional
-        Inner radius in pixels of the association annulus.
-    r_out : float, optional
-        Outer radius in pixels of the association annulus.
-    max_on_bit : int, optional
-        Maximum number of on bits to consider as associated.
-    min_pix : int, optional
-        Footprints with less pixels will be masked. Set to 1 
-        to ignore this option.
-    plane_name : string, optional
-        Name of the bit plane in mask to associate footprints with. 
-    dilate : int, optional
-        If not None, dilate association image with array of shape 
-        (dilate, dilate). 
 
     Returns
     -------
-    seg_assoc : 2D ndarray
-        Segmentation image with non-zero values for all footprints 
-        that are associated with an object in the mask. 
 
-    Notes
-    -----
-    seg_assoc also includes footprints near objects with the 
-    'BRIGHT_OBJECT' bit set.
     """
-    x0, y0 = mask.getXY0()
-    # False --> use footprint ids
-    seg = fpset.insertIntoImage(False).getArray().copy()
-    shape = seg.shape
-    seg_assoc = np.zeros(shape, dtype=int)
-    for foot in fpset.getFootprints():
-        peaks = np.array([[p.getCentroid()[0]-x0, 
-                           p.getCentroid()[1]-y0] for p in foot.getPeaks()])
-        xc, yc = peaks.mean(axis=0)
-        rows, cols = utils.annuli(yc, xc, r_in, r_out, shape=shape)
-        ann_pix = mask.getArray()[rows, cols]
-        on_bits = (ann_pix & mask.getPlaneBitMask(plane_name))!=0
-        on_bits |= (ann_pix & mask.getPlaneBitMask('BRIGHT_OBJECT'))!=0
-        if np.sum(on_bits) > max_on_bit:
-            seg_assoc[seg==foot.getId()] = 1
-        elif foot.getNpix() < min_pix:
-            seg_assoc[seg==foot.getId()] = 1
-    if dilate is not None:
-        from scipy import ndimage
-        dilator = np.ones((dilate, dilate))
-        seg_assoc = ndimage.binary_dilation(seg_assoc, dilator)
-        seg_assoc = seg_assoc.astype(int)
-    return seg_assoc
+    
+    # generate array of gaussian noise
+    mi = exposure.getMaskedImage()
+    mask = mi.getMask()
+    shape = mask.getArray().shape
+    back_rms = mi.getImage().getArray()[mask.getArray()==0].std()
+    noise_array = back_rms*np.random.randn(shape[0], shape[1])
+
+    # associate high thresh with low thresh and find small fps
+    fpset_replace = afwDet.FootprintSet(mi.getBBox())
+    fp_list = afwDet.FootprintList()
+    for fp in fpset_low.getFootprints():
+        hfp = afwDet.HeavyFootprintF(fp, mi)
+        pix = hfp.getMaskArray()
+        bits_hi = (pix & mask.getPlaneBitMask(name_high) != 0).sum()
+        if bits_hi>0:
+            ratio = bits_hi/float(fp.getArea())
+            if ratio > max_frac_high_thresh:
+                fp_list.append(fp)
+        else:
+            if fp.getArea() < min_pix_low_thresh:
+                fp_list.append(fp)
+    fpset_replace.setFootprints(fp_list)
+    if rgrow:
+        fpset_replace = afwDet.FootprintSet(fpset_replace, rgrow, True)
+    mask.addMaskPlane('CLEANED')
+    fpset_replace.setMask(mask, 'CLEANED')
+
+    # create new exposure and replace footprints with noise
+    exp_clean = exposure.clone()
+    mi_clean = exp_clean.getMaskedImage()
+    replace = mask.getArray() & mask.getPlaneBitMask('BRIGHT_OBJECT') != 0
+    replace |= mask.getArray() & mask.getPlaneBitMask('CLEANED') != 0
+    mi_clean.getImage().getArray()[replace] = noise_array[replace]
+
+    return exp_clean
 
 
 def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
@@ -122,8 +105,8 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
         hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
         pix = hfp.getMaskArray()
-        bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0,
-                (pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0]
+        bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0]
+                #(pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0
         if np.alltrue(bits):
             img = exp.getMaskedImage().getImage().getArray().copy()
             x0, y0 = exp.getXY0()
