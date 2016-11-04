@@ -6,7 +6,7 @@ import lsst.afw.math as afwMath
 import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
 
-__all__ = ['SigmaClippedConfig', 'SigmaClippedTask', 'get_image_stats']
+__all__ = ['SigmaClippedConfig', 'SigmaClippedTask', 'get_clipped_sig_task']
 
 
 class SigmaClippedConfig(pexConfig.Config):
@@ -62,16 +62,13 @@ class SigmaClippedTask(pipeBase.Task):
         )
 
 
-def get_image_stats(masked_image, nsigma_clip=3.0, niter=10, 
-                    bad_mask_planes=('EDGE', 'BRIGHT_OBJECT')):
+def get_clipped_sig_task(nsigma_clip=3.0, niter=10, 
+                         bad_mask_planes=('EDGE', 'BRIGHT_OBJECT')):
     """
-    Helper function to get sigma clipped statistics of image
-    using the above task. 
+    Helper function to get sigma clipped statistics task.
 
     Parameters 
     ----------
-    masked_image : lsst.afw.image.MaskedImageF
-        Masked image object to beform statistics on. 
     nsigma_clip : float, optional
         Number of sigmas at which to clip data.
     niter : int, optional
@@ -81,12 +78,11 @@ def get_image_stats(masked_image, nsigma_clip=3.0, niter=10,
 
     Returns
     -------
-    stats : lsst.pipe.base.struct.Struct
-        Stats object with attributes mean, meanErr, 
-        stdev and stdevErr.
+    task : hugs.stats.SigmaClippedTask
+        Clipped sigma stats task.
+
     """
     config = SigmaClippedConfig(numSigmaClip=nsigma_clip, numIter=niter,
                                 badMaskPlanes=bad_mask_planes)
     task = SigmaClippedTask(config)
-    stats = task.run(masked_image)
-    return stats
+    return task
