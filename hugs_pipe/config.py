@@ -48,7 +48,7 @@ class Config(object):
         self._thresh_high = params['thresh_high']
         self._thresh_det = params['thresh_det']
         self._deblend_stamps = params['deblend_stamps']
-        self._assoc = params['assoc']
+        self._clean = params['clean']
         self._photometry = params['photometry']
         self._butler = None
         self.log_fn = log_fn
@@ -57,6 +57,8 @@ class Config(object):
         # set data id if given
         if data_id:
             self.set_data_id(data_id)
+        else:
+            self.data_id = None
 
     def setup_logger(self, data_id):
         """
@@ -143,7 +145,7 @@ class Config(object):
         self.thresh_low = self._thresh_low.copy()
         self.thresh_high = self._thresh_high.copy()
         self.thresh_det = self._thresh_det.copy()
-        self.assoc = self._assoc.copy()
+        self.clean = self._clean.copy()
         self.deblend_stamps = self._deblend_stamps.copy()
         self.photometry = self._photometry.copy()
 
@@ -154,8 +156,10 @@ class Config(object):
 
         # clear detected mask and remove unnecessary plane
         self.mask.clearMaskPlane(self.mask.getMaskPlane('DETECTED'))
-        if 'DETECTED_NEGATIVE' in list(self.mask.getMaskPlaneDict().keys()):
-            self.mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
+        not_needed = ['CR', 'CROSSTALK', 'DETECTED_NEGATIVE']
+        for plane in not_needed:
+            if plane in list(self.mask.getMaskPlaneDict().keys()):
+                self.mask.removeAndClearMaskPlane(plane, True)
         self.psf_sigma = utils.get_psf_sigma(self.exp)
 
         # setup thresh low/high/det: n_sig_grow --> rgrow
@@ -168,10 +172,17 @@ class Config(object):
         ngrow = self.thresh_det.pop('n_sig_grow')
         self.thresh_det['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
 
-        # convert assoc min_pix to psf units 
-        if 'psf sigma' in str(self.assoc['min_pix']):
-            nsig = int(self.assoc['min_pix'].split()[0])
-            self.assoc['min_pix'] = np.pi*(nsig*self.psf_sigma)**2
+        # convert clean min_pix to psf units 
+        if 'psf sigma' in str(self.clean['min_pix_low_thresh']):
+            nsig = int(self.clean['min_pix_low_thresh'].split()[0])
+            self.clean['min_pix_low_thresh'] = np.pi*(nsig*self.psf_sigma)**2
+
+        # clean n_sig_grow --> rgrow
+        ngrow = self.clean.pop('n_sig_grow')
+        if ngrow is None:
+            self.clean['rgrow'] = None
+        else:
+            self.clean['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
 
         # convert deblend_stamps kernel sigma to psf units
         if 'psf sigma' in self.deblend_stamps['kern_sig_pix']:

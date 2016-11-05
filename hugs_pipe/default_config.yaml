@@ -1,8 +1,8 @@
 data_dir: hsc
 
 thresh_low:
-    thresh: 3.25
-    npix: 50
+    thresh: 3.0
+    npix: 20
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
@@ -14,20 +14,19 @@ thresh_high:
     isogrow: False
     thresh_type: stdev
 
-assoc:
-    r_in: 0
-    r_out: 15
-    min_pix: 8 psf sigma
-    max_on_bit: 10
-    dilate: ~
+clean:
+    max_frac_high_thresh: 0.1        # per footprint
+    min_pix_low_thresh: 5 psf sigma  # per footprint
+    name_high: 'THRESH_HIGH'
+    n_sig_grow: 4.8
 
 thresh_det:
-    thresh: 3.25
+    thresh: 3.0
     npix: 50
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
-    kern_fwhm: 3.5 # arcsec
+    kern_fwhm: 4.0 # arcsec
 
 deblend_stamps:
     npix: 5 

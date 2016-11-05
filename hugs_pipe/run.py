@@ -34,6 +34,7 @@ def run(cfg, debug_return=False):
     # cases, the image is smoothed at the psf scale.
     ############################################################
     
+    assert cfg.data_id is not None, 'No data id!'
     mi_smooth = imtools.smooth_gauss(cfg.mi, cfg.psf_sigma)
     cfg.logger.info('performing low threshold at '
                     '{} sigma'.format(cfg.thresh_low['thresh']))
@@ -44,27 +45,14 @@ def run(cfg, debug_return=False):
     fp_high = prim.image_threshold(mi_smooth, mask=cfg.mask, 
                                    plane_name='THRESH_HIGH', **cfg.thresh_high)
 
-    ############################################################
-    # Generate noise array, which we will use to replace 
-    # unwanted sources with noise. 
-    ############################################################
-
-    shape = cfg.mask.getArray().shape
-    back_rms = cfg.mi.getImage().getArray()[cfg.mask.getArray()==0].std()
-    noise_array = back_rms*np.random.randn(shape[0], shape[1])
 
     ############################################################
-    # Get "association" segmentation image; will be non-zero for 
-    # low-thresh footprints that are associated with high-thresh
-    # footprints. Then, replace these sources with noise.
+    # Get "cleaned" image, with noise replacement
     ############################################################
 
-    cfg.logger.info('associating low & high thresh objects')
-    assoc = prim.associate(cfg.mask, fp_low, **cfg.assoc)
-        
-    exp_clean = cfg.exp.clone()
+    cfg.logger.info('generating cleaned exposure')
+    exp_clean = prim.clean(cfg.exp, fp_low, **cfg.clean)
     mi_clean = exp_clean.getMaskedImage()
-    mi_clean.getImage().getArray()[assoc!=0] = noise_array[assoc!=0]
     mask_clean = mi_clean.getMask()
 
     ############################################################

@@ -32,6 +32,7 @@ def display_candies(sources, data_id):
     disp.setMaskPlaneColor('THRESH_HIGH', 'magenta')
     disp.setMaskPlaneColor('THRESH_LOW', 'yellow')
     disp.setMaskPlaneColor('FAKE', 'green')
+    disp.setMaskPlaneColor('CLEANED', 'white')
     disp.mtv(exp)
 
     with disp.Buffering():
