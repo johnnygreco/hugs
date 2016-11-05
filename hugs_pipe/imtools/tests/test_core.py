@@ -5,7 +5,7 @@ from __future__ import division, print_function
 
 import numpy as np
 from ...utils import get_test_exp
-from ..core import get_cutout, smooth_gauss
+from ..core import *
 
 exposure = get_test_exp()
 
@@ -23,3 +23,17 @@ def test_smooth_gauss():
     arr = mi.getImage().getArray()
     arr_smooth = mi_smooth.getImage().getArray()
     assert np.nanstd(arr) > np.nanstd(arr_smooth)
+
+
+def test_rmedian():
+    data = exposure.getMaskedImage().getImage().getArray()
+    filtered_data = rmedian(exposure, 4, 6)
+    assert type(filtered_data) == np.ndarray
+    assert filtered_data.std() < data.std()
+
+
+def test_unsharp_mask():
+    data = exposure.getMaskedImage().getImage().getArray()
+    unsharp = unsharp_mask(exposure, 15)
+    assert type(unsharp) == np.ndarray
+    assert unsharp.std() < data.std()
