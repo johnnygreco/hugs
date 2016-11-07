@@ -15,16 +15,32 @@ __all__ = ['clean',
            'photometry']
 
 
-def clean(exposure, fpset_low, min_pix_low_thresh=100, 
-          name_high='THRESH_HIGH', max_frac_high_thresh=0.3, rgrow=None):
+def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
+          max_frac_high_thresh=0.3, rgrow=None):
     """
+    Clean image of bright sources and associated diffuse regions by 
+    replacing them with sky noise. Also, remove low-threshold regions 
+    that are small. 
 
     Parameters
     ----------
+    exposure : lsst.afw.ExposureF
+        Exposure object with masks from hugsPipe.run.
+    fpset_low : lsst.afw.detection.FootprintSet 
+        Low threshold footprints.
+    min_pix_low_thresh : int, optional
+        Mininum number of pixels for a low-thresh footprint. 
+    name_high : string, optional
+        The name of the high-threshold bit plane.
+    max_frac_high_thresh : float, optional
+        Maximum fraction of high-thresh pixels to keep footprint. 
+    rgrow : int, optional
+        Number of pixels to grow footprints.
 
     Returns
     -------
-
+    exp_clean : lsst.afw.ExposureF 
+        The cleaned exposure object. 
     """
     
     # generate array of gaussian noise
