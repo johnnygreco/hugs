@@ -10,14 +10,19 @@ exposure = utils.get_test_exp()
 masked_image = exposure.getMaskedImage().clone()
 mask = masked_image.getMask().clone()
 sources = prim.deblend_stamps(exposure)
+utils.remove_mask_planes(mask, ['CR', 'CROSSTALK', 'DETECTED_NEGATIVE'])
 
-def test_associate():
-    fpset = prim.image_threshold(masked_image, 30, 
+def test_clean():
+    fpset_hi = prim.image_threshold(masked_image, 30, 
                                  plane_name='THRESH_HIGH', 
                                  mask=mask)
-    assoc = prim.associate(mask, fpset)
-    assert assoc.shape == mask.getArray().shape
-    assert assoc.sum() > 0
+    fpset_lo = prim.image_threshold(masked_image, 5, 
+                                 plane_name='THRESH_LOW', 
+                                 mask=mask)
+    exp_clean = prim.clean(exposure, fpset_lo)
+    img_clean = exp_clean.getMaskedImage().getImage().getArray()
+    img = exposure.getMaskedImage().getImage().getArray()
+    assert img.std() > img_clean.std()
 
 
 def test_deblend_stamps():

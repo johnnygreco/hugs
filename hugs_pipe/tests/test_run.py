@@ -17,7 +17,7 @@ dir = os.path.dirname(os.path.realpath(__file__))
 dir = os.path.dirname(dir)
 
 def test_run():
-    cfg_fn = os.path.join(dir, 'default_config.yaml')
+    cfg_fn = os.path.join(dir, 'default_config.yml')
     cfg = Config(cfg_fn)
     cfg.set_data_id(fn)
     results = run(cfg, debug_return=True)

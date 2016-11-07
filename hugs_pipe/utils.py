@@ -6,7 +6,7 @@ import lsst.afw.math as afwMath
 
 __all__ = ['io', 'pixscale', 'annuli', 'get_astropy_wcs',
            'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
-           'get_time_label']
+           'get_time_label', 'remove_mask_planes']
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
@@ -127,3 +127,19 @@ def add_cat_params(sources, tract=None, patch=None):
     sources['a_3_sig'] = 3.0*pixscale*sources['semimajor_axis_sigma']
     sources['b_3_sig'] = 3.0*pixscale*sources['semiminor_axis_sigma']
     sources['r_circ'] = pixscale*sources['equivalent_radius']
+
+
+def remove_mask_planes(mask, planes):
+    """
+    Reomve mask planes if they are in mask.
+
+    Parameters
+    ----------
+    mask : lsst.afw.MaskU
+	Bit mask.
+    planes : list
+        Planes to clear
+    """
+    for plane in planes:
+	if plane in list(mask.getMaskPlaneDict().keys()):
+	    mask.removeAndClearMaskPlane(plane, True)

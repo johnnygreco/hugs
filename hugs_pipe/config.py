@@ -37,7 +37,7 @@ class Config(object):
         # read parameter file & setup param dicts
         if config_fn is None:
             dir = os.path.dirname(os.path.realpath(__file__))
-            config_fn = os.path.join(dir, 'default_config.yaml')
+            config_fn = os.path.join(dir, 'default_config.yml')
         with open(config_fn, 'r') as f:
             params = yaml.load(f)
         if params['data_dir']=='hsc':
@@ -156,10 +156,10 @@ class Config(object):
 
         # clear detected mask and remove unnecessary plane
         self.mask.clearMaskPlane(self.mask.getMaskPlane('DETECTED'))
-        not_needed = ['CR', 'CROSSTALK', 'DETECTED_NEGATIVE']
-        for plane in not_needed:
-            if plane in list(self.mask.getMaskPlaneDict().keys()):
-                self.mask.removeAndClearMaskPlane(plane, True)
+        utils.remove_mask_planes(self.mask, ['CR', 
+                                             'CROSSTALK',
+                                             'DETECTED_NEGATIVE']) 
+
         self.psf_sigma = utils.get_psf_sigma(self.exp)
 
         # setup thresh low/high/det: n_sig_grow --> rgrow
