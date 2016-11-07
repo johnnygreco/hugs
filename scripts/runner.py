@@ -5,7 +5,6 @@ Run hugs-pipe on an HSC patch.
 import os
 import numpy as np
 import hugs_pipe
-hugs_pipe_io = os.environ.get('HUGS_PIPE_IO')
 
 def main(tract, patch, config, outdir):
     data_id = {'tract': tract, 'patch': patch, 'filter': 'HSC-I'}
@@ -30,19 +29,31 @@ if __name__=='__main__':
     parser.add_argument('-c', '--config', type=str, help='config file name', 
                         default=None)
     parser.add_argument('-o', '--outdir', type=str, help='output directory', 
-                        default=hugs_pipe_io)
+                        default=None)
     args = parser.parse_args()
+
     if args.group_id is None:
         assert args.tract is not None
         assert args.patch is not None
-        main(args.tract, args.patch, args.config, args.outdir)
+        if not args.outdir:
+            label = hugs_pipe.utils.get_time_label()
+            outdir = os.path.join(hugs_pipe.io, 'run-results/run-'+label)
+        else:
+            outdir = args.outdir
+        log_fn = os.path.join(outdir, 'hugs-pipe.log')
+        config = hugs_pipe.Config(config_fn=args.config, log_fn=log_fn)
+        main(args.tract, args.patch, config, outdir)
     else:
         from astropy.table import Table
-        outdir = os.path.join(args.outdir, 'group_'+str(args.group_id))
+        if not args.outdir:
+            outdir = 'group-results/group-'+str(args.group_id)
+            outdir = os.path.join(hugs_pipe.io, outdir)
+        else:
+            outdir = args.outdir
         log_fn = os.path.join(outdir, 'hugs-pipe.log')
         config = hugs_pipe.Config(log_fn=log_fn)
         regions_fn = 'cat_z0.065_Mh12.75-14.0_tracts_n_patches.npy'
-        regions_fn = os.path.join(hugs_pipe_io, regions_fn)
+        regions_fn = os.path.join(hugs_pipe.io, regions_fn)
         regions_dict = np.load(regions_fn).item()
         regions = Table(regions_dict[args.group_id])
         for tract, patch in regions['tract', 'patch']:

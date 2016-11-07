@@ -7,8 +7,8 @@ import os
 import numpy as np
 import hugs_pipe as hp
 import lsst.afw.display as afwDisp
-synthdir = os.path.join(hp.io, 'synthetic_udgs')
-outdir = os.path.join(hp.io, 'synth_results')
+synthdir = os.path.join(hp.io, 'synthetic-udgs')
+outdir = os.path.join(hp.io, 'synth-results')
 
 # select data at random to run 
 num_run = 1
@@ -18,7 +18,7 @@ files = files[np.random.randint(files.size, size=num_run)]
 #####
 
 log_fn = os.path.join(outdir, 'synths.log')
-config_fn = os.path.join(outdir, 'config.yaml')
+config_fn = None #os.path.join(outdir, 'config.yaml')
 config = hp.Config(config_fn=config_fn, log_fn=log_fn)
 
 files = ['calexp-HSC-I-8766-4,3.fits']
@@ -44,8 +44,9 @@ for fn in files:
     disp2.setMaskPlaneColor('THRESH_HIGH', 'magenta')
     disp2.setMaskPlaneColor('THRESH_LOW', 'yellow')
     disp2.setMaskPlaneColor('FAKE', 'green')
+    disp2.setMaskPlaneColor('CLEANED', 'white')
     disp2.mtv(exp_clean)
 
-    mask_clean = exp_clean.getMaskedImage().getMask()	
-    mask_clean.removeAndClearMaskPlane('THRESH_HIGH', True)
-    exp_clean.writeFits('/Users/protostar/Desktop/wvtest.fits')
+#    mask_clean = exp_clean.getMaskedImage().getMask()	
+#    mask_clean.removeAndClearMaskPlane('THRESH_HIGH', True)
+#    exp_clean.writeFits('/Users/protostar/Desktop/wvtest.fits')
