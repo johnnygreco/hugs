@@ -13,6 +13,22 @@ hscdir = os.environ.get('HSC_DIR')
 __all__ = ['get_cutout', 'smooth_gauss', 'rmedian', 'unsharp_mask']
 
 
+def _get_image_ndarray(image):
+    """
+    Return numpy ndarray given exposure or image object.
+    """
+    if type(image)==lsst.afw.image.imageLib.MaskedImageF:
+        data = image.getImage().getArray().copy()
+    elif type(image)==lsst.afw.image.imageLib.ExposureF:
+        mi = image.getMaskedImage()
+        data = mi.getImage().getArray().copy()
+    elif type(image)==np.ndarray:
+        data = image
+    else:
+        raise TypeError('Invalid image dtype')
+    return data
+
+
 def get_cutout(center, size, exp=None, data_id=None, butler=None):
     """
     Generate a cutout of exposure. Must give exposure object or 
@@ -121,7 +137,7 @@ def _ring(r_inner, r_outer, dtype=np.int, invert=False):
     return fp
 
 
-def rmedian(data, r_inner, r_outer, **kwargs):
+def rmedian(image, r_inner, r_outer, **kwargs):
     """
     Median filter image with a ring footprint. This
     function produces results similar to the IRAF 
@@ -129,13 +145,19 @@ def rmedian(data, r_inner, r_outer, **kwargs):
 
     Parameters
     ----------
-    data : ndarray
-        Input image array 
+    image : ndarray, MaskedImageF, or ExposureF
+       Original image data. 
     r_inner : int
         The inner radius of the ring in pixels.
     r_outer : int
         The outer radius of the ring in pixels.
+
+    Returns
+    -------
+    filtered_data : ndarray
+        Ring filtered image.
     """
+    data = _get_image_ndarray(image)
     fp = _ring(r_inner, r_outer, **kwargs)
     filtered_data = ndi.median_filter(data, footprint=fp)
     return filtered_data
@@ -157,15 +179,7 @@ def unsharp_mask(image, filter_size=9):
     unsharp : ndarray
         Unsharp mask.
     """
-    if type(image)==lsst.afw.image.imageLib.MaskedImageF:
-        data = image.getImage().getArray().copy()
-    elif type(image)==lsst.afw.image.imageLib.ExposureF:
-        mi = image.getMaskedImage()
-        data = mi.getImage().getArray().copy()
-    elif type(image)==np.ndarray:
-        data = image
-    else:
-        raise TypeError('Invalid image dtype')
+    data = _get_image_ndarray(image)
     filtered_data = ndi.median_filter(data, size=filter_size)
     unsharp = data - filtered_data
     return unsharp
