@@ -35,15 +35,16 @@ def run(cfg, debug_return=False):
     ############################################################
     
     assert cfg.data_id is not None, 'No data id!'
+    cfg.timer # start timer
     mi_smooth = imtools.smooth_gauss(cfg.mi, cfg.psf_sigma)
     cfg.logger.info('performing low threshold at '
                     '{} sigma'.format(cfg.thresh_low['thresh']))
-    fp_low = prim.image_threshold(mi_smooth, mask=cfg.mask, 
-                                  plane_name='THRESH_LOW', **cfg.thresh_low)
+    fpset_low = prim.image_threshold(
+        mi_smooth, mask=cfg.mask, plane_name='THRESH_LOW', **cfg.thresh_low)
     cfg.logger.info('performing high threshold at '
                     '{} sigma'.format(cfg.thresh_high['thresh']))
-    fp_high = prim.image_threshold(mi_smooth, mask=cfg.mask, 
-                                   plane_name='THRESH_HIGH', **cfg.thresh_high)
+    fpset_high = prim.image_threshold(
+        mi_smooth, mask=cfg.mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
 
 
     ############################################################
@@ -51,7 +52,7 @@ def run(cfg, debug_return=False):
     ############################################################
 
     cfg.logger.info('generating cleaned exposure')
-    exp_clean = prim.clean(cfg.exp, fp_low, **cfg.clean)
+    exp_clean = prim.clean(cfg.exp, fpset_low, **cfg.clean)
     mi_clean = exp_clean.getMaskedImage()
     mask_clean = mi_clean.getMask()
 
@@ -72,19 +73,23 @@ def run(cfg, debug_return=False):
 
     cfg.logger.info('performing detection threshold at '
                     '{} sigma'.format(cfg.thresh_det['thresh']))
-    fp_det = prim.image_threshold(mi_clean_smooth, plane_name='DETECTED',
-                                  mask=mask_clean, **cfg.thresh_det)
-    fp_det.setMask(cfg.mask, 'DETECTED')
+    fpset_det = prim.image_threshold(mi_clean_smooth, plane_name='DETECTED',
+                                     mask=mask_clean, **cfg.thresh_det)
+    fpset_det.setMask(cfg.mask, 'DETECTED')
 
     ############################################################
-    # Deblend sources in 'detected' footprints
+    # Find and remove obvious blends and deblend remaining
+    # sources in 'detected' footprints
     ############################################################
+
+    cfg.logger.info('finding obvious blends')
+    prim.find_blends(exp_clean, fpset_det, **cfg.find_blends)
 
     cfg.logger.info('building source catalog')
     sources = prim.deblend_stamps(exp_clean, **cfg.deblend_stamps)
     img = cfg.mi.getImage().getArray()
 
-    cfg.logger.info('measuring aperture magnitudes')
+    cfg.logger.info('performing aperture photometry')
     prim.photometry(img, sources, **cfg.photometry)
 
     if type(cfg.data_id)==str:
@@ -93,15 +98,15 @@ def run(cfg, debug_return=False):
         tract, patch = cfg.data_id['tract'], cfg.data_id['patch']
         utils.add_cat_params(sources, tract, patch)
 
-    cfg.logger.info('task complete')
+    cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
         
     if debug_return:
         return lsst.pipe.base.Struct(sources=sources,
                                      exposure=cfg.exp,
                                      exp_clean=exp_clean,
                                      mi_clean_smooth=mi_clean_smooth,
-                                     fp_low=fp_low,
-                                     fp_high=fp_high,
-                                     fp_det=fp_det)
+                                     fpset_low=fpset_low,
+                                     fpset_high=fpset_high,
+                                     fpset_det=fpset_det)
     else:
         return sources

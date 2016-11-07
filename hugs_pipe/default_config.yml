@@ -1,0 +1,54 @@
+data_dir: hsc
+
+thresh_low:
+    thresh: 3.00
+    npix: 20
+    n_sig_grow: 2.4
+    isogrow: False
+    thresh_type: stdev
+
+thresh_high:
+    thresh: 20.0
+    npix: 1
+    n_sig_grow: 2.4
+    isogrow: False
+    thresh_type: stdev
+
+clean:
+    max_frac_high_thresh: 0.1        # per footprint
+    min_pix_low_thresh: 1 psf sigma  # per footprint
+    name_high: 'THRESH_HIGH'
+    n_sig_grow: 2.4
+
+thresh_det:
+    thresh: 3.5
+    npix: 50
+    n_sig_grow: 2.4
+    isogrow: False
+    thresh_type: stdev
+    kern_fwhm: 5.0 # arcsec
+
+find_blends:
+    name_low: 'THRESH_LOW'
+    num_low_fps: 2
+    min_fp_area: 100
+    min_parent_area: 0.25
+    min_parent_flux: 0.7
+
+deblend_stamps:
+    npix: 5 
+    kern_sig_pix: 2.5 psf sigma
+    thresh_snr: 0.5
+    grow_stamps: ~
+    detect_kwargs:
+        sigclip_sigma: 3.0
+        sigclip_iters: ~
+    deblend_kwargs:
+        nlevels: 32
+        contrast: 0.001
+        mode: exponential
+        connectivity: 8
+
+photometry:
+    ell_nsig: 4.0
+    circ_radii: [3, 6, 9]

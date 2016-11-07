@@ -10,6 +10,7 @@ from . import utils
 from . import imtools
 
 __all__ = ['clean', 
+           'find_blends',
            'deblend_stamps', 
            'image_threshold', 
            'photometry']
@@ -24,12 +25,12 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
 
     Parameters
     ----------
-    exposure : lsst.afw.ExposureF
+    exposure : lsst.afw.image.ExposureF
         Exposure object with masks from hugsPipe.run.
     fpset_low : lsst.afw.detection.FootprintSet 
         Low threshold footprints.
     min_pix_low_thresh : int, optional
-        Mininum number of pixels for a low-thresh footprint. 
+        Minimum number of pixels for a low-thresh footprint. 
     name_high : string, optional
         The name of the high-threshold bit plane.
     max_frac_high_thresh : float, optional
@@ -80,8 +81,78 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     return exp_clean
 
 
+def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
+                min_fp_area=100, min_parent_area=0.3, min_parent_flux=0.8):
+    """
+    Search footprints for obvious blends of multiple small sources. 
+    The search is carried out by counting the number of low-thresh 
+    footprints within each detection footprint and looking at properties
+    of the low-thresh footprints (e.g., size and flux).
+
+    Parameters
+    ----------
+    exp : lsst.afw.image.ExposureF
+        Exposure object. 
+    fpset_det : lsst.afw.FootprintSet
+        Detection footprint set.
+    name_low : string, optional
+        Name of the low-thresh bit plane.
+    num_low_fps : int, optional
+        Number of low-thresh fps to be considered blend.
+    min_fp_area : int, optional
+        Minimum number of pixels to be considered an object.
+    min_parent_area : float, optional
+        Minimum fraction of the footprint occupied by parent.
+    min_parent_flux : float, optional
+        Minimum fraction of the total flux that must 
+        be contributed by the parent. 
+
+    Notes
+    -----
+    A new bit plane called BLEND will be added to the mask 
+    of the input exposure object.
+    """
+    mask = exp.getMaskedImage().getMask()
+    plane_low = mask.getPlaneBitMask(name_low)
+    fp_list = afwDet.FootprintList()
+
+    for fp_det in fpset_det.getFootprints():
+
+        # get bbox of detection footprint
+        bbox = fp_det.getBBox()
+        exp_fp = exp.Factory(exp, bbox, afwImage.PARENT) 
+        mask_fp = exp_fp.getMaskedImage().getMask()
+        mi_fp = exp_fp.getMaskedImage()
+        total_area = float(fp_det.getArea())
+
+        # find low-thresh footprints in bbox
+	fpset_low = afwDet.FootprintSet(
+            mask_fp, afwDet.Threshold(plane_low, afwDet.Threshold.BITMASK))
+
+        # find blends and save footprint
+        if len(fpset_low.getFootprints()) >= num_low_fps:
+            areas = np.array([fp_.getArea() for fp_ in
+                              fpset_low.getFootprints()])
+            biggest = areas.argmax()
+            if (areas > min_fp_area).sum() >= num_low_fps:
+                hfps = [afwDet.HeavyFootprintF(fp_, mi_fp)\
+                        for fp_ in fpset_low.getFootprints()]
+                fluxes = np.array(
+                    [hfp_.getImageArray().sum()for hfp_ in hfps])
+                is_blend = areas[biggest]/total_area < min_parent_area
+                is_blend  |= fluxes[biggest]/fluxes.sum() < min_parent_flux
+                if is_blend:
+                    fp_list.append(fp_det)
+
+    # create footprint set and set mask plane
+    fpset_blends = afwDet.FootprintSet(exp.getBBox())
+    fpset_blends.setFootprints(fp_list)
+    mask.addMaskPlane('BLEND')
+    fpset_blends.setMask(mask, 'BLEND')
+
+
 def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
-                   detect_kwargs={}, deblend_kwargs={}):
+                   grow_stamps=None, detect_kwargs={}, deblend_kwargs={}):
     """
     Use photutils to deblend sources within "detection" postage stamps.
 
@@ -93,9 +164,11 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         The signal-to-noise ratio per pixel above the background 
         for which to consider a pixel as possibly being part of a source.
     kern_sig_pix : float
-        Sigma (in pixels) of Gaussian kernal used to smooth detection image.
+        Sigma (in pixels) of Gaussian kernel used to smooth detection image.
     npix : int, optional
         Number of pixels above required to be an object.
+    grow_stamps : int
+        Number of pixels to grow postage stamp in all directions.
     detect_kwargs :  dict, optional
         Kwargs for photutils.detect_sources.
     deblend_kwargs :  dict, optional
@@ -117,11 +190,15 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     fp_id = 1
     for fp in fpset.getFootprints():
         bbox = fp.getBBox()
-        bbox.grow(20)
-        bbox.clip(exposure.getBBox())
+        if grow_stamps:
+            bbox.grow(grow_stamps)
+            bbox.clip(exposure.getBBox())
         exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
         hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
         pix = hfp.getMaskArray()
+
+        if (pix & mask.getPlaneBitMask('BLEND') !=0).sum()>0:
+            continue
 
         img = exp.getMaskedImage().getImage().getArray().copy()
         x0, y0 = exp.getXY0()

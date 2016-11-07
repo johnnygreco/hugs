@@ -4,6 +4,7 @@ import os, sys
 import logging
 import yaml
 import numpy as np
+import time
 from . import utils
 try:
     import coloredlogs
@@ -47,10 +48,12 @@ class Config(object):
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
         self._thresh_det = params['thresh_det']
+        self._find_blends = params['find_blends']
         self._deblend_stamps = params['deblend_stamps']
         self._clean = params['clean']
         self._photometry = params['photometry']
         self._butler = None
+        self._timer = None
         self.log_fn = log_fn
         self.log_level = log_level
 
@@ -97,6 +100,17 @@ class Config(object):
             import lsst.daf.persistence
             self._butler = lsst.daf.persistence.Butler(self.data_dir)
         return self._butler
+
+    @property
+    def timer(self):
+        """
+        Timer for pipeline. 
+        """
+        if self._timer is None:
+            self._timer = time.time()
+        else:
+            delta_time = (time.time() - self._timer)/60.0
+            return delta_time
 
     def get_exposure(self, data_id):
         """
@@ -146,6 +160,7 @@ class Config(object):
         self.thresh_high = self._thresh_high.copy()
         self.thresh_det = self._thresh_det.copy()
         self.clean = self._clean.copy()
+        self.find_blends = self._find_blends.copy()
         self.deblend_stamps = self._deblend_stamps.copy()
         self.photometry = self._photometry.copy()
 
