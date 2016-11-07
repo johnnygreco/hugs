@@ -7,6 +7,7 @@ from astropy.table import Table, vstack
 from astropy.convolution import Gaussian2DKernel
 import photutils as phut
 from . import utils
+from . import imtools
 
 __all__ = ['clean', 
            'deblend_stamps', 
@@ -90,11 +91,9 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         Source measurements. 
     """
     mask = exposure.getMaskedImage().getMask()
-    if 'DETECTED_NEGATIVE' in list(mask.getMaskPlaneDict().keys()):
-        mask.removeAndClearMaskPlane('DETECTED_NEGATIVE', True)
-    planes = mask.getPlaneBitMask(['THRESH_LOW', 'DETECTED'])
+    plane = mask.getPlaneBitMask('DETECTED')
     fpset = afwDet.FootprintSet(
-        mask, afwDet.Threshold(planes, afwDet.Threshold.BITMASK))
+        mask, afwDet.Threshold(plane, afwDet.Threshold.BITMASK))
     wcs = exposure.getWcs()
     table = Table()
     kern = Gaussian2DKernel(kern_sig_pix)
@@ -102,35 +101,36 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     fp_id = 1
     for fp in fpset.getFootprints():
         bbox = fp.getBBox()
+        bbox.grow(20)
+        bbox.clip(exposure.getBBox())
         exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
         hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
         pix = hfp.getMaskArray()
-        bits = [(pix & mask.getPlaneBitMask(['DETECTED'])!=0).sum()>0]
-                #(pix & mask.getPlaneBitMask(['BRIGHT_OBJECT'])!=0).sum()==0
-        if np.alltrue(bits):
-            img = exp.getMaskedImage().getImage().getArray().copy()
-            x0, y0 = exp.getXY0()
-            thresh = phut.detect_threshold(img, 
-                                           snr=thresh_snr, 
-                                           **detect_kwargs)
-            seg = phut.detect_sources(img, thresh, npixels=npix, 
-                                      filter_kernel=kern)
-            if seg.nlabels==0: 
-                continue
-            seg_db = phut.deblend_sources(
-                img, seg, npixels=npix, 
-                filter_kernel=kern, **deblend_kwargs)
-            props = phut.source_properties(img, seg_db)
-            props = phut.properties_table(props)
-            props['x_hsc'] = props['xcentroid'] + x0
-            props['y_hsc'] = props['ycentroid'] + y0
-            props['fp_id'] = [fp_id]*len(props)
-            fp_id += 1
-            if len(props)>1:
-                props['is_deblended'] = [True]*len(props)
-            else:
-                props['is_deblended'] = False
-            table = vstack([table, props])
+
+        img = exp.getMaskedImage().getImage().getArray().copy()
+        x0, y0 = exp.getXY0()
+        thresh = phut.detect_threshold(img, 
+                                       snr=thresh_snr, 
+                                       **detect_kwargs)
+        seg = phut.detect_sources(img, thresh, npixels=npix, 
+                                  filter_kernel=kern)
+        if seg.nlabels==0: 
+            continue
+        seg_db = phut.deblend_sources(
+            img, seg, npixels=npix, 
+            filter_kernel=kern, **deblend_kwargs)
+        props = phut.source_properties(img, seg_db)
+        props = phut.properties_table(props)
+        props['x_hsc'] = props['xcentroid'] + x0
+        props['y_hsc'] = props['ycentroid'] + y0
+        props['fp_id'] = [fp_id]*len(props)
+        fp_id += 1
+        if len(props)>1:
+            props['is_deblended'] = [True]*len(props)
+        else:
+            props['is_deblended'] = False
+        table = vstack([table, props])
+
     table['id'] = np.arange(1, len(table)+1)
     remove_cols = [
         'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
@@ -145,8 +145,8 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         dec_list.append(dec)
     table['ra'] = ra_list
     table['dec'] = dec_list
-    table['x_img'] = table['x_hsc'] - exposure.getX0() 
-    table['y_img'] = table['y_hsc'] - exposure.getY0() 
+    table['x_img'] = table['x_hsc'] - exposure.getX0()
+    table['y_img'] = table['y_hsc'] - exposure.getY0()
     return table
 
 
