@@ -11,8 +11,8 @@ from . import imtools
 
 __all__ = ['clean', 
            'find_blends',
-           'measure_sources', 
            'image_threshold', 
+           'measure_sources', 
            'photometry']
 
 
@@ -77,7 +77,6 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     replace = mask.getArray() & mask.getPlaneBitMask('BRIGHT_OBJECT') != 0
     replace |= mask.getArray() & mask.getPlaneBitMask('CLEANED') != 0
     mi_clean.getImage().getArray()[replace] = noise_array[replace]
-
     return exp_clean
 
 
@@ -150,6 +149,53 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
     fpset_blends.setFootprints(fp_list)
     mask.addMaskPlane('BLEND')
     fpset_blends.setMask(mask, 'BLEND')
+
+
+def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
+                    rgrow=None, isogrow=False, plane_name='', mask=None,
+                    clear_mask=True):
+    """
+    Image thresholding. A bit mask will be set with name 'plane_name'.
+
+    Parameters
+    ----------
+    masked_image : lsst.afw.image.imageLib.MaskedImageF
+        A masked image object.
+    thresh : float
+        Threshold value.
+    thresh_type : string, optional
+        Threshold type: stdev, pixel_stdev, bitmask, value,
+        or variance.
+    npix : int, optional
+        Minimum number of touching pixels in an object.
+    rgrow : int, optional
+        Number of pixels to grow footprints.
+    isogrow : bool, optional
+        If True, use (expensive) isotropic grow. 
+    plane_name : string, optional
+        Name of bit plane.
+    mask : lsst.afw.image.imageLib.MaskU, optional
+        Mask to set if not same as in masked_imaged
+    clear_mask : bool, optional
+        If True, clear the bit plane before thresholding
+
+    Returns
+    -------
+    fpset : lsst.afw.detection.detectionLib.FootprintSet
+        Footprints associated with detected objects.
+    """
+    mask = masked_image.getMask() if mask is None else mask
+    thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
+    thresh = afwDet.Threshold(thresh, thresh_type)
+    fpset = afwDet.FootprintSet(masked_image, thresh, plane_name, npix)
+    if rgrow is not None:
+        fpset = afwDet.FootprintSet(fpset, rgrow, isogrow)
+    if plane_name:
+        mask.addMaskPlane(plane_name)
+        if clear_mask:
+            mask.clearMaskPlane(mask.getMaskPlane(plane_name))
+        fpset.setMask(mask, plane_name)
+    return fpset
 
 
 def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
@@ -261,53 +307,6 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     table['x_img'] = table['x_hsc'] - exposure.getX0()
     table['y_img'] = table['y_hsc'] - exposure.getY0()
     return table
-
-
-def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
-                    rgrow=None, isogrow=False, plane_name='', mask=None,
-                    clear_mask=True):
-    """
-    Image thresholding. A bit mask will be set with name 'plane_name'.
-
-    Parameters
-    ----------
-    masked_image : lsst.afw.image.imageLib.MaskedImageF
-        A masked image object.
-    thresh : float
-        Threshold value.
-    thresh_type : string, optional
-        Threshold type: stdev, pixel_stdev, bitmask, value,
-        or variance.
-    npix : int, optional
-        Minimum number of touching pixels in an object.
-    rgrow : int, optional
-        Number of pixels to grow footprints.
-    isogrow : bool, optional
-        If True, use (expensive) isotropic grow. 
-    plane_name : string, optional
-        Name of bit plane.
-    mask : lsst.afw.image.imageLib.MaskU, optional
-        Mask to set if not same as in masked_imaged
-    clear_mask : bool, optional
-        If True, clear the bit plane before thresholding
-
-    Returns
-    -------
-    fpset : lsst.afw.detection.detectionLib.FootprintSet
-        Footprints associated with detected objects.
-    """
-    mask = masked_image.getMask() if mask is None else mask
-    thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
-    thresh = afwDet.Threshold(thresh, thresh_type)
-    fpset = afwDet.FootprintSet(masked_image, thresh, plane_name, npix)
-    if rgrow is not None:
-        fpset = afwDet.FootprintSet(fpset, rgrow, isogrow)
-    if plane_name:
-        mask.addMaskPlane(plane_name)
-        if clear_mask:
-            mask.clearMaskPlane(mask.getMaskPlane(plane_name))
-        fpset.setMask(mask, plane_name)
-    return fpset
 
 
 def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0, 
