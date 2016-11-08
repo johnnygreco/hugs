@@ -109,7 +109,8 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
     Notes
     -----
     A new bit plane called BLEND will be added to the mask 
-    of the input exposure object.
+    of the input exposure object, and DETECTED bits will be 
+    turned off for blended sources. 
     """
 
     mask = exp.getMaskedImage().getMask()
@@ -143,6 +144,11 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
                 is_blend  |= fluxes[biggest]/fluxes.sum() < min_parent_flux
                 if is_blend:
                     fp_list.append(fp_det)
+                    mask_fp.clearMaskPlane(mask_fp.getMaskPlane('DETECTED'))
+            elif (areas < min_fp_area).sum() == areas.size:
+                fp_list.append(fp_det)
+                mask_fp.clearMaskPlane(mask_fp.getMaskPlane('DETECTED'))
+
 
     # create footprint set and set mask plane
     fpset_blends = afwDet.FootprintSet(exp.getBBox())
@@ -246,12 +252,6 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
             bbox.grow(grow_stamps)
             bbox.clip(exposure.getBBox())
         exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
-
-        # if BLEND bit is on, skip this footprint
-        hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
-        pix = hfp.getMaskArray()
-        if (pix & mask.getPlaneBitMask('BLEND') !=0).sum()>0:
-            continue
 
         # detect sources in footprint
         img = exp.getMaskedImage().getImage().getArray().copy()
