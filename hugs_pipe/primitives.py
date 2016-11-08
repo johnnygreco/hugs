@@ -112,10 +112,11 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
     A new bit plane called BLEND will be added to the mask 
     of the input exposure object.
     """
+
     mask = exp.getMaskedImage().getMask()
     plane_low = mask.getPlaneBitMask(name_low)
     fp_list = afwDet.FootprintList()
-
+    
     for fp_det in fpset_det.getFootprints():
 
         # get bbox of detection footprint
@@ -179,27 +180,34 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     table : astropy.table.Table
         Source measurements. 
     """
+
+    # get detected footprints
     mask = exposure.getMaskedImage().getMask()
     plane = mask.getPlaneBitMask('DETECTED')
     fpset = afwDet.FootprintSet(
         mask, afwDet.Threshold(plane, afwDet.Threshold.BITMASK))
-    wcs = exposure.getWcs()
+
+    # loop over footprints
     table = Table()
     kern = Gaussian2DKernel(kern_sig_pix)
     kern.normalize()
     fp_id = 1
     for fp in fpset.getFootprints():
+
+        # get exposure in bbox of footprint 
         bbox = fp.getBBox()
         if grow_stamps:
             bbox.grow(grow_stamps)
             bbox.clip(exposure.getBBox())
         exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
+
+        # if BLEND bit is on, skip this footprint
         hfp = afwDet.HeavyFootprintF(fp, exposure.getMaskedImage())
         pix = hfp.getMaskArray()
-
         if (pix & mask.getPlaneBitMask('BLEND') !=0).sum()>0:
             continue
 
+        # detect sources in footprint
         img = exp.getMaskedImage().getImage().getArray().copy()
         x0, y0 = exp.getXY0()
         thresh = phut.detect_threshold(img, 
@@ -207,11 +215,17 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
                                        **detect_kwargs)
         seg = phut.detect_sources(img, thresh, npixels=npix, 
                                   filter_kernel=kern)
+
+        # go to next footprint if no sources are detected
         if seg.nlabels==0: 
             continue
+
+        # deblend sources
         seg_db = phut.deblend_sources(
             img, seg, npixels=npix, 
             filter_kernel=kern, **deblend_kwargs)
+
+        # measure source properties
         props = phut.source_properties(img, seg_db)
         props = phut.properties_table(props)
         props['x_hsc'] = props['xcentroid'] + x0
@@ -223,14 +237,18 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         else:
             props['is_deblended'] = False
         table = vstack([table, props])
-
+    
+    # clean up table columns
     table['id'] = np.arange(1, len(table)+1)
     remove_cols = [
         'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
         'background_sum', 'background_mean', 'background_at_centroid']
     table.remove_columns(remove_cols)
+
+    # use wcs to add ra & dec to table
     ra_list = []
     dec_list = []
+    wcs = exposure.getWcs()
     for x, y in table['x_hsc', 'y_hsc']:
         ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
         dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
@@ -238,6 +256,8 @@ def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         dec_list.append(dec)
     table['ra'] = ra_list
     table['dec'] = dec_list
+    
+    # calculate primary array coordinates
     table['x_img'] = table['x_hsc'] - exposure.getX0()
     table['y_img'] = table['y_hsc'] - exposure.getY0()
     return table
