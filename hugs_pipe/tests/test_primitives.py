@@ -56,5 +56,5 @@ def test_image_threshold():
 def test_photometry():
     img = exposure.getMaskedImage().getImage().getArray()
     prim.photometry(img, sources)
-    assert 'mag_ell' in sources.colnames
-    assert 'mag_circ_3' in sources.colnames
+    assert 'mag_ell_i' in sources.colnames
+    assert 'mag_circ_3_i' in sources.colnames

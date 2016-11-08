@@ -1,6 +1,6 @@
 data_dir: hsc
 
-phot_colors: 'GRI'
+phot_colors: ~
 
 thresh_low:
     thresh: 3.00
