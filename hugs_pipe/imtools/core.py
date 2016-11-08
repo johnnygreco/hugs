@@ -70,7 +70,8 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
     return cutout
 
 
-def smooth_gauss(masked_image, sigma, nsigma=7.0, inplace=False):
+def smooth_gauss(masked_image, sigma, nsigma=7.0, 
+                 inplace=False, use_scipy=False, **kwargs):
     """
     Smooth image with a Gaussian kernel. 
 
@@ -85,23 +86,35 @@ def smooth_gauss(masked_image, sigma, nsigma=7.0, inplace=False):
     inplace : bool, optional
         If True, smooth the image inplace. Else, return a clone 
         of the masked image. 
+    use_scipy : bool, optional
+        If True, perform smoothing using scipy.ndimage.
 
     Returns
     -------
     convolved_image : lsst.afw.image.imageLib.MaskedImageF
         The convolved masked image
     """
-    width = (int(sigma*nsigma + 0.5) // 2)*2 + 1 # make sure it is odd
-    gauss_func = afwMath.GaussianFunction1D(sigma)
-    gauss_kern = afwMath.SeparableKernel(width, width, gauss_func, gauss_func)
-    if inplace:
-        convolved_image = masked_image
+    if use_scipy:
+        img_arr = _get_image_ndarray(masked_image)
+        img_arr_smooth = ndi.gaussian_filter(
+            img_arr, sigma, truncate=nsigma, **kwargs)
+        if inplace:
+            convolved_image = masked_image
+        else:
+            convolved_image = masked_image.Factory(masked_image.getBBox())
+        convolved_image.getImage().getArray()[:] = img_arr_smooth
     else:
-        convolved_image = masked_image.Factory(masked_image.getBBox())
-    afwMath.convolve(convolved_image, masked_image, gauss_kern,
-                     afwMath.ConvolutionControl())
+        width = (int(sigma*nsigma + 0.5) // 2)*2 + 1 # make sure it is odd
+        gauss_func = afwMath.GaussianFunction1D(sigma)
+        gauss_kern = afwMath.SeparableKernel(
+            width, width, gauss_func, gauss_func)
+        if inplace:
+            convolved_image = masked_image
+        else:
+            convolved_image = masked_image.Factory(masked_image.getBBox())
+        afwMath.convolve(convolved_image, masked_image, gauss_kern,
+                         afwMath.ConvolutionControl())
     return convolved_image
-
 
 
 def _ring(r_inner, r_outer, dtype=np.int, invert=False):

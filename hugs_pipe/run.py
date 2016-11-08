@@ -65,7 +65,7 @@ def run(cfg, debug_return=False):
                     'with fhwm = {} arcsec'.format(kern_fwhm))
     fwhm = kern_fwhm/utils.pixscale # pixels
     sigma = fwhm/(2*np.sqrt(2*np.log(2)))
-    mi_clean_smooth = imtools.smooth_gauss(mi_clean, sigma)
+    mi_clean_smooth = imtools.smooth_gauss(mi_clean, sigma, use_scipy=True)
 
     ############################################################
     # Image thresholding at final detection threshold 
