@@ -57,7 +57,7 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     for fp in fpset_low.getFootprints():
         hfp = afwDet.HeavyFootprintF(fp, mi)
         pix = hfp.getMaskArray()
-        bits_hi = (pix & mask.getPlaneBitMask(name_high) != 0).sum()
+        bits_hi = (pix & mask.getPlaneBitMask(name_high)!=0).sum()
         if bits_hi>0:
             ratio = bits_hi/float(fp.getArea())
             if ratio > max_frac_high_thresh:
@@ -204,8 +204,19 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
+def _remove_table_cols(table):
+    remove_cols = [
+        'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
+        'background_sum', 'background_mean', 'background_at_centroid',
+        'xcentroid', 'ycentroid', 'xmin', 'xmax', 'ymin', 'ymax', 'min_value',
+        'max_value', 'minval_xpos', 'minval_ypos', 'maxval_xpos',
+        'maxval_ypos'
+    ]
+    table.remove_columns(remove_cols)
+
+
 def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
-                   grow_stamps=None, detect_kwargs={}, deblend_kwargs={}):
+                    grow_stamps=None, detect_kwargs={}, deblend_kwargs={}):
     """
     Use photutils to measure sources within "detection" footprints.
 
@@ -243,19 +254,19 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     table = Table()
     kern = Gaussian2DKernel(kern_sig_pix)
     kern.normalize()
-    fp_id = 1
-    for fp in fpset.getFootprints():
+    for fp_id, fp in enumerate(fpset.getFootprints()):
 
         # get exposure in bbox of footprint 
         bbox = fp.getBBox()
         if grow_stamps:
             bbox.grow(grow_stamps)
             bbox.clip(exposure.getBBox())
-        exp = exposure.Factory(exposure, bbox, afwImage.PARENT)
+        exp_fp = exposure.Factory(exposure, bbox, afwImage.PARENT)
+        mi_fp = exp_fp.getMaskedImage()
 
         # detect sources in footprint
-        img = exp.getMaskedImage().getImage().getArray().copy()
-        x0, y0 = exp.getXY0()
+        img = mi_fp.getImage().getArray().copy()
+        x0, y0 = exp_fp.getXY0()
         thresh = phut.detect_threshold(img, 
                                        snr=thresh_snr, 
                                        **detect_kwargs)
@@ -277,19 +288,20 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         props['x_hsc'] = props['xcentroid'] + x0
         props['y_hsc'] = props['ycentroid'] + y0
         props['fp_id'] = [fp_id]*len(props)
-        fp_id += 1
         if len(props)>1:
             props['is_deblended'] = [True]*len(props)
         else:
             props['is_deblended'] = False
+        hfp = afwDet.HeavyFootprintF(fp, mi_fp)
+        pix = hfp.getMaskArray()
+        num_edge = (pix & mi_fp.getMask().getPlaneBitMask('EDGE')!=0).sum()
+        props['num_edge_pix'] = [num_edge]*len(props)
+        props['fp_det_area'] = [fp.getArea()]*len(props)
         table = vstack([table, props])
     
     # clean up table columns
-    table['id'] = np.arange(1, len(table)+1)
-    remove_cols = [
-        'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
-        'background_sum', 'background_mean', 'background_at_centroid']
-    table.remove_columns(remove_cols)
+    table['id'] = np.arange(0, len(table))
+    _remove_table_cols(table)
 
     # use wcs to add ra & dec to table
     ra_list = []
@@ -309,7 +321,7 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     return table
 
 
-def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0, 
+def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=4.0, 
                circ_radii=[3, 6, 9]):
     """
     Do basic aperture photometry within circular apertures and 
@@ -318,8 +330,9 @@ def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0,
 
     Parameters
     ----------
-    img : 2D ndarray
-        The image data.
+    img_data : 2D ndarray, or dict
+        The image data. If a dict is given, the keys
+        must be the photometric band
     sources : astropy.table.Table
         Output table from measure_sources.
     zpt_mag : float, optional
@@ -332,21 +345,25 @@ def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0,
 
     pos = [(x, y) for x,y in sources['x_img', 'y_img']] 
 
-    mag = []
-    for idx in range(len(sources)):
-        x, y = pos[idx]
-        a, b = sources['semimajor_axis_sigma', 'semiminor_axis_sigma'][idx]
-        theta = sources['orientation'][idx]
-        aperture = phut.EllipticalAperture((x,y), ell_nsig*a, ell_nsig*b, theta)
-        flux = phut.aperture_photometry(img, aperture)['aperture_sum'][0]
-        mag.append(zpt_mag - 2.5*np.log10(flux))
-    sources['mag_ell'] = mag
+    if type(img_data)==np.ndarray:
+        img_data = {'i': img_data}
 
-    for r in circ_radii:
-        r_arcsec = r*utils.pixscale
-        apertures = phut.CircularAperture(pos, r=r)
-        flux = phut.aperture_photometry(img, apertures)['aperture_sum']
-        mag = zpt_mag - 2.5*np.log10(flux)
-        sources['mag_circ_{}'.format(r)] = mag
-        mu = mag + 2.5*np.log10(np.pi*r_arcsec**2)
-        sources['mu_{}'.format(r)] = mu
+    for band, img in img_data.items():
+        mag = []
+        for idx in range(len(sources)):
+            x, y = pos[idx]
+            a, b = sources['semimajor_axis_sigma', 'semiminor_axis_sigma'][idx]
+            theta = sources['orientation'][idx]
+            aperture = phut.EllipticalAperture((x,y), ell_nsig*a, ell_nsig*b, theta)
+            flux = phut.aperture_photometry(img, aperture)['aperture_sum'][0]
+            mag.append(zpt_mag - 2.5*np.log10(flux))
+        sources['mag_ell_'+band.lower()] = mag
+
+        for r in circ_radii:
+            r_arcsec = r*utils.pixscale
+            apertures = phut.CircularAperture(pos, r=r)
+            flux = phut.aperture_photometry(img, apertures)['aperture_sum']
+            mag = zpt_mag - 2.5*np.log10(flux)
+            sources['mag_circ_{}_{}'.format(r, band.lower())] = mag
+            mu = mag + 2.5*np.log10(np.pi*r_arcsec**2)
+            sources['mu_{}_{}'.format(r, band.lower())] = mu

@@ -87,10 +87,14 @@ def run(cfg, debug_return=False):
 
     cfg.logger.info('building source catalog')
     sources = prim.measure_sources(exp_clean, **cfg.measure_sources)
-    img = cfg.mi.getImage().getArray()
+    img_data = cfg.mi.getImage().getArray()
 
     cfg.logger.info('performing aperture photometry')
-    prim.photometry(img, sources, **cfg.photometry)
+    if cfg.phot_colors:
+        cfg.color_data['I'] = img_data
+        prim.photometry(cfg.color_data, sources, **cfg.photometry)
+    else:
+        prim.photometry(img_data, sources, **cfg.photometry)
 
     if type(cfg.data_id)==str:
         utils.add_cat_params(sources)
@@ -101,6 +105,8 @@ def run(cfg, debug_return=False):
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
         
     if debug_return:
+        # detection plane was modified by find_blends
+        fpset_det = utils.get_fpset(mask_clean, 'DETECTED')
         return lsst.pipe.base.Struct(sources=sources,
                                      exposure=cfg.exp,
                                      exp_clean=exp_clean,

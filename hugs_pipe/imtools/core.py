@@ -108,12 +108,12 @@ def smooth_gauss(masked_image, sigma, nsigma=7.0,
         gauss_func = afwMath.GaussianFunction1D(sigma)
         gauss_kern = afwMath.SeparableKernel(
             width, width, gauss_func, gauss_func)
-        if inplace:
-            convolved_image = masked_image
-        else:
-            convolved_image = masked_image.Factory(masked_image.getBBox())
+        convolved_image = masked_image.Factory(masked_image.getBBox())
         afwMath.convolve(convolved_image, masked_image, gauss_kern,
                          afwMath.ConvolutionControl())
+        if inplace:
+            img_arr_smooth = convolved_image.getImage().getArray()
+            masked_image.getImage().getArray()[:] = img_arr_smooth
     return convolved_image
 
 

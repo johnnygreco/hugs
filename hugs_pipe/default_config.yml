@@ -1,5 +1,7 @@
 data_dir: hsc
 
+phot_colors: 'GRI'
+
 thresh_low:
     thresh: 3.00
     npix: 20
@@ -39,7 +41,7 @@ measure_sources:
     npix: 5 
     kern_sig_pix: 2.5 psf sigma
     thresh_snr: 0.5
-    grow_stamps: ~
+    grow_stamps: 5
     detect_kwargs:
         sigclip_sigma: 3.0
         sigclip_iters: ~

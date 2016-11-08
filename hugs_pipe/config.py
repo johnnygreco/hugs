@@ -57,6 +57,8 @@ class Config(object):
         self.log_fn = log_fn
         self.log_level = log_level
 
+        self.phot_colors = params['phot_colors']
+
         # set data id if given
         if data_id:
             self.set_data_id(data_id)
@@ -154,6 +156,17 @@ class Config(object):
         
         self.data_id = data_id
         self.setup_logger(data_id)
+        
+        # get color data for forced photometry
+        if self.phot_colors:
+            self.color_data = {}
+            for color in self.phot_colors:
+                if color.upper() != 'I':
+                    _id = data_id.copy()
+                    _id['filter'] = 'HSC-'+color.upper()
+                    _exp, _ = self.get_exposure(_id)
+                    _img = _exp.getMaskedImage().getImage().getArray() 
+                    self.color_data.update({color.upper(): _img})
 
         # careful not to modify parameters
         self.thresh_low = self._thresh_low.copy()
