@@ -15,7 +15,7 @@ hscdir = os.environ.get('HSC_DIR')
 __all__ = ['display_candies', 'view_stamps_on_tiger']
 
 
-def display_candies(sources, data_id):
+def display_candies(sources, data_id, frame=1):
     """
     """
 
@@ -27,12 +27,13 @@ def display_candies(sources, data_id):
         butler = lsst.daf.persistence.Butler(hscdir)
         exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
 
-    disp = afwDisp.Display(1)
+    disp = afwDisp.Display(frame)
     disp.setMaskTransparency(75)
     disp.setMaskPlaneColor('THRESH_HIGH', 'magenta')
     disp.setMaskPlaneColor('THRESH_LOW', 'yellow')
     disp.setMaskPlaneColor('FAKE', 'green')
     disp.setMaskPlaneColor('CLEANED', 'white')
+    disp.setMaskPlaneColor('BLEND', 'black')
     disp.mtv(exp)
 
     with disp.Buffering():
