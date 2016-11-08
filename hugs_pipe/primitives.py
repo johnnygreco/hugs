@@ -127,7 +127,7 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
         total_area = float(fp_det.getArea())
 
         # find low-thresh footprints in bbox
-	fpset_low = afwDet.FootprintSet(
+        fpset_low = afwDet.FootprintSet(
             mask_fp, afwDet.Threshold(plane_low, afwDet.Threshold.BITMASK))
 
         # find blends and save footprint
