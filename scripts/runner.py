@@ -56,5 +56,8 @@ if __name__=='__main__':
         regions_fn = os.path.join(hugs_pipe.io, regions_fn)
         regions_dict = np.load(regions_fn).item()
         regions = Table(regions_dict[args.group_id])
+
+        print 'searching in', len(regions), 'regions'
         for tract, patch in regions['tract', 'patch']:
             main(tract, patch, config, outdir)
+            config.reset_mask_planes()

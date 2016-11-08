@@ -142,6 +142,15 @@ class Config(object):
                                  data_id, immediate=True)[0]
         return exposure, fn
 
+    def reset_mask_planes(self):
+        """
+        Remove mask planes created by hugs-pipe.
+        """
+        utils.remove_mask_planes(self.mask, ['BLEND', 
+                                             'CLEANED', 
+                                             'THRESH_HIGH', 
+                                             'THRESH_LOW'])
+
     def set_data_id(self, data_id):
         """
         Setup the data id. This must be done before passing a 
@@ -156,17 +165,6 @@ class Config(object):
         
         self.data_id = data_id
         self.setup_logger(data_id)
-        
-        # get color data for forced photometry
-        if self.phot_colors:
-            self.color_data = {}
-            for color in self.phot_colors:
-                if color.upper() != 'I':
-                    _id = data_id.copy()
-                    _id['filter'] = 'HSC-'+color.upper()
-                    _exp, _ = self.get_exposure(_id)
-                    _img = _exp.getMaskedImage().getImage().getArray() 
-                    self.color_data.update({color.upper(): _img})
 
         # careful not to modify parameters
         self.thresh_low = self._thresh_low.copy()
@@ -182,11 +180,23 @@ class Config(object):
         self.mi = self.exp.getMaskedImage()
         self.mask = self.mi.getMask()
 
+        # get color data for forced photometry
+        if self.phot_colors:
+            self.color_data = {}
+            for color in self.phot_colors:
+                if color.upper() != 'I':
+                    _id = data_id.copy()
+                    _id['filter'] = 'HSC-'+color.upper()
+                    _exp, _ = self.get_exposure(_id)
+                    _img = _exp.getMaskedImage().getImage().getArray() 
+                    self.color_data.update({color.upper(): _img})
+
         # clear detected mask and remove unnecessary plane
         self.mask.clearMaskPlane(self.mask.getMaskPlane('DETECTED'))
         utils.remove_mask_planes(self.mask, ['CR', 
                                              'CROSSTALK',
-                                             'DETECTED_NEGATIVE']) 
+                                             'DETECTED_NEGATIVE', 
+                                             'NOT_DEBLENDED']) 
 
         self.psf_sigma = utils.get_psf_sigma(self.exp)
 
