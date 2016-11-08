@@ -35,7 +35,7 @@ find_blends:
     min_parent_area: 0.25
     min_parent_flux: 0.7
 
-deblend_stamps:
+measure_sources:
     npix: 5 
     kern_sig_pix: 2.5 psf sigma
     thresh_snr: 0.5

@@ -11,7 +11,7 @@ from . import imtools
 
 __all__ = ['clean', 
            'find_blends',
-           'deblend_stamps', 
+           'measure_sources', 
            'image_threshold', 
            'photometry']
 
@@ -152,10 +152,10 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
     fpset_blends.setMask(mask, 'BLEND')
 
 
-def deblend_stamps(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
+def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
                    grow_stamps=None, detect_kwargs={}, deblend_kwargs={}):
     """
-    Use photutils to deblend sources within "detection" postage stamps.
+    Use photutils to measure sources within "detection" footprints.
 
     Parameters
     ----------
@@ -322,7 +322,7 @@ def photometry(img, sources, zpt_mag=27.0, ell_nsig=4.0,
     img : 2D ndarray
         The image data.
     sources : astropy.table.Table
-        Output table from deblend_stamps.
+        Output table from measure_sources.
     zpt_mag : float, optional
         The zero point magnitude.
     ell_nsig : float, optional

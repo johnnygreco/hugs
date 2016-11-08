@@ -49,7 +49,7 @@ class Config(object):
         self._thresh_high = params['thresh_high']
         self._thresh_det = params['thresh_det']
         self._find_blends = params['find_blends']
-        self._deblend_stamps = params['deblend_stamps']
+        self._measure_sources = params['measure_sources']
         self._clean = params['clean']
         self._photometry = params['photometry']
         self._butler = None
@@ -161,7 +161,7 @@ class Config(object):
         self.thresh_det = self._thresh_det.copy()
         self.clean = self._clean.copy()
         self.find_blends = self._find_blends.copy()
-        self.deblend_stamps = self._deblend_stamps.copy()
+        self.measure_sources = self._measure_sources.copy()
         self.photometry = self._photometry.copy()
 
         # get exposure 
@@ -199,7 +199,7 @@ class Config(object):
         else:
             self.clean['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
 
-        # convert deblend_stamps kernel sigma to psf units
-        if 'psf sigma' in self.deblend_stamps['kern_sig_pix']:
-            nsig = float(self.deblend_stamps['kern_sig_pix'].split()[0])
-            self.deblend_stamps['kern_sig_pix'] = nsig*self.psf_sigma
+        # convert measure_sources kernel sigma to psf units
+        if 'psf sigma' in self.measure_sources['kern_sig_pix']:
+            nsig = float(self.measure_sources['kern_sig_pix'].split()[0])
+            self.measure_sources['kern_sig_pix'] = nsig*self.psf_sigma

@@ -26,6 +26,6 @@ def test_run():
     assert 'DETECTED' in planes
     assert 'THRESH_LOW' in planes
     assert 'THRESH_HIGH' in planes
-    nfp_low = len(results.fp_low.getFootprints())
-    nfp_high = len(results.fp_high.getFootprints())
+    nfp_low = len(results.fpset_low.getFootprints())
+    nfp_high = len(results.fpset_high.getFootprints())
     assert nfp_low > nfp_high

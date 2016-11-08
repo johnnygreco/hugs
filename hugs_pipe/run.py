@@ -86,7 +86,7 @@ def run(cfg, debug_return=False):
     prim.find_blends(exp_clean, fpset_det, **cfg.find_blends)
 
     cfg.logger.info('building source catalog')
-    sources = prim.deblend_stamps(exp_clean, **cfg.deblend_stamps)
+    sources = prim.measure_sources(exp_clean, **cfg.measure_sources)
     img = cfg.mi.getImage().getArray()
 
     cfg.logger.info('performing aperture photometry')
