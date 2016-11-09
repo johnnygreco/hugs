@@ -185,8 +185,11 @@ class Config(object):
             self.color_data = {}
             for color in self.phot_colors:
                 if color.upper() != 'I':
-                    _id = data_id.copy()
-                    _id['filter'] = 'HSC-'+color.upper()
+                    if type(data_id)==str:
+                        _id = self.fn.replace('HSC-I', 'HSC-'+color.upper())
+                    else:
+                        _id = data_id.copy()
+                        _id['filter'] = 'HSC-'+color.upper()
                     _exp, _ = self.get_exposure(_id)
                     _img = _exp.getMaskedImage().getImage().getArray() 
                     self.color_data.update({color.upper(): _img})
