@@ -38,7 +38,9 @@ class Config(object):
         # read parameter file & setup param dicts
         if config_fn is None:
             dir = os.path.dirname(os.path.realpath(__file__))
-            config_fn = os.path.join(dir, 'default_config.yml')
+            self.config_fn = os.path.join(dir, 'default_config.yml')
+        else:
+            self.config_fn = config_fn
         with open(config_fn, 'r') as f:
             params = yaml.load(f)
         if params['data_dir']=='hsc':
@@ -92,6 +94,9 @@ class Config(object):
                 fh = logging.FileHandler(self.log_fn)
                 fh.setFormatter(formatter)
                 self.logger.addHandler(fh)
+
+            msg = 'starting hugs-pipe with config file '+self.config_fn
+            self.logger.info(msg)
 
     @property
     def butler(self):
