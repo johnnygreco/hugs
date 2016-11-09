@@ -4,12 +4,16 @@ import os
 import numpy as np
 import lsst.afw.math as afwMath
 
-__all__ = ['io', 'pixscale', 'annuli', 'get_astropy_wcs',
-           'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
-           'get_time_label', 'remove_mask_planes', 'get_fpset']
+__all__ = [
+    'io', 'pixscale', 'annuli', 'get_astropy_wcs',
+    'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
+    'get_time_label', 'remove_mask_planes', 
+    'get_fpset', 'combine_cats'
+]
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
+
 
 def annuli(row_c, col_c, r_in, r_out, shape):
     """
@@ -156,3 +160,21 @@ def get_fpset(mask, plane):
     fpset = afwDet.FootprintSet(
         mask, afwDet.Threshold(plane, afwDet.Threshold.BITMASK))
     return fpset
+
+
+def combine_cats(catdir, label='master', outdir='same'):
+    """
+    Combine catalogs from a group of runs.
+    """
+    from astropy.table import Table, vstack
+
+    files = [fn for fn in os.listdir(catdir) if fn[-3:]=='csv']
+
+    master = Table()
+    for fn in files:
+        tab = Table.read(os.path.join(catdir, fn), format='ascii')
+        master = vstack([master, tab])
+
+    outdir = catdir if outdir=='same' else outdir
+    outfile = os.path.join(outdir, label+'.csv')
+    master.write(outfile)
