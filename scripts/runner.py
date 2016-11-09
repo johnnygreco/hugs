@@ -46,12 +46,13 @@ if __name__=='__main__':
     else:
         from astropy.table import Table
         if not args.outdir:
-            outdir = 'group-results/group-'+str(args.group_id)
-            outdir = os.path.join(hugs_pipe.io, outdir)
+            group_results = os.path.join(hugs_pipe.io, 'group-results')
+            outdir = os.path.join(group_results, 'group-'+str(args.group_id))
         else:
             outdir = args.outdir
         log_fn = os.path.join(outdir, 'hugs-pipe.log')
-        config = hugs_pipe.Config(log_fn=log_fn)
+        config_fn = os.path.join(group_results, 'config.yml')
+        config = hugs_pipe.Config(config_fn=config_fn, log_fn=log_fn)
         regions_fn = 'cat_z0.065_Mh12.75-14.0_tracts_n_patches.npy'
         regions_fn = os.path.join(hugs_pipe.io, regions_fn)
         regions_dict = np.load(regions_fn).item()
