@@ -8,15 +8,17 @@ import os
 import lsst.afw.image as afwImage
 import lsst.afw.display as afwDisp
 import lsst.afw.geom as afwGeom
+import lsst.daf.persistence
 from .. import imtools
 from ..utils import pixscale
 hscdir = os.environ.get('HSC_DIR')
 
-__all__ = ['display_candies', 'view_stamps_on_tiger']
+__all__ = ['display_candies', 'display_cutout', 'view_stamps_on_tiger']
 
 
-def display_candies(sources, data_id, frame=1):
+def display_candies(sources, data_id, frame=1, mask_trans=75):
     """
+    Display image with candidates using ds9.
     """
 
     if type(data_id)==str:
@@ -28,7 +30,7 @@ def display_candies(sources, data_id, frame=1):
         exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
 
     disp = afwDisp.Display(frame)
-    disp.setMaskTransparency(75)
+    disp.setMaskTransparency(mask_trans)
     disp.setMaskPlaneColor('THRESH_HIGH', 'magenta')
     disp.setMaskPlaneColor('THRESH_LOW', 'yellow')
     disp.setMaskPlaneColor('FAKE', 'green')
@@ -46,8 +48,37 @@ def display_candies(sources, data_id, frame=1):
 
     return disp
 
+def display_cutout(source, exp=None, data_id=None, frame=1, 
+                   butler=None):
+    """
+    Display cutout of source with ds9.
+    """
 
-def view_stamps_on_tiger(cat, butler=None):
+    if data_id:
+        if butler is None:
+            butler = lsst.daf.persistence.Butler(hscdir)
+        exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
+    else:
+        assert exp is not None
+
+    disp = afwDisp.Display(frame)
+    disp.setMaskTransparency(100)
+
+    x, y = source['x_hsc'], source['y_hsc']    
+    cutout = imtools.get_cutout((x, y), 100, exp=exp)
+    disp.mtv(cutout)
+
+    a, b = source['semimajor_axis_sigma'], source['semiminor_axis_sigma']
+    theta = source['orientation']
+
+    ell = afwGeom.ellipses.Axes(3*a, 3*b, theta)
+    disp.dot(ell, x, y, ctype=afwDisp.CYAN)
+    disp.dot('+', x, y, ctype=afwDisp.GREEN)
+
+    return disp
+
+
+def view_stamps_on_tiger(cat, butler=None, frame=1):
     """
     View postage stamps of objects in catalog, which 
     must be the output of hugs-pipe.run.
@@ -61,20 +92,18 @@ def view_stamps_on_tiger(cat, butler=None):
     """
 
     if butler is None:
-        import lsst.daf.persistence
         butler = lsst.daf.persistence.Butler(hscdir)
 
-    disp_1 = afwDisp.Display(1)
-    disp_1.setMaskTransparency(100)
-    disp_2 = afwDisp.Display(2)
-    disp_2.setMaskTransparency(100)
+    disp = afwDisp.Display(frame)
+    disp.setMaskTransparency(100)
 
     tract_old = None
     patch_old = None
 
     for i, source in enumerate(cat): 
 
-        print(cat['tract', 'patch', 'a_3_sig', 'mu_3', 'mag_ell', 'r_circ'][i])
+        print(cat['tract', 'patch', 'a_3_sig', 'mu_3_i', 'mag_ell_i',
+                  'r_circ_ell'][i])
 
         tract = source['tract']
         patch = source['patch'][0]+','+source['patch'][-1]
@@ -82,8 +111,6 @@ def view_stamps_on_tiger(cat, butler=None):
 
         if (tract_old!=tract) or (patch_old!=patch):
             exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
-            disp_1.erase()
-            disp_1.mtv(exp)
 
         tract_old = tract
         patch_old = patch
@@ -91,15 +118,15 @@ def view_stamps_on_tiger(cat, butler=None):
         x, y = source['x_hsc'], source['y_hsc']
         cutout = imtools.get_cutout((x, y), 100, exp=exp)
 
-        disp_2.erase()
-        disp_2.mtv(cutout)
+        disp.erase()
+        disp.mtv(cutout)
         a, b = source['semimajor_axis_sigma'], source['semiminor_axis_sigma']
         theta = source['orientation']
 
-        with disp_2.Buffering():
+        with disp.Buffering():
             ell = afwGeom.ellipses.Axes(3*a, 3*b, theta)
-            disp_2.dot(ell, x, y, ctype=afwDisp.CYAN)
-            disp_2.dot('+', x, y, ctype=afwDisp.GREEN)   
+            disp.dot(ell, x, y, ctype=afwDisp.CYAN)
+            disp.dot('+', x, y, ctype=afwDisp.GREEN)   
 
         response = raw_input('\nPress enter to continue. Type stop to break: ')
 

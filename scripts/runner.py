@@ -17,7 +17,7 @@ def main(tract, patch, config, outdir):
     else:
         config.set_data_id(data_id)
     sources = hugs_pipe.run(config)
-    sources.write(prefix+'.cat', format='ascii')
+    sources.write(prefix+'.csv')
 
 if __name__=='__main__':
     from argparse import ArgumentParser
