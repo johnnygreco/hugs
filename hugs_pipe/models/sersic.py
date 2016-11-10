@@ -1,10 +1,8 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import division, print_function
 
 import numpy as np
 from scipy.special import gammaincinv, gamma
 
-from ..imfit import SERSIC_PARAMS
 from ..utils import pixscale
 
 __all__ = ['Sersic']
