@@ -5,14 +5,15 @@ import numpy as np
 import lsst.afw.math as afwMath
 
 __all__ = [
-    'io', 'pixscale', 'annuli', 'get_astropy_wcs',
+    'io', 'pixscale', 'zpt', 'annuli', 'get_astropy_wcs',
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
-    'get_time_label', 'remove_mask_planes', 
-    'get_fpset', 'combine_cats'
+    'get_time_label', 'remove_mask_planes', 'get_fpset', 
+    'combine_cats', 'check_random_state'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
+zpt = 27.0
 
 
 def annuli(row_c, col_c, r_in, r_out, shape):
@@ -178,3 +179,39 @@ def combine_cats(catdir, label='master', outdir='same'):
     outdir = catdir if outdir=='same' else outdir
     outfile = os.path.join(outdir, label+'.csv')
     master.write(outfile)
+
+
+def check_random_state(seed):
+    """
+    Turn seed into a `numpy.random.RandomState` instance.
+
+    Parameters
+    ----------
+    seed : `None`, int, or `numpy.random.RandomState`
+        If ``seed`` is `None`, return the `~numpy.random.RandomState`
+        singleton used by ``numpy.random``.  If ``seed`` is an `int`,
+        return a new `~numpy.random.RandomState` instance seeded with
+        ``seed``.  If ``seed`` is already a `~numpy.random.RandomState`,
+        return it.  Otherwise raise ``ValueError``.
+
+    Returns
+    -------
+    random_state : `numpy.random.RandomState`
+        RandomState object.
+
+    Notes
+    -----
+    This routine is from scikit-learn.  See
+    http://scikit-learn.org/stable/developers/utilities.html#validation-tools.
+    """
+    import numbers
+
+    if seed is None or seed is np.random:
+        return np.random.mtrand._rand
+    if isinstance(seed, (numbers.Integral, np.integer)):
+        return np.random.RandomState(seed)
+    if isinstance(seed, np.random.RandomState):
+        return seed
+
+    raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
+                     ' instance'.format(seed))

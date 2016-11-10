@@ -29,7 +29,7 @@ class Sersic(object):
     - theta is in degrees and is defined with respect to the +x axis.
     """
 
-    def __init__(self, params, zpt=27.0):
+    def __init__(self, params, zpt=27.0, calc_params=False):
         """
         Initialize and calculate a bunch of useful quantities.
         """
@@ -43,19 +43,22 @@ class Sersic(object):
         self.ell = params['ell']
         self.q = 1 - self.ell
         self.theta = self.PA+90
-        self.r_circ = self.r_e*np.sqrt(self.q)
         self.b_n = gammaincinv(2.*self.n, 0.5)
+
+        if calc_params:
+            self.calc_params()
+
+    def calc_params(self):
+        """
+        Calculate useful parameters
+        """
+        self.r_circ = self.r_e*np.sqrt(self.q)
         self.mu_e = zpt - 2.5*np.log10(self.I_e/pixscale**2)
         self.mu_0 = self.mu_e - 2.5*self.b_n/np.log(10)
         f_n = gamma(2*self.n)*self.n*np.exp(self.b_n)/self.b_n**(2*self.n)
         self.mu_e_ave = self.mu_e - 2.5*np.log10(f_n)
         A_eff = np.pi*(self.r_circ*pixscale)**2
         self.m_tot = self.mu_e_ave - 2.5*np.log10(2*A_eff)
-        if 'reduced_chisq' in list(params.keys()):
-            self.reduced_chisq = params['reduced_chisq']
-        for k, v in params.items():
-            if 'err' in k:
-                setattr(self, k, v)
 
     def __call__(self, x, y):
         """
