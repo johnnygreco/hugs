@@ -42,7 +42,7 @@ class SynthFactory(object):
             Random number generator seed.
         """
 
-        self.param_lims = PSET_LIMS.copy()
+        self.pset_lims = PSET_LIMS.copy()
         for k, v in pset_lims.items():
             self.pset_lims[k] = v
         self.rng = check_random_state(seed)
@@ -69,7 +69,7 @@ class SynthFactory(object):
         psets = []
         for i in range(num):
             pset = {}
-            for p, lim in self.param_lims.items():
+            for p, lim in self.pset_lims.items():
                 val = self.rng.uniform(lim[0], lim[1])
                 pset.update({p:val})
             pset['mu0_g'] = pset['mu0_i'] + pset['g_i']
@@ -85,7 +85,7 @@ class SynthFactory(object):
         ----------
         psets : list of dicts, optional
             List of galaxy parameters. If None, random set will be 
-            generated according to param_lims (must give num). 
+            generated according to pset_lims (must give num). 
         num_synths : int, optional
             Number of random param sets to generate. 
         """
