@@ -8,7 +8,7 @@ __all__ = [
     'io', 'pixscale', 'zpt', 'annuli', 'get_astropy_wcs',
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
-    'combine_cats', 'check_random_state', 'embed_array'
+    'combine_cats', 'check_random_state', 'embed_slices'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
