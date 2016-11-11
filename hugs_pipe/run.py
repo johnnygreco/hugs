@@ -46,7 +46,6 @@ def run(cfg, debug_return=False):
     fpset_high = prim.image_threshold(
         mi_smooth, mask=cfg.mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
 
-
     ############################################################
     # Get "cleaned" image, with noise replacement
     ############################################################

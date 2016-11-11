@@ -149,7 +149,6 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
                 fp_list.append(fp_det)
                 mask_fp.clearMaskPlane(mask_fp.getMaskPlane('DETECTED'))
 
-
     # create footprint set and set mask plane
     fpset_blends = afwDet.FootprintSet(exp.getBBox())
     fpset_blends.setFootprints(fp_list)
@@ -190,6 +189,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     fpset : lsst.afw.detection.detectionLib.FootprintSet
         Footprints associated with detected objects.
     """
+
     mask = masked_image.getMask() if mask is None else mask
     thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
     thresh = afwDet.Threshold(thresh, thresh_type)

@@ -1,8 +1,8 @@
 from __future__ import division, print_function
 
 import numpy as np
-from scipy.special import gammaincinv, gamma
-import scipy.ndimage as ndi
+import pandas as pd
+from scipy.special import gammaincinv
 from .sersic import Sersic
 from ..utils import pixscale, zpt, check_random_state
 from ..utils import embed_slices
@@ -17,7 +17,7 @@ PSET_LIMS = {
     'ell': [0.1, 0.4],
     'X0': [0, 4100],  
     'Y0': [0, 4200],
-    'g-i': [0.8, 1.2]
+    'g_i': [0.8, 1.2]
 }
 
 class SynthFactory(object):
@@ -25,7 +25,7 @@ class SynthFactory(object):
     Synthetic (Sersic) galaxy factory.
     """
 
-    def __init__(self, num_synths=None, pset_list=None,
+    def __init__(self, num_synths=None, psets=None,
                  pset_lims={}, seed=None):
         """
         Initialize.
@@ -34,7 +34,7 @@ class SynthFactory(object):
         ----------
         num_synths : int, optional
             Number of synthetics to inject.
-        pset_list : list of dicts, optional
+        psets : list of dicts, optional
             Set of galaxy paramters.
         pset_lims : dict, optional
             Parameter limits. 
@@ -46,12 +46,12 @@ class SynthFactory(object):
         for k, v in pset_lims.items():
             self.pset_lims[k] = v
         self.rng = check_random_state(seed)
-        self._pset_list = None
-        if pset_list or num_synths:
-            self.set_pset_list(pset_list=pset_list, 
+        self._psets = None
+        if psets or num_synths:
+            self.set_psets(psets=psets, 
                                  num_synths=num_synths)
 
-    def random_pset_list(self, num):
+    def random_psets(self, num):
         """
         Generate list of random parameters.
 
@@ -62,42 +62,51 @@ class SynthFactory(object):
 
         Returns
         -------
-        pset_list : list of dicts
+        psets : list of dicts
             Set of random paramters
         """
 
-        pset_list = []
+        psets = []
         for i in range(num):
             pset = {}
             for p, lim in self.param_lims.items():
                 val = self.rng.uniform(lim[0], lim[1])
                 pset.update({p:val})
-            pset['mu0_g'] = pset['mu0_i'] + pset['g-i']
-            pset_list.append(pset)
-        return pset_list
+            pset['mu0_g'] = pset['mu0_i'] + pset['g_i']
+            psets.append(pset)
+        psets = pd.DataFrame(psets)
+        return psets
 
-    def set_pset_list(self, pset_list=None, num_synths=None):
+    def set_psets(self, psets=None, num_synths=None):
         """
         Set the parameter list. 
 
         Parameters
         ----------
-        pset_list : list of dicts, optional
+        psets : list of dicts, optional
             List of galaxy parameters. If None, random set will be 
             generated according to param_lims (must give num). 
         num_synths : int, optional
             Number of random param sets to generate. 
         """
-        if pset_list:
-            self._pset_list = pset_list
+        if psets:
+            self._psets = psets
         else:
-            self._pset_list = self.random_pset_list(num_synths)
+            self._psets = self.random_psets(num_synths)
 
-    def get_pset_list(self):
+    def get_psets(self):
         """
         Return current parameter set list.
         """
-        return self._pset_list
+        assert self._psets is not None, 'must set galaxy param sets'
+        return self._psets
+
+    def write_psets(self, fn):
+        """
+        Save paraeter set list to csv file. 
+        """
+        assert self._psets is not None, 'must set galaxy param sets'
+        self._psets.to_csv(fn, index=False)
 
     def make_galaxy(self, pset, bbox_num_reff=10, band='i'):
         """
@@ -119,7 +128,7 @@ class SynthFactory(object):
             Image with synthetic galaxy. 
         """
 
-        # convert mu_0 to I_e 
+        # convert mu_0 to I_e and r_e to pixels
         p = pset.copy()
         mu_0 = p['mu0_'+band.lower()]
         b_n = gammaincinv(2.*p['n'], 0.5)
@@ -162,13 +171,14 @@ class SynthFactory(object):
         -----
         Must set parameters list before running. 
         """
-        assert self._pset_list is not None, 'must set galaxy param set list'
+
+        assert self._psets is not None, 'must set galaxy param sets'
 
         image = np.zeros(img_shape)
 
-        for pset in self._pset_list:
+        for index, pset in self._psets.iterrows():
             galaxy = self.make_galaxy(pset, band=band.lower(), **kwargs)
-            gal_pos = np.array([int(pset['Y0']), int(pset['X0'])])
+            gal_pos = np.array([int(pset.Y0), int(pset.X0)])
             img_slice, gal_slice = embed_slices(gal_pos, galaxy, image)
             image[img_slice] += galaxy[gal_slice]
         return image
@@ -189,7 +199,7 @@ class SynthFactory(object):
         import lsst.afw.image
         import lsst.afw.geom
 
-        assert self._pset_list is not None, 'must set galaxy param set list'
+        assert self._psets is not None, 'must set galaxy param sets'
 
         if type(exp)==lsst.afw.image.imageLib.ExposureF:
             mi = exp.getMaskedImage()
@@ -199,8 +209,8 @@ class SynthFactory(object):
             img_shape = img_arr.shape
             if set_mask:
                 mask.addMaskPlane('SYNTH')
-                for p in self._pset_list:
-                    center = lsst.afw.geom.Point2I(int(p['X0']), int(p['Y0']))
+                for index, pset in self._psets.iterrows():
+                    center = lsst.afw.geom.Point2I(int(pset['X0']), int(pset['Y0']))
                     bbox = lsst.afw.geom.Box2I(center, center)
                     bbox.grow(20)
                     bbox.clip(exp.getBBox(lsst.afw.image.LOCAL))
