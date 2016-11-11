@@ -8,13 +8,12 @@ __all__ = [
     'io', 'pixscale', 'zpt', 'annuli', 'get_astropy_wcs',
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
-    'combine_cats', 'check_random_state'
+    'combine_cats', 'check_random_state', 'embed_array'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
 zpt = 27.0
-
 
 def annuli(row_c, col_c, r_in, r_out, shape):
     """
@@ -59,6 +58,47 @@ def annuli(row_c, col_c, r_in, r_out, shape):
     col_idx += ul[1]
     return row_idx, col_idx
 
+
+def embed_slices(center, array, image):
+    """
+    Get slices to embed smaller array into larger image.
+
+    Parameters
+    ----------
+    center : ndarray
+        Center of array in the image coordinates.
+    array : ndarray
+        The array to embed. Shape dimensions must be odd.
+    image : ndarray
+        Main image array.
+
+    Returns
+    -------
+    img_slice, arr_slice : tuples of slices
+        Slicing indices. To embed array in image, 
+        use the following:
+        img[img_slice] = arr[arr_slice]
+    """
+    arr_shape = np.array(array.shape)
+    img_shape = np.array(image.shape)
+
+    assert np.alltrue(arr_shape%2 != np.array([0,0]))
+
+    imin = center - arr_shape//2
+    imax = center + arr_shape//2 
+
+    amin = (imin < np.array([0,0]))*(-imin)
+    amax = arr_shape*(imax<=img_shape-1) +\
+           (arr_shape-(imax-(img_shape-1)))*(imax>img_shape-1)
+
+    imin = np.maximum(imin, np.array([0, 0]))
+    imax = np.minimum(imax, np.array(img_shape)-1)
+    imax += 1
+
+    img_slice = np.s_[imin[0]:imax[0], imin[1]:imax[1]]
+    arr_slice = np.s_[amin[0]:amax[0], amin[1]:amax[1]]
+
+    return img_slice, arr_slice
 
 def get_psf_sigma(exposure):
     """
