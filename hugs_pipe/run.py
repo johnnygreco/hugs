@@ -29,13 +29,27 @@ def run(cfg, debug_return=False):
         Source catalog.
     """
 
+    assert cfg.data_id is not None, 'No data id!'
+    cfg.timer # start timer
+
+    ############################################################
+    # If desired, inject synthetic galaxies 
+    ############################################################
+
+    if cfg.inject_synths:
+        from .synths import SynthsFactory
+        cfg.logger.warning('injecting synths')
+        sf = SynthsFactory(**cfg.synths)
+        sf.inject(cfg.exp)
+        if cfg.phot_colors:
+            for band in cfg.color_data.keys():
+                sf.inject(cfg.color_data[band])
+
     ############################################################
     # Image thesholding at low and high thresholds. In both 
     # cases, the image is smoothed at the psf scale.
     ############################################################
     
-    assert cfg.data_id is not None, 'No data id!'
-    cfg.timer # start timer
     mi_smooth = imtools.smooth_gauss(cfg.mi, cfg.psf_sigma)
     cfg.logger.info('performing low threshold at '
                     '{} sigma'.format(cfg.thresh_low['thresh']))

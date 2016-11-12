@@ -37,11 +37,11 @@ class Config(object):
 
         # read parameter file & setup param dicts
         if config_fn is None:
-            dir = os.path.dirname(os.path.realpath(__file__))
-            self.config_fn = os.path.join(dir, 'default_config.yml')
+            filedir = os.path.dirname(os.path.realpath(__file__))
+            self.config_fn = os.path.join(filedir, 'default_config.yml')
         else:
             self.config_fn = config_fn
-        with open(config_fn, 'r') as f:
+        with open(self.config_fn, 'r') as f:
             params = yaml.load(f)
         if params['data_dir']=='hsc':
             self.data_dir = os.environ.get('HSC_DIR')
@@ -60,6 +60,8 @@ class Config(object):
         self.log_level = log_level
 
         self.phot_colors = params['phot_colors']
+        self.inject_synths = params['inject_synths']
+        self.synths = params['synths']
 
         # set data id if given
         if data_id:
@@ -76,6 +78,8 @@ class Config(object):
         else:
             t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
             name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)
+        if self.inject_synths:
+            name = '** There be synths ** '+name
         self.logger = logging.getLogger(name)
         self.logger.setLevel(getattr(logging, self.log_level.upper()))
         fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'

@@ -1,6 +1,10 @@
+####################################################
+# hugs-pipe params
+####################################################
+
 data_dir: hsc
 
-phot_colors: 'GRI'
+phot_colors: 'GI'
 
 thresh_low:
     thresh: 3.00
@@ -54,3 +58,24 @@ measure_sources:
 photometry:
     ell_nsig: 4.0
     circ_radii: [3, 6, 9]
+
+####################################################
+# synth factory params
+####################################################
+
+inject_synths: True
+
+synths:
+    num_synths: 5
+    seed: ~
+    pset_lims: 
+        mu0_i: [23.5, 27.5] # i-band SB [mag/arcsec^2] 
+        r_e: [1.5, 4.0]     # effective radius [arcsec]
+        PA: [0, 180]        # position angle [degree]
+        n: [0.5, 1.1]       # sersic n
+        ell: [0.1, 0.4]     # ellipticity 
+        g_i: [0.8, 1.2]     # g-i color
+        X0: [0, 4100]       # x position [pixel]
+        Y0: [0, 4200]       # y position [pixel]
+
+####################################################
