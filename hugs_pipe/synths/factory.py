@@ -48,8 +48,7 @@ class SynthFactory(object):
         self.rng = check_random_state(seed)
         self._psets = None
         if psets or num_synths:
-            self.set_psets(psets=psets, 
-                                 num_synths=num_synths)
+            self.set_psets(psets=psets, num_synths=num_synths)
 
     def random_psets(self, num):
         """
@@ -210,7 +209,8 @@ class SynthFactory(object):
             if set_mask:
                 mask.addMaskPlane('SYNTH')
                 for index, pset in self._psets.iterrows():
-                    center = lsst.afw.geom.Point2I(int(pset['X0']), int(pset['Y0']))
+                    center = lsst.afw.geom.Point2I(int(pset['X0']), 
+                                                   int(pset['Y0']))
                     bbox = lsst.afw.geom.Box2I(center, center)
                     bbox.grow(20)
                     bbox.clip(exp.getBBox(lsst.afw.image.LOCAL))
