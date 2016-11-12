@@ -35,7 +35,7 @@ class SynthFactory(object):
         num_synths : int, optional
             Number of synthetics to inject.
         psets : list of dicts, optional
-            Set of galaxy paramters.
+            Set of galaxy parameters.
         pset_lims : dict, optional
             Parameter limits. 
         seed : int, optional
@@ -61,8 +61,8 @@ class SynthFactory(object):
 
         Returns
         -------
-        psets : list of dicts
-            Set of random paramters
+        psets : pandas.DataFrame
+            Set of random parameters
         """
 
         psets = []
@@ -82,7 +82,7 @@ class SynthFactory(object):
 
         Parameters
         ----------
-        psets : list of dicts, optional
+        psets : list of dicts or pandas.DataFrame, optional
             List of galaxy parameters. If None, random set will be 
             generated according to pset_lims (must give num). 
         num_synths : int, optional
@@ -90,7 +90,7 @@ class SynthFactory(object):
         """
 
         if psets:
-            self._psets = psets
+            self._psets = pd.DataFrame(psets)
         else:
             self._psets = self.random_psets(num_synths)
 
@@ -102,9 +102,9 @@ class SynthFactory(object):
         assert self._psets is not None, 'must set galaxy param sets'
         return self._psets
 
-    def write_psets(self, fn):
+    def write_cat(self, fn):
         """
-        Save paraeter set list to csv file. 
+        Save parameter set list to csv file. 
         """
 
         assert self._psets is not None, 'must set galaxy param sets'
@@ -151,9 +151,9 @@ class SynthFactory(object):
 
         return galaxy 
 
-    def create_synth_image(self, img_shape, band='i', **kwargs):
+    def create_image(self, img_shape, band='i', cat_fn=None, **kwargs):
         """
-        Inject synthetic galaxies into image.
+        Generate image of synthetic galaxies.
 
         Parameters
         ----------
@@ -161,6 +161,8 @@ class SynthFactory(object):
             Shape of image.
         bands : string, optional
             Photometric band.
+        cat_fn : string, optional
+            Synth catalog file name. 
         **kwargs : dictm optional
             make_galaxy args. 
 
@@ -183,6 +185,8 @@ class SynthFactory(object):
             gal_pos = np.array([int(pset.Y0), int(pset.X0)])
             img_slice, gal_slice = embed_slices(gal_pos, galaxy, image)
             image[img_slice] += galaxy[gal_slice]
+        if cat_fn:
+            self.write_cat(cat_fn)
         return image
 
     def inject(self, exp, set_mask=True, **kwargs):
@@ -198,6 +202,7 @@ class SynthFactory(object):
         **kwargs : dict
             Arguments for create_image.
         """
+
         import lsst.afw.image
         import lsst.afw.geom
 
@@ -222,5 +227,5 @@ class SynthFactory(object):
             img_arr = exp
 
         # embed synthetics
-        synths =  self.create_synth_image(img_arr.shape, **kwargs)
+        synths =  self.create_image(img_arr.shape, **kwargs)
         img_arr[:] += synths

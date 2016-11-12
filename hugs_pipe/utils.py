@@ -23,7 +23,7 @@ def annuli(row_c, col_c, r_in, r_out, shape):
     Parameters
     ----------
     row_c, col_c : float
-        Ceentral coordinates of the annulus.
+        Central coordinates of the annulus.
     r_in : float
         Inner radius of annulus. If r_in=0, the 
         annulus becomes a circle. 
@@ -178,7 +178,7 @@ def add_cat_params(sources, tract=None, patch=None):
 
 def remove_mask_planes(mask, planes):
     """
-    Reomve mask planes if they are in mask.
+    Remove mask planes if they are in mask.
 
     Parameters
     ----------

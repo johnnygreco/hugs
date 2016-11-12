@@ -130,7 +130,7 @@ def _ring(r_inner, r_outer, dtype=np.int, invert=False):
     dtype : data type, optional
         The data type of the output array
     invert : bool, optional
-        If True, invert the ring kernal (i.e., 1 <--> 0).
+        If True, invert the ring kernel (i.e., 1 <--> 0).
 
     Returns
     -------
