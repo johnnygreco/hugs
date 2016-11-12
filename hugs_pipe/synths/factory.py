@@ -10,14 +10,14 @@ from ..utils import embed_slices
 __all__ = ['SynthFactory']
 
 PSET_LIMS = {
-    'mu0_i': [23.5, 27.5],   # i-band mag/arcsec^2
-    'r_e': [1.5, 4.0],   # arcsec
-    'PA': [0, 180],      # degree
-    'n': [0.5, 1.1],
-    'ell': [0.1, 0.4],
-    'X0': [0, 4100],  
-    'Y0': [0, 4200],
-    'g_i': [0.8, 1.2]
+    'mu0_i': [23.5, 27.5], # i-band SB [mag/arcsec^2]
+    'r_e': [1.5, 4.0],     # effective radius [arcsec]
+    'PA': [0, 180],        # position angle [degree]
+    'n': [0.5, 1.1],       # sersic n
+    'ell': [0.1, 0.4],     # ellipticity 
+    'X0': [0, 4100],       # x position [pixel] 
+    'Y0': [0, 4200],       # y position [pixel]
+    'g_i': [0.8, 1.2]      # g-i color
 }
 
 class SynthFactory(object):
@@ -88,6 +88,7 @@ class SynthFactory(object):
         num_synths : int, optional
             Number of random param sets to generate. 
         """
+
         if psets:
             self._psets = psets
         else:
@@ -97,6 +98,7 @@ class SynthFactory(object):
         """
         Return current parameter set list.
         """
+
         assert self._psets is not None, 'must set galaxy param sets'
         return self._psets
 
@@ -104,6 +106,7 @@ class SynthFactory(object):
         """
         Save paraeter set list to csv file. 
         """
+
         assert self._psets is not None, 'must set galaxy param sets'
         self._psets.to_csv(fn, index=False)
 
@@ -205,7 +208,6 @@ class SynthFactory(object):
             img = mi.getImage()
             mask = mi.getMask()
             img_arr = img.getArray()
-            img_shape = img_arr.shape
             if set_mask:
                 mask.addMaskPlane('SYNTH')
                 for index, pset in self._psets.iterrows():
@@ -220,5 +222,5 @@ class SynthFactory(object):
             img_arr = exp
 
         # embed synthetics
-        synths =  self.create_synth_image(img_shape, **kwargs)
+        synths =  self.create_synth_image(img_arr.shape, **kwargs)
         img_arr[:] += synths
