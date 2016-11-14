@@ -216,7 +216,8 @@ def _remove_table_cols(table):
 
 
 def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
-                    grow_stamps=None, detect_kwargs={}, deblend_kwargs={}):
+                    grow_stamps=None, detect_kwargs={}, deblend_kwargs={},
+                    logger=None):
     """
     Use photutils to measure sources within "detection" footprints.
 
@@ -307,13 +308,20 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     ra_list = []
     dec_list = []
     wcs = exposure.getWcs()
-    for x, y in table['x_hsc', 'y_hsc']:
-        ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
-        dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
-        ra_list.append(ra)
-        dec_list.append(dec)
-    table['ra'] = ra_list
-    table['dec'] = dec_list
+    if wcs is None:
+        warn = 'no wcs with exposure'
+        if logger:
+            logger.warning(warn)
+        else:
+            print(warn)
+    else:
+        for x, y in table['x_hsc', 'y_hsc']:
+            ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
+            dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
+            ra_list.append(ra)
+            dec_list.append(dec)
+        table['ra'] = ra_list
+        table['dec'] = dec_list
     
     # calculate primary array coordinates
     table['x_img'] = table['x_hsc'] - exposure.getX0()
