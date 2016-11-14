@@ -5,6 +5,7 @@ import logging
 import yaml
 import numpy as np
 import time
+import lsst.afw.image
 from . import utils
 try:
     import coloredlogs
@@ -60,8 +61,6 @@ class Config(object):
         self.log_level = log_level
 
         self.phot_colors = params['phot_colors']
-        self.inject_synths = params['inject_synths']
-        self.synths = params['synths']
 
         # set data id if given
         if data_id:
@@ -74,12 +73,12 @@ class Config(object):
         Setup the python logger.
         """
         if type(data_id)==str:
-            name = data_id
-        else:
+            namee = data_id
+        elif type(data_id)==dict:
             t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
             name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)
-        if self.inject_synths:
-            name = '** There be synths ** '+name
+        else:
+            name = 'hugs-pipe'
         self.logger = logging.getLogger(name)
         self.logger.setLevel(getattr(logging, self.log_level.upper()))
         fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'
@@ -121,6 +120,7 @@ class Config(object):
             self._timer = time.time()
         else:
             delta_time = (time.time() - self._timer)/60.0
+            self._timer = time.time()
             return delta_time
 
     def get_exposure(self, data_id):
@@ -141,7 +141,6 @@ class Config(object):
             The exposure filename.
         """
         if type(data_id)==str:
-            import lsst.afw.image
             fn = data_id
             exposure = lsst.afw.image.ExposureF(fn)
         else:
@@ -157,6 +156,7 @@ class Config(object):
         """
         utils.remove_mask_planes(self.mask, ['BLEND', 
                                              'CLEANED', 
+                                             'SYNTH',
                                              'THRESH_HIGH', 
                                              'THRESH_LOW'])
 
@@ -185,7 +185,11 @@ class Config(object):
         self.photometry = self._photometry.copy()
 
         # get exposure 
-        self.exp, self.fn = self.get_exposure(data_id)
+        if type(data_id)==lsst.afw.image.imageLib.ExposureF:
+            self.exp = data_id
+            self.fn = None
+        else:
+            self.exp, self.fn = self.get_exposure(data_id)
         self.mi = self.exp.getMaskedImage()
         self.mask = self.mi.getMask()
 
@@ -210,7 +214,11 @@ class Config(object):
                                              'DETECTED_NEGATIVE', 
                                              'NOT_DEBLENDED']) 
 
-        self.psf_sigma = utils.get_psf_sigma(self.exp)
+        try:
+            self.psf_sigma = utils.get_psf_sigma(self.exp)
+        except AttributeError:
+            self.logger.warning('no psf with exposure... using mean seeing')
+            self.psf_sigma = 1.5
 
         # setup thresh low/high/det: n_sig_grow --> rgrow
         ngrow = self.thresh_low.pop('n_sig_grow')
