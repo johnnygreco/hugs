@@ -33,7 +33,7 @@ def display_candies(sources, data_id, frame=1, mask_trans=75):
     disp.setMaskTransparency(mask_trans)
     disp.setMaskPlaneColor('THRESH_HIGH', 'magenta')
     disp.setMaskPlaneColor('THRESH_LOW', 'yellow')
-    disp.setMaskPlaneColor('FAKE', 'green')
+    disp.setMaskPlaneColor('SYNTH', 'green')
     disp.setMaskPlaneColor('CLEANED', 'white')
     disp.setMaskPlaneColor('BLEND', 'black')
     disp.mtv(exp)
