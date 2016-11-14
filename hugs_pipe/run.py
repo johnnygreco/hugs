@@ -10,7 +10,7 @@ from . import primitives as prim
 __all__ = ['run']
 
 
-def run(cfg, debug_return=False):
+def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
     """
     Run hugs pipeline.
 
@@ -22,10 +22,14 @@ def run(cfg, debug_return=False):
     debug_return : bool, optional
         If True, return struct with outputs from 
         every step of pipeline.
+    inject_synths : bool, optional
+        If True, inject synthetic galaxies. 
+    synths_kwargs : dict, optional
+        Arguments for hugs.SynthFactory.
 
     Returns
     -------
-    sources : astropy.table.Table 
+    results : astropy.table.Table 
         Source catalog.
     """
 
@@ -35,11 +39,12 @@ def run(cfg, debug_return=False):
     ############################################################
     # If desired, inject synthetic galaxies 
     ############################################################
-
-    if cfg.inject_synths:
-        from .synths import SynthsFactory
-        cfg.logger.warning('injecting synths')
-        sf = SynthsFactory(**cfg.synths)
+    
+    sf = None
+    if inject_synths:
+        from .synths import SynthFactory
+        cfg.logger.warning('**** injecting synths ****')
+        sf = SynthFactory(**synths_kwargs)
         sf.inject(cfg.exp)
         if cfg.phot_colors:
             for band in cfg.color_data.keys():
@@ -99,7 +104,8 @@ def run(cfg, debug_return=False):
     prim.find_blends(exp_clean, fpset_det, **cfg.find_blends)
 
     cfg.logger.info('building source catalog')
-    sources = prim.measure_sources(exp_clean, **cfg.measure_sources)
+    sources = prim.measure_sources(
+        exp_clean, logger=cfg.logger, **cfg.measure_sources)
     img_data = cfg.mi.getImage().getArray()
 
     cfg.logger.info('performing aperture photometry')
@@ -109,23 +115,30 @@ def run(cfg, debug_return=False):
     else:
         prim.photometry(img_data, sources, **cfg.photometry)
 
-    if type(cfg.data_id)==str:
-        utils.add_cat_params(sources)
-    else:
+    if type(cfg.data_id)==dict:
         tract, patch = cfg.data_id['tract'], cfg.data_id['patch']
         utils.add_cat_params(sources, tract, patch)
+    else:
+        utils.add_cat_params(sources)
 
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
         
     if debug_return:
         # detection plane was modified by find_blends
         fpset_det = utils.get_fpset(mask_clean, 'DETECTED')
-        return lsst.pipe.base.Struct(sources=sources,
-                                     exposure=cfg.exp,
-                                     exp_clean=exp_clean,
-                                     mi_clean_smooth=mi_clean_smooth,
-                                     fpset_low=fpset_low,
-                                     fpset_high=fpset_high,
-                                     fpset_det=fpset_det)
+        results = lsst.pipe.base.Struct(sources=sources,
+                                        exposure=cfg.exp,
+                                        exp_clean=exp_clean,
+                                        mi_clean_smooth=mi_clean_smooth,
+                                        fpset_low=fpset_low,
+                                        fpset_high=fpset_high,
+                                        fpset_det=fpset_det,
+                                        sf=sf)
     else:
-        return sources
+        if inject_synths: 
+            results = lsst.pipe.base.Struct(sources=sources, sf=sf)
+        else:
+            assert sf is None
+            results = sources
+
+    return results

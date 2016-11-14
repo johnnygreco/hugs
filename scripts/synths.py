@@ -7,46 +7,25 @@ import os
 import numpy as np
 import hugs_pipe as hp
 import lsst.afw.display as afwDisp
-synthdir = os.path.join(hp.io, 'synthetic-udgs')
-outdir = os.path.join(hp.io, 'synth-results')
 
-# select data at random to run 
-num_run = 1
-files = np.array([f for f in os.listdir(synthdir)\
-                  if f[-4:]=='fits' if f.split('-')[2]=='I'])
-files = files[np.random.randint(files.size, size=num_run)]
-#####
-
-log_fn = os.path.join(outdir, 'synths.log')
-config_fn = None #os.path.join(outdir, 'config.yaml')
-config = hp.Config(config_fn=config_fn, log_fn=log_fn)
-
-files = ['calexp-HSC-I-8766-4,3.fits']
+tract = 9617
+patch = '7,5'
+data_id = {'tract': tract, 'patch': patch, 'filter': 'HSC-I'}
 
 
-for fn in files:
-    tract, patch = int(fn.split('-')[3]), fn.split('-')[4][:3]
-    fn = os.path.join(synthdir, fn)
-    prefix = os.path.join(outdir, 'synths-{}-{}'.format(tract, patch))
-    config.set_data_id(fn)
-    results = hp.run(config, debug_return=True)
-    sources = results.sources
-    sources.write(prefix+'.csv')
+synths_kwargs = {
+    'num_synths': 10,
+    'seed': None, 
+    'pset_lims': {'mu0_i': [24., 24.],
+                  'r_e': [2.0, 2.0],
+                  'n': [1., 1.]}
+}
 
-    exp = results.exposure
-    exp_clean = results.exp_clean
-    mask = exp.getMaskedImage().getMask()	
-    mask.removeAndClearMaskPlane('BAD', True)
+cfg = hp.Config(data_id=data_id)
 
-    disp = hp.viz.display_candies(sources, exp)
-    disp2 = afwDisp.Display(2)
-    disp2.setMaskTransparency(75)
-    disp2.setMaskPlaneColor('THRESH_HIGH', 'magenta')
-    disp2.setMaskPlaneColor('THRESH_LOW', 'yellow')
-    disp2.setMaskPlaneColor('FAKE', 'green')
-    disp2.setMaskPlaneColor('CLEANED', 'white')
-    disp2.mtv(exp_clean)
+results = hp.run(cfg, 
+                 debug_return=True, 
+                 inject_synths=True, 
+                 synths_kwargs=synths_kwargs)
 
-#    mask_clean = exp_clean.getMaskedImage().getMask()	
-#    mask_clean.removeAndClearMaskPlane('THRESH_HIGH', True)
-#    exp_clean.writeFits('/Users/protostar/Desktop/wvtest.fits')
+hp.viz.display_candies(results.sources, results.exposure)
