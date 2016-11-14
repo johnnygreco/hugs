@@ -10,7 +10,11 @@ import lsst.afw.math as afwMath
 import scipy.ndimage as ndi
 hscdir = os.environ.get('HSC_DIR')
 
-__all__ = ['get_cutout', 'smooth_gauss', 'rmedian', 'unsharp_mask']
+__all__ = ['get_cutout', 
+           'smooth_gauss', 
+           'smooth_image', 
+           'rmedian', 
+           'unsharp_mask']
 
 
 def _get_image_ndarray(image):
@@ -70,7 +74,7 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
     return cutout
 
 
-def smooth_gauss(masked_image, sigma, nsigma=7.0, 
+def smooth_gauss(masked_image, sigma=2.0, nsigma=7.0, 
                  inplace=False, use_scipy=False, **kwargs):
     """
     Smooth image with a Gaussian kernel. 
@@ -115,6 +119,38 @@ def smooth_gauss(masked_image, sigma, nsigma=7.0,
             img_arr_smooth = convolved_image.getImage().getArray()
             masked_image.getImage().getArray()[:] = img_arr_smooth
     return convolved_image
+
+
+def smooth_image(masked_image, kernel='exp', **kwargs):
+    """
+    Helper function for smoothing images with gaussian or 
+    exponential kernels.
+
+    Parameters
+    ----------
+    masked_image : lsst.afw.image.imageLib.MaskedImageF
+        Masked image object to be smoothed
+    kernel : string
+        Kernel function (exp or gauss). 
+    **kwargs : dict 
+        Args for smooth_gauss or exp_kern.
+
+    Returns
+    -------
+    convolved_image : lsst.afw.image.imageLib.MaskedImageF
+        The convolved masked image
+    """
+    if kernel=='gauss':
+        return smooth_gauss(masked_image, **kwargs)
+    elif kernel=='exp':
+        from photutils.utils.convolution import filter_data
+        from .kernels import exp_kern
+        img_arr = _get_image_ndarray(masked_image)
+        kern = exp_kern(alpha=kwargs['alpha'], size=kwargs['size'])
+        img_arr_smooth = filter_data(img_arr, kern, mode='reflect')
+        convolved_image = masked_image.Factory(masked_image.getBBox())
+        convolved_image.getImage().getArray()[:] = img_arr_smooth
+        return convolved_image
 
 
 def _ring(r_inner, r_outer, dtype=np.int, invert=False):
