@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import numpy as np
 from astropy.convolution import discretize_model
 
-__all__ = ['exponential']
+__all__ = ['exp_kern']
 
 def exp_kern(alpha, size, norm=True, mode='center', factor=10):
     """

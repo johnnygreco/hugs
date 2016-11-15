@@ -108,6 +108,10 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
         exp_clean, logger=cfg.logger, **cfg.measure_sources)
     img_data = cfg.mi.getImage().getArray()
 
+    ############################################################
+    # Perform aperture photometry
+    ############################################################
+
     cfg.logger.info('performing aperture photometry')
     if cfg.phot_colors:
         cfg.color_data['I'] = img_data
