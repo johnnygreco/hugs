@@ -110,7 +110,7 @@ class SynthFactory(object):
         assert self._psets is not None, 'must set galaxy param sets'
         self._psets.to_csv(fn, index=False)
 
-    def make_galaxy(self, pset, bbox_num_reff=10, band='i'):
+    def make_galaxy(self, pset, bbox_num_reff=10, band='i', index=None):
         """
         Make synthetic Sersic galaxy.
 
@@ -146,8 +146,12 @@ class SynthFactory(object):
         p['Y0'] = img_shape[0]//2
 
         # generate image with synth
-        model = Sersic(p)
+        model = Sersic(p, calc_params=True)
         galaxy = model.array(img_shape)
+
+        # add total mag to dataframe
+        if index is not None:
+            self._psets.set_value(index, 'mtot_'+band.lower(), model.m_tot)
 
         return galaxy 
 
@@ -181,7 +185,8 @@ class SynthFactory(object):
         image = np.zeros(img_shape)
 
         for index, pset in self._psets.iterrows():
-            galaxy = self.make_galaxy(pset, band=band.lower(), **kwargs)
+            galaxy = self.make_galaxy(
+                pset, band=band.lower(), index=index, **kwargs)
             gal_pos = np.array([int(pset.Y0), int(pset.X0)])
             img_slice, gal_slice = embed_slices(gal_pos, galaxy, image)
             image[img_slice] += galaxy[gal_slice]

@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import numpy as np
 from scipy.special import gammaincinv, gamma
 
-from ..utils import pixscale
+from ..utils import zpt, pixscale
 
 __all__ = ['Sersic']
 
@@ -29,7 +29,7 @@ class Sersic(object):
     - theta is in degrees and is defined with respect to the +x axis.
     """
 
-    def __init__(self, params, zpt=27.0, calc_params=False):
+    def __init__(self, params, calc_params=False):
         """
         Initialize and calculate a bunch of useful quantities.
         """
