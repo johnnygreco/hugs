@@ -217,7 +217,7 @@ def _remove_table_cols(table):
 
 def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
                     grow_stamps=None, detect_kwargs={}, deblend_kwargs={},
-                    logger=None):
+                    logger=None, sf=None):
     """
     Use photutils to measure sources within "detection" footprints.
 
@@ -238,6 +238,8 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         Kwargs for photutils.detect_sources.
     deblend_kwargs :  dict, optional
         Kwargs for photutils.deblend_sources.
+    sf : hugs_pipe.synths.SynthFactory, optional
+        synth factory object for synth flag.
 
     Returns
     -------
@@ -264,6 +266,10 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
             bbox.clip(exposure.getBBox())
         exp_fp = exposure.Factory(exposure, bbox, afwImage.PARENT)
         mi_fp = exp_fp.getMaskedImage()
+        msk_fp = mi_fp.getMask()
+        hfp = afwDet.HeavyFootprintF(fp, mi_fp)
+        pix = hfp.getMaskArray()
+
 
         # detect sources in footprint
         img = mi_fp.getImage().getArray().copy()
@@ -286,18 +292,38 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         # measure source properties
         props = phut.source_properties(img, seg_db)
         props = phut.properties_table(props)
+
+        # calculate different coordinates
         props['x_hsc'] = props['xcentroid'] + x0
         props['y_hsc'] = props['ycentroid'] + y0
+        props['x_img'] = props['x_hsc'] - exposure.getX0()
+        props['y_img'] = props['y_hsc'] - exposure.getY0()
+
+        # generate ids and flags
         props['fp_id'] = [fp_id]*len(props)
+        props['nchild'] = [len(props)]*len(props)
         if len(props)>1:
             props['is_deblended'] = [True]*len(props)
         else:
             props['is_deblended'] = False
-        hfp = afwDet.HeavyFootprintF(fp, mi_fp)
-        pix = hfp.getMaskArray()
-        num_edge = (pix & mi_fp.getMask().getPlaneBitMask('EDGE')!=0).sum()
+        num_edge = (pix & msk_fp.getPlaneBitMask('EDGE')!=0).sum()
+        num_bright = (pix & msk_fp.getPlaneBitMask('BRIGHT_OBJECT')!=0).sum()
         props['num_edge_pix'] = [num_edge]*len(props)
+        props['num_bright_pix'] = [num_bright]*len(props)
         props['fp_det_area'] = [fp.getArea()]*len(props)
+
+        # find synths
+        if 'SYNTH' in msk_fp.getMaskPlaneDict().keys():
+            if (pix & msk_fp.getPlaneBitMask('SYNTH')!=0).sum() > 0:
+                props['synth_index'] = [np.nan]*len(props)
+                for i in range(len(props)):
+                    sqdist = (sf.get_psets().X0-props['x_img'][i])**2 +\
+                             (sf.get_psets().Y0-props['y_img'][i])**2
+                    if sqdist.min() < 16:
+                        props['synth_index'][i] = int(sqdist.argmin())
+            else:
+                props['synth_index'] = [np.nan]*len(props)
+
         table = vstack([table, props])
     
     # clean up table columns
@@ -322,10 +348,7 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
             dec_list.append(dec)
         table['ra'] = ra_list
         table['dec'] = dec_list
-    
-    # calculate primary array coordinates
-    table['x_img'] = table['x_hsc'] - exposure.getX0()
-    table['y_img'] = table['y_hsc'] - exposure.getY0()
+
     return table
 
 
