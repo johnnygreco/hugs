@@ -41,7 +41,7 @@ def parse_args(default_outdir=io):
     args = parser.parse_args()
 
     if args.group_id:
-        args.group_dir = os.path.join(args.outdir, 'group_'+args.group_id)
+        args.group_dir = os.path.join(args.outdir, 'group_'+str(args.group_id))
     elif (args.tract is None) or (args.patch is None):
         parser.print_help()
         exit(0)
