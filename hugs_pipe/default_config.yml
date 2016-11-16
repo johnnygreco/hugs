@@ -7,22 +7,22 @@ data_dir: hsc
 phot_colors: 'GI'
 
 thresh_low:
-    thresh: 3.00
+    thresh: 3.2
     npix: 20
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
 
 thresh_high:
-    thresh: 20.0
+    thresh: 22.0
     npix: 1
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
 
 clean:
-    max_frac_high_thresh: 0.1        # per footprint
-    min_pix_low_thresh: 1 psf sigma  # per footprint
+    max_frac_high_thresh: 0.1       # per footprint
+    min_pix_low_thresh: 5 psf sigma  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
 
@@ -32,7 +32,7 @@ thresh_det:
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
-    kern_fwhm: 5.0 # arcsec
+    kern_fwhm: 6.0 # arcsec
 
 find_blends:
     name_low: 'THRESH_LOW'
@@ -57,4 +57,4 @@ measure_sources:
 
 photometry:
     ell_nsig: 4.0
-    circ_radii: [3, 6, 9]
+    circ_radii: [1, 2, 3, 6, 9]

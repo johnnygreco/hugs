@@ -45,10 +45,10 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
         from .synths import SynthFactory
         cfg.logger.warning('**** injecting synths ****')
         sf = SynthFactory(**synths_kwargs)
-        sf.inject(cfg.exp)
+        sf.inject(cfg.exp, band='i')
         if cfg.phot_colors:
             for band in cfg.color_data.keys():
-                sf.inject(cfg.color_data[band])
+                sf.inject(cfg.color_data[band], band=band)
 
     ############################################################
     # Image thesholding at low and high thresholds. In both 
@@ -105,7 +105,7 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
 
     cfg.logger.info('building source catalog')
     sources = prim.measure_sources(
-        exp_clean, logger=cfg.logger, **cfg.measure_sources)
+        exp_clean, logger=cfg.logger, sf=sf, **cfg.measure_sources)
     img_data = cfg.mi.getImage().getArray()
 
     ############################################################
