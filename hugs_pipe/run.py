@@ -43,7 +43,8 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
     sf = None
     if inject_synths:
         from .synths import SynthFactory
-        cfg.logger.warning('**** injecting synths ****')
+        nsynths = synths_kwargs['num_synths']
+        cfg.logger.warning('**** injecting {} synths ****'.format(nsynths))
         sf = SynthFactory(**synths_kwargs)
         sf.inject(cfg.exp, band='i')
         if cfg.phot_colors:
