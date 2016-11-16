@@ -56,5 +56,5 @@ measure_sources:
         connectivity: 8
 
 photometry:
-    ell_nsig: 4.0
+    ell_nsig: 5.0
     circ_radii: [1, 2, 3, 6, 9]

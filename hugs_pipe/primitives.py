@@ -5,6 +5,7 @@ import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
 from astropy.table import Table, vstack
 from astropy.convolution import Gaussian2DKernel
+from scipy.spatial.distance import cdist
 import photutils as phut
 from . import utils
 from . import imtools
@@ -313,16 +314,22 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         props['fp_det_area'] = [fp.getArea()]*len(props)
 
         # find synths
-        if 'SYNTH' in msk_fp.getMaskPlaneDict().keys():
+        max_npix_dist = 4
+        if 'SYNTH' in msk_fp.getMaskPlaneDict().keys() and sf is not None:
+            props['synth_index'] = [-111]*len(props)
+            props['synth_fail'] = [False]*len(props)
             if (pix & msk_fp.getPlaneBitMask('SYNTH')!=0).sum() > 0:
-                props['synth_index'] = [np.nan]*len(props)
-                for i in range(len(props)):
-                    sqdist = (sf.get_psets().X0-props['x_img'][i])**2 +\
-                             (sf.get_psets().Y0-props['y_img'][i])**2
-                    if sqdist.min() < 16:
-                        props['synth_index'][i] = int(sqdist.argmin())
-            else:
-                props['synth_index'] = [np.nan]*len(props)
+                synth_coords = sf.get_psets()[['X0', 'Y0']]
+                props_coords = props['x_img', 'y_img'].to_pandas()
+                dist = cdist(synth_coords, props_coords)
+                min_idx = np.unravel_index(dist.argmin(), dist.shape)
+                if dist.min() < max_npix_dist:
+                    props['synth_index'][min_idx[1]] = min_idx[0]
+                    num_pass = (np.min(dist, axis=1) < max_npix_dist).sum()
+                    if len(props)>1 and num_pass>1:
+                        props['synth_fail'] = [True]*len(props)
+                else:
+                    props['synth_fail'] = [True]*len(props)
 
         table = vstack([table, props])
     
@@ -352,7 +359,7 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     return table
 
 
-def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=4.0, 
+def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0, 
                circ_radii=[3, 6, 9]):
     """
     Do basic aperture photometry within circular apertures and 
