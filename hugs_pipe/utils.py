@@ -81,6 +81,8 @@ def embed_slices(center, arr_shape, img_shape):
         use the following:
         img[img_slice] = arr[arr_slice]
     """
+    arr_shape = np.asarray(arr_shape)
+    img_shape = np.asarray(img_shape)
 
     assert np.alltrue(arr_shape%2 != np.array([0,0]))
 

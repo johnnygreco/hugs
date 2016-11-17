@@ -73,7 +73,7 @@ class Config(object):
         Setup the python logger.
         """
         if type(data_id)==str:
-            namee = data_id
+            name = data_id
         elif type(data_id)==dict:
             t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
             name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)

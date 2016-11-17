@@ -10,15 +10,13 @@ from ..run import run
 from ..config import Config
 from .. import utils
 
-exposure = utils.get_test_exp()
 dataDIR = os.environ.get('TEST_DATA_DIR')
 fn = os.path.join(dataDIR, 'test_exposure.fits')
 dir = os.path.dirname(os.path.realpath(__file__))
 dir = os.path.dirname(dir)
 
 def test_run():
-    cfg_fn = os.path.join(dir, 'default_config.yml')
-    cfg = Config(cfg_fn)
+    cfg = Config()
     cfg.set_data_id(fn)
     results = run(cfg, debug_return=True)
     mask = results.exposure.getMaskedImage().getMask()
