@@ -188,7 +188,9 @@ class SynthFactory(object):
             galaxy = self.make_galaxy(
                 pset, band=band.lower(), index=index, **kwargs)
             gal_pos = np.array([int(pset.Y0), int(pset.X0)])
-            img_slice, gal_slice = embed_slices(gal_pos, galaxy, image)
+            img_slice, gal_slice = embed_slices(gal_pos, 
+                                                galaxy.shape, 
+                                                image.shape)
             image[img_slice] += galaxy[gal_slice]
         if cat_fn:
             self.write_cat(cat_fn)

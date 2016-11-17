@@ -271,7 +271,6 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         hfp = afwDet.HeavyFootprintF(fp, mi_fp)
         pix = hfp.getMaskArray()
 
-
         # detect sources in footprint
         img = mi_fp.getImage().getArray().copy()
         x0, y0 = exp_fp.getXY0()

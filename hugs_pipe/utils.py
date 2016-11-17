@@ -37,6 +37,7 @@ def annuli(row_c, col_c, r_in, r_out, shape):
     row_idx, col_idx : ndarray of int
         Indices of annulus within host array.
     """
+
     # find bounding box of annulus
     center = np.array([row_c, col_c])
     ul = np.ceil(center - r_out).astype(int)
@@ -56,10 +57,11 @@ def annuli(row_c, col_c, r_in, r_out, shape):
     col_idx.flags.writeable = True
     row_idx += ul[0]
     col_idx += ul[1]
+
     return row_idx, col_idx
 
 
-def embed_slices(center, array, image):
+def embed_slices(center, arr_shape, img_shape):
     """
     Get slices to embed smaller array into larger image.
 
@@ -67,10 +69,10 @@ def embed_slices(center, array, image):
     ----------
     center : ndarray
         Center of array in the image coordinates.
-    array : ndarray
-        The array to embed. Shape dimensions must be odd.
-    image : ndarray
-        Main image array.
+    arr_shape : tuple 
+        Shape of the array to embed (dimensions must be odd).
+    img_shape : tuple
+        Shape of the main image array.  
 
     Returns
     -------
@@ -79,8 +81,6 @@ def embed_slices(center, array, image):
         use the following:
         img[img_slice] = arr[arr_slice]
     """
-    arr_shape = np.array(array.shape)
-    img_shape = np.array(image.shape)
 
     assert np.alltrue(arr_shape%2 != np.array([0,0]))
 
