@@ -5,7 +5,9 @@ from argparse import ArgumentParser
 from .utils import io
 
 def parse_args(default_outdir=io):
+
     parser = ArgumentParser('python '+sys.argv[0]) 
+
     parser.add_argument('-t', 
                         '--tract', 
                         type=int, 

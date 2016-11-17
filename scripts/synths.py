@@ -5,9 +5,9 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
+import pandas as pd
 import lsst.afw.image as afwImage
 import lsst.afw.display as afwDisp
-from lsst.pipe.base import Struct
 import hugs_pipe as hp
 
 def calc_mask_bit_fracs(exp):
@@ -20,28 +20,46 @@ def calc_mask_bit_fracs(exp):
     npix_blend = (msk_arr & getBitVal('BLEND') != 0).sum()
     npix_bright = (msk_arr & getBitVal('BRIGHT_OBJECT') != 0).sum()
 
-    return Struct(clean_frac=npix_clean/npix,
-                  bright_frac=npix_bright/npix,
-                  blend_frac=npix_blend/npix)
+    fracs = {'clean_frac': [npix_clean/npix],
+             'bright_frac': [npix_bright/npix],
+             'blend_frac': [npix_blend/npix]}
+
+    return fracs
 
 def main(config, pset_lims, outdir, num_synths=10, seed=None):
 
     synths_kwargs = {'num_synths': num_synths,
                      'seed': seed,
                      'pset_lims': pset_lims}
+
     tract, patch = config.data_id['tract'], config.data_id['patch']
-    prefix = os.path.join(outdir, 'hugs-pipe-{}-{}'.format(tract, patch))
+    prefix = os.path.join(outdir, 'hugs-pipe'.format(tract, patch))
 
     results = hp.run(config,
                      debug_return=True,
                      inject_synths=True,
                      synths_kwargs=synths_kwargs)
 
-    sources = results.sources
-    sources.write(prefix+'.csv')
+    # write source catalog
+    sources = results.sources.to_pandas()
+    fn = prefix+'-cat.csv'
+    sources.to_csv(fn, index=False, mode='a', header=(not os.path.isfile(fn)))
 
-    sf = results.sf
-    sf.write_cat(prefix+'-synths.csv')
+    # write synth catalog
+    fn = prefix+'-synths.csv'
+    sf_df = results.sf.get_psets()
+    sf_df['tract'] = tract
+    sf_df['patch'] = patch
+    sf_df['patch_id'] = np.arange(len(sf_df))
+    sf_df.to_csv(fn, index=False, mode='a', header=(not os.path.isfile(fn)))
+
+    fn = prefix+'-mask-fracs.csv'
+    mask_fracs = calc_mask_bit_fracs(results.exp_clean)
+    mask_fracs = pd.DataFrame(mask_fracs)
+    mask_fracs['tract'] = tract
+    mask_fracs['patch'] = patch 
+    mask_fracs.to_csv(
+        fn, index=False, mode='a', header=(not os.path.isfile(fn)))
 
 if __name__=='__main__':
     args = hp.parse_args(os.path.join(hp.io, 'synth-results'))
@@ -73,7 +91,7 @@ if __name__=='__main__':
         outdir = args.group_dir
         hp.utils.mkdir_if_needed(outdir)
         log_fn = os.path.join(outdir, 'hugs-pipe-synths.log')
-        config = hp.Config(log_fn=log_fn)
+        config = hp.Config(config_fn=args.config_fn, log_fn=log_fn)
 
         print('searching in', len(regions), 'regions')
         for tract, patch in regions['tract', 'patch']:

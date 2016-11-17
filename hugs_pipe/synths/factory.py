@@ -102,13 +102,13 @@ class SynthFactory(object):
         assert self._psets is not None, 'must set galaxy param sets'
         return self._psets
 
-    def write_cat(self, fn):
+    def write_cat(self, fn, **kwargs):
         """
         Save parameter set list to csv file. 
         """
 
         assert self._psets is not None, 'must set galaxy param sets'
-        self._psets.to_csv(fn, index=False)
+        self._psets.to_csv(fn, **kwargs)
 
     def make_galaxy(self, pset, bbox_num_reff=10, band='i', index=None):
         """
