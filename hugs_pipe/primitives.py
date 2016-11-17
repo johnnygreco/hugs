@@ -114,9 +114,12 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
     turned off for blended sources. 
     """
 
-    mask = exp.getMaskedImage().getMask()
+    mi = exp.getMaskedImage()
+    mask = mi.getMask()
+    msk_arr = mask.getArray()
     plane_low = mask.getPlaneBitMask(name_low)
     fp_list = afwDet.FootprintList()
+    x0, y0 = exp.getXY0()
     
     for fp_det in fpset_det.getFootprints():
 
@@ -145,10 +148,16 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
                 is_blend  |= fluxes[biggest]/fluxes.sum() < min_parent_flux
                 if is_blend:
                     fp_list.append(fp_det)
-                    mask_fp.clearMaskPlane(mask_fp.getMaskPlane('DETECTED'))
+                    for s in fp_det.getSpans():
+                        y = s.getY() - y0
+                        for x in range(s.getX0()-x0, s.getX1()-x0+1):
+                            msk_arr[y][x] -= mask.getPlaneBitMask('DETECTED')
             elif (areas < min_fp_area).sum() == areas.size:
                 fp_list.append(fp_det)
-                mask_fp.clearMaskPlane(mask_fp.getMaskPlane('DETECTED'))
+                for s in fp_det.getSpans():
+                    y = s.getY() - y0
+                    for x in range(s.getX0()-x0, s.getX1()-x0+1):
+                        msk_arr[y][x] -= mask.getPlaneBitMask('DETECTED')
 
     # create footprint set and set mask plane
     fpset_blends = afwDet.FootprintSet(exp.getBBox())
@@ -205,17 +214,6 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
-def _remove_table_cols(table):
-    remove_cols = [
-        'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
-        'background_sum', 'background_mean', 'background_at_centroid',
-        'xcentroid', 'ycentroid', 'xmin', 'xmax', 'ymin', 'ymax', 'min_value',
-        'max_value', 'minval_xpos', 'minval_ypos', 'maxval_xpos',
-        'maxval_ypos'
-    ]
-    table.remove_columns(remove_cols)
-
-
 def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
                     grow_stamps=None, detect_kwargs={}, deblend_kwargs={},
                     logger=None, sf=None):
@@ -258,6 +256,16 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     table = Table()
     kern = Gaussian2DKernel(kern_sig_pix)
     kern.normalize()
+
+    # don't need these photutils columns
+    exclude_cols = [
+        'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
+        'background_sum', 'background_mean', 'background_at_centroid',
+        'xmin', 'xmax', 'ymin', 'ymax', 'min_value',
+        'max_value', 'minval_xpos', 'minval_ypos', 'maxval_xpos',
+        'maxval_ypos'
+    ]
+
     for fp_id, fp in enumerate(fpset.getFootprints()):
 
         # get exposure in bbox of footprint 
@@ -291,7 +299,7 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
 
         # measure source properties
         props = phut.source_properties(img, seg_db)
-        props = phut.properties_table(props)
+        props = phut.properties_table(props, exclude_columns=exclude_cols)
 
         # calculate different coordinates
         props['x_hsc'] = props['xcentroid'] + x0
@@ -302,10 +310,6 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         # generate ids and flags
         props['fp_id'] = [fp_id]*len(props)
         props['nchild'] = [len(props)]*len(props)
-        if len(props)>1:
-            props['is_deblended'] = [True]*len(props)
-        else:
-            props['is_deblended'] = False
         num_edge = (pix & msk_fp.getPlaneBitMask('EDGE')!=0).sum()
         num_bright = (pix & msk_fp.getPlaneBitMask('BRIGHT_OBJECT')!=0).sum()
         props['num_edge_pix'] = [num_edge]*len(props)
@@ -313,9 +317,9 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
         props['fp_det_area'] = [fp.getArea()]*len(props)
 
         # find synths
-        max_npix_dist = 4
+        max_npix_dist = 5
         if 'SYNTH' in msk_fp.getMaskPlaneDict().keys() and sf is not None:
-            props['synth_index'] = [-111]*len(props)
+            props['synth_id'] = [-111]*len(props)
             props['synth_fail'] = [False]*len(props)
             if (pix & msk_fp.getPlaneBitMask('SYNTH')!=0).sum() > 0:
                 synth_coords = sf.get_psets()[['X0', 'Y0']]
@@ -323,7 +327,7 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
                 dist = cdist(synth_coords, props_coords)
                 min_idx = np.unravel_index(dist.argmin(), dist.shape)
                 if dist.min() < max_npix_dist:
-                    props['synth_index'][min_idx[1]] = min_idx[0]
+                    props['synth_id'][min_idx[1]] = min_idx[0]
                     num_pass = (np.min(dist, axis=1) < max_npix_dist).sum()
                     if len(props)>1 and num_pass>1:
                         props['synth_fail'] = [True]*len(props)
@@ -332,9 +336,8 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
 
         table = vstack([table, props])
     
-    # clean up table columns
     table['id'] = np.arange(0, len(table))
-    _remove_table_cols(table)
+    table.remove_columns(['xcentroid', 'ycentroid'])
 
     # use wcs to add ra & dec to table
     ra_list = []
@@ -354,6 +357,9 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
             dec_list.append(dec)
         table['ra'] = ra_list
         table['dec'] = dec_list
+
+    # masked columns make to_pandas convert ints to floats
+    table = Table(table, masked=False)
 
     return table
 
