@@ -27,3 +27,4 @@ def test_run():
     nfp_low = len(results.fpset_low.getFootprints())
     nfp_high = len(results.fpset_high.getFootprints())
     assert nfp_low > nfp_high
+    cfg.reset_mask_planes()
