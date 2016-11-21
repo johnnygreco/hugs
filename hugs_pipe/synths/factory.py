@@ -50,6 +50,10 @@ class SynthFactory(object):
         if psets or num_synths:
             self.set_psets(psets=psets, num_synths=num_synths)
 
+    @property
+    def num_synths(self):
+        return len(self._psets)
+
     def random_psets(self, num):
         """
         Generate list of random parameters.

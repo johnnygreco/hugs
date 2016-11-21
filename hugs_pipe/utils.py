@@ -8,12 +8,14 @@ __all__ = [
     'io', 'pixscale', 'zpt', 'annuli', 'get_astropy_wcs',
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
-    'combine_cats', 'check_random_state', 'embed_slices'
+    'combine_cats', 'check_random_state', 'embed_slices', 
+    'get_group_patches', 'calc_mask_bit_fracs'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
 pixscale = 0.168
 zpt = 27.0
+
 
 def annuli(row_c, col_c, r_in, r_out, shape):
     """
@@ -257,3 +259,32 @@ def check_random_state(seed):
 
     raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
                      ' instance'.format(seed))
+
+
+def get_group_patches(z_max=0.065, Mh_lims=[12.75, 14.0], group_id=None):
+    """
+    Get HSC patches associated with galaxy groups.
+    """
+    from astropy.table import Table
+    prefix = 'cat_z{}_Mh{}-{}'.format(z_max, Mh_lims[0], Mh_lims[1])
+    prefix = os.path.join(io, prefix)
+    patches_fn = prefix+'_tracts_n_patches.npy'
+    patches_dict = np.load(patches_fn).item()
+    return Table(patches_dict[group_id]) if group_id else patches_dict
+
+
+def calc_mask_bit_fracs(exp):
+    mask = exp.getMaskedImage().getMask()
+    msk_arr = mask.getArray()
+    npix = float(msk_arr.size)
+    getBitVal = mask.getPlaneBitMask
+
+    npix_clean = (msk_arr & getBitVal('CLEANED') != 0).sum()
+    npix_blend = (msk_arr & getBitVal('BLEND') != 0).sum()
+    npix_bright = (msk_arr & getBitVal('BRIGHT_OBJECT') != 0).sum()
+
+    fracs = {'clean_frac': [npix_clean/npix],
+             'bright_frac': [npix_bright/npix],
+             'blend_frac': [npix_blend/npix]}
+
+    return fracs

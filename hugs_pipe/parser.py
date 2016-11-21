@@ -40,6 +40,11 @@ def parse_args(default_outdir=io):
                         type=int, 
                         help='number of synths to inject', 
                         default=10)
+    parser.add_argument('--nthreads',
+                       type=int,
+                       help='number of threads (uses multiprocessing)',
+                       default=1)
+                    
     args = parser.parse_args()
 
     if args.group_id:

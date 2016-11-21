@@ -18,7 +18,7 @@ class Config(object):
     """
 
     def __init__(self, config_fn=None, data_id=None, log_level='info',
-                 log_fn=None):
+                 log_fn=None, outdir=None):
         """
         Initialization
 

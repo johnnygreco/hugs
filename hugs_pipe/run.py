@@ -10,7 +10,7 @@ from . import primitives as prim
 __all__ = ['run']
 
 
-def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
+def run(cfg, debug_return=False, synth_factory=None):
     """
     Run hugs pipeline.
 
@@ -22,10 +22,9 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
     debug_return : bool, optional
         If True, return struct with outputs from 
         every step of pipeline.
-    inject_synths : bool, optional
-        If True, inject synthetic galaxies. 
-    synths_kwargs : dict, optional
-        Arguments for hugs.SynthFactory.
+    synth_factory : hugs_pipe.SynthFactory
+        Synth injecting object. If None, no synths 
+        will be injected.
 
     Returns
     -------
@@ -40,16 +39,13 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
     # If desired, inject synthetic galaxies 
     ############################################################
     
-    sf = None
-    if inject_synths:
-        from .synths import SynthFactory
-        nsynths = synths_kwargs['num_synths']
-        cfg.logger.warning('**** injecting {} synths ****'.format(nsynths))
-        sf = SynthFactory(**synths_kwargs)
-        sf.inject(cfg.exp, band='i')
+    if synth_factory:
+        num_synths = synth_factory.num_synths
+        cfg.logger.warning('**** injecting {} synths ****'.format(num_synths))
+        synth_factory.inject(cfg.exp, band='i')
         if cfg.phot_colors:
             for band in cfg.color_data.keys():
-                sf.inject(cfg.color_data[band], band=band)
+                synth_factory.inject(cfg.color_data[band], band=band)
 
     ############################################################
     # Image thesholding at low and high thresholds. In both 
@@ -106,7 +102,7 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
 
     cfg.logger.info('building source catalog')
     sources = prim.measure_sources(
-        exp_clean, logger=cfg.logger, sf=sf, **cfg.measure_sources)
+        exp_clean, logger=cfg.logger, sf=synth_factory, **cfg.measure_sources)
     img_data = cfg.mi.getImage().getArray()
 
     ############################################################
@@ -138,12 +134,12 @@ def run(cfg, debug_return=False, inject_synths=False, synths_kwargs={}):
                                         fpset_low=fpset_low,
                                         fpset_high=fpset_high,
                                         fpset_det=fpset_det,
-                                        sf=sf)
+                                        sf=synth_factory)
     else:
         if inject_synths: 
-            results = lsst.pipe.base.Struct(sources=sources, sf=sf)
+            results = lsst.pipe.base.Struct(sources=sources, sf=synth_factory)
         else:
-            assert sf is None
+            assert synth_factory is None
             results = sources
 
     return results

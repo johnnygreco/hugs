@@ -6,44 +6,37 @@ from __future__ import division, print_function
 import os
 import numpy as np
 import pandas as pd
-import lsst.afw.image as afwImage
-import lsst.afw.display as afwDisp
+import schwimmbad
+from multiprocessing import Pool
+from astropy.table import Table
 import hugs_pipe as hp
+from hugs_pipe.utils import calc_mask_bit_fracs
 
-def calc_mask_bit_fracs(exp):
-    mask = exp.getMaskedImage().getMask()
-    msk_arr = mask.getArray()
-    npix = float(msk_arr.size)
-    getBitVal = mask.getPlaneBitMask
+pset_lims = {'n': [0.6, 1.2],
+             'mu0_i': [23, 26],
+             'ell': [0.2, 0.2],
+             'r_e': [2, 5]}
 
-    npix_clean = (msk_arr & getBitVal('CLEANED') != 0).sum()
-    npix_blend = (msk_arr & getBitVal('BLEND') != 0).sum()
-    npix_bright = (msk_arr & getBitVal('BRIGHT_OBJECT') != 0).sum()
-
-    fracs = {'clean_frac': [npix_clean/npix],
-             'bright_frac': [npix_bright/npix],
-             'blend_frac': [npix_blend/npix]}
-
-    return fracs
-
-def main(config, pset_lims, outdir, num_synths=10, seed=None):
-
-    synths_kwargs = {'num_synths': num_synths,
-                     'seed': seed,
+def worker(p):
+    data_id = {'tract': p['tract'], 'patch': p['patch'], 'filter': 'HSC-I'}
+    prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
+                                                           p['patch']))
+    log_fn = prefix+'.log'
+    config = hp.Config(config_fn=p['config_fn'], log_fn=log_fn)
+    config.set_data_id(data_id)
+    
+    synths_kwargs = {'num_synths': p['num_synths'],
+                     'seed': p['seed'],
                      'pset_lims': pset_lims}
 
-    tract, patch = config.data_id['tract'], config.data_id['patch']
-    prefix = os.path.join(outdir, 'hugs-pipe'.format(tract, patch))
+    sf = hp.SynthFactory(**synths_kwargs)
 
-    results = hp.run(config,
-                     debug_return=True,
-                     inject_synths=True,
-                     synths_kwargs=synths_kwargs)
+    results = hp.run(config, debug_return=True, synth_factory=sf)
 
     # write source catalog
     sources = results.sources.to_pandas()
     fn = prefix+'-cat.csv'
-    sources.to_csv(fn, index=False, mode='a', header=(not os.path.isfile(fn)))
+    sources.to_csv(fn, index=False)
 
     # write synth catalog
     fn = prefix+'-synths.csv'
@@ -51,52 +44,47 @@ def main(config, pset_lims, outdir, num_synths=10, seed=None):
     sf_df['tract'] = tract
     sf_df['patch'] = patch
     sf_df['patch_id'] = np.arange(len(sf_df))
-    sf_df.to_csv(fn, index=False, mode='a', header=(not os.path.isfile(fn)))
+    sf_df.to_csv(fn, index=False)
 
+    # write mask fractions 
     fn = prefix+'-mask-fracs.csv'
     mask_fracs = calc_mask_bit_fracs(results.exp_clean)
     mask_fracs = pd.DataFrame(mask_fracs)
     mask_fracs['tract'] = tract
     mask_fracs['patch'] = patch 
-    mask_fracs.to_csv(
-        fn, index=False, mode='a', header=(not os.path.isfile(fn)))
+    mask_fracs.to_csv(fn, index=False)
+
+def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
+    patches['outdir'] = outdir
+    patches['num_synths'] = num_synths
+    patches['seed'] = seed
+    patches['config_fn'] = config_fn
+
+    pool.map(worker, patches)
+    pool.close()
+
+    # write synth param lims
+    global pset_lims 
+    pset_lims = pd.DataFrame(pset_lims, index=['min', 'max'])
+    fn = os.path.join(outdir, 'synth_param_lims.csv')
+    pset_lims.to_csv(fn, index=True, index_label='limit')
 
 if __name__=='__main__':
     args = hp.parse_args(os.path.join(hp.io, 'synth-results'))
 
-    pset_lims = {'n': [0.6, 1.2],
-                 'mu0_i': [23, 26],
-                 'ell': [0.2, 0.2],
-                 'r_e': [2, 5]}
-
     if args.group_id is None:
+        assert (args.tract is not None) and (args.patch is not None)
         tract, patch = args.tract, args.patch
+        patches = Table([[tract], [patch]], names=['tract', 'patch'])
         outdir = os.path.join(args.outdir, 'synths-{}-{}'.format(tract, patch))
         hp.utils.mkdir_if_needed(outdir)
-
-        log_fn = os.path.join(outdir, 'hugs-pipe-synths.log')
-        config = hp.Config(config_fn=args.config_fn, log_fn=log_fn)
-
-        data_id = {'tract': tract, 'patch': patch, 'filter': 'HSC-I'}
-        config.set_data_id(data_id)
-        main(config, pset_lims, outdir, 
-             num_synths=args.num_synths, seed=args.seed)
+        pool = schwimmbad.choose_pool(processes=args.nthreads)
     else:
-        from astropy.table import Table
-        regions_fn = 'cat_z0.065_Mh12.75-14.0_tracts_n_patches.npy'
-        regions_fn = os.path.join(hp.io, regions_fn)
-        regions_dict = np.load(regions_fn).item()
-        regions = Table(regions_dict[args.group_id])
-
+        patches = hp.get_group_patches(group_id=args.group_id) 
         outdir = args.group_dir
         hp.utils.mkdir_if_needed(outdir)
-        log_fn = os.path.join(outdir, 'hugs-pipe-synths.log')
-        config = hp.Config(config_fn=args.config_fn, log_fn=log_fn)
+        print('searching in', len(patches), 'patches')
+        pool = schwimmbad.choose_pool(processes=args.nthreads)
 
-        print('searching in', len(regions), 'regions')
-        for tract, patch in regions['tract', 'patch']:
-            data_id = {'tract': tract, 'patch': patch, 'filter': 'HSC-I'}
-            config.set_data_id(data_id)
-            main(config, pset_lims, outdir, 
-                 num_synths=args.num_synths, seed=args.seed)
-            config.reset_mask_planes()
+    main(pool, patches, outdir, config_fn=args.config_fn, 
+         num_synths=args.num_synths, seed=args.seed)
