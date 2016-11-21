@@ -40,6 +40,10 @@ def parse_args(default_outdir=io):
                         type=int, 
                         help='number of synths to inject', 
                         default=10)
+    parser.add_argument('--label',
+                        type=str,
+                        help='extra label for run',
+                        default=None)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--ncores", 
