@@ -40,11 +40,19 @@ def parse_args(default_outdir=io):
                         type=int, 
                         help='number of synths to inject', 
                         default=10)
-    parser.add_argument('--nthreads',
-                       type=int,
-                       help='number of threads (uses multiprocessing)',
-                       default=1)
-                    
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--ncores", 
+                       dest="n_cores", 
+                       default=1,
+                       type=int, 
+                       help="Number of processes (uses multiprocessing).")
+    group.add_argument("--mpi", 
+                       dest="mpi",
+                       default=False,
+                       action="store_true", 
+                       help="Run with MPI.")
+
     args = parser.parse_args()
 
     if args.group_id:

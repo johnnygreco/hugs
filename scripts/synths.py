@@ -53,6 +53,32 @@ def worker(p):
     mask_fracs.to_csv(fn, index=False)
 
 
+def combine_results(outdir):
+    all_files = os.listdir(outdir)
+    join = os.path.join
+    parse = lambda key: [join(outdir, f) for f in all_files if key in f]
+
+    files = [parse('cat'), parse('mask-fracs'), parse('synths')]
+
+    prefix = join(outdir, 'hugs-pipe')
+    suffixes = ['-cat.csv', '-mask-fracs.csv', '-synths.csv']
+     
+    for fnames, suffix in zip(files, suffixes):
+        df = []
+        for fn in fnames:
+            df.append(pd.read_csv(fn))
+            os.remove(fn)
+        df = pd.concat(df, ignore_index=True)
+        df.to_csv(prefix+suffix, index=False)
+
+    log_fn = prefix+'.log'
+    with open(log_fn, 'w') as outfile:
+        for fn in parse('log'):
+            with open(fn) as infile:
+                outfile.write(infile.read())
+            os.remove(fn)
+
+
 def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
     patches['outdir'] = outdir
     patches['num_synths'] = num_synths
@@ -62,11 +88,16 @@ def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
     pool.map(worker, patches)
     pool.close()
 
+    if len(patches)>1:
+        combine_results(outdir)
+
     # write synth param lims
     global pset_lims 
     pset_lims = pd.DataFrame(pset_lims, index=['min', 'max'])
-    fn = os.path.join(outdir, 'synth_param_lims.csv')
+    fn = os.path.join(outdir, 'synth-param-lims.csv')
     pset_lims.to_csv(fn, index=True, index_label='limit')
+
+    #combine_results(outdir)
 
 
 if __name__=='__main__':
@@ -79,13 +110,12 @@ if __name__=='__main__':
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
         outdir = os.path.join(args.outdir, 'synths-{}-{}'.format(tract, patch))
         hp.utils.mkdir_if_needed(outdir)
-        pool = schwimmbad.choose_pool(processes=args.nthreads)
     else:
         patches = hp.get_group_patches(group_id=args.group_id) 
         outdir = args.group_dir
         hp.utils.mkdir_if_needed(outdir)
         print('searching in', len(patches), 'patches')
-        pool = schwimmbad.choose_pool(processes=args.nthreads)
 
+    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
     main(pool, patches, outdir, config_fn=args.config_fn, 
          num_synths=args.num_synths, seed=args.seed)

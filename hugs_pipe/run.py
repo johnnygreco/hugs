@@ -138,7 +138,8 @@ def run(cfg, debug_return=False, synth_factory=None):
                                         fpset_det=fpset_det,
                                         mask_fracs=mask_fracs)
     else:
-        results = lsst.pipe.base.Struct(sources=sources, mask_fracs=mask_fracs)
+        results = lsst.pipe.base.Struct(sources=sources, 
+                                        mask_fracs=mask_fracs)
         cfg.reset_mask_planes()
 
     return results
