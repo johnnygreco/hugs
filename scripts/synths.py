@@ -7,8 +7,6 @@ import os
 import numpy as np
 import pandas as pd
 import schwimmbad
-from multiprocessing import Pool
-from astropy.table import Table
 import hugs_pipe as hp
 from hugs_pipe.utils import calc_mask_bit_fracs
 
@@ -16,6 +14,7 @@ pset_lims = {'n': [0.6, 1.2],
              'mu0_i': [23, 26],
              'ell': [0.2, 0.2],
              'r_e': [2, 5]}
+
 
 def worker(p):
     data_id = {'tract': p['tract'], 'patch': p['patch'], 'filter': 'HSC-I'}
@@ -31,7 +30,7 @@ def worker(p):
 
     sf = hp.SynthFactory(**synths_kwargs)
 
-    results = hp.run(config, debug_return=True, synth_factory=sf)
+    results = hp.run(config, synth_factory=sf)
 
     # write source catalog
     sources = results.sources.to_pandas()
@@ -40,19 +39,19 @@ def worker(p):
 
     # write synth catalog
     fn = prefix+'-synths.csv'
-    sf_df = results.sf.get_psets()
-    sf_df['tract'] = tract
-    sf_df['patch'] = patch
+    sf_df = sf.get_psets()
+    sf_df['tract'] = p['tract']
+    sf_df['patch'] = p['patch']
     sf_df['patch_id'] = np.arange(len(sf_df))
     sf_df.to_csv(fn, index=False)
 
     # write mask fractions 
     fn = prefix+'-mask-fracs.csv'
-    mask_fracs = calc_mask_bit_fracs(results.exp_clean)
-    mask_fracs = pd.DataFrame(mask_fracs)
-    mask_fracs['tract'] = tract
-    mask_fracs['patch'] = patch 
+    mask_fracs = pd.DataFrame(results.mask_fracs)
+    mask_fracs['tract'] = p['tract']
+    mask_fracs['patch'] = p['patch']
     mask_fracs.to_csv(fn, index=False)
+
 
 def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
     patches['outdir'] = outdir
@@ -69,10 +68,12 @@ def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
     fn = os.path.join(outdir, 'synth_param_lims.csv')
     pset_lims.to_csv(fn, index=True, index_label='limit')
 
+
 if __name__=='__main__':
     args = hp.parse_args(os.path.join(hp.io, 'synth-results'))
 
     if args.group_id is None:
+        from astropy.table import Table
         assert (args.tract is not None) and (args.patch is not None)
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])

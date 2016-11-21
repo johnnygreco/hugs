@@ -122,6 +122,8 @@ def run(cfg, debug_return=False, synth_factory=None):
     else:
         utils.add_cat_params(sources)
 
+    mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
+
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
         
     if debug_return:
@@ -134,12 +136,9 @@ def run(cfg, debug_return=False, synth_factory=None):
                                         fpset_low=fpset_low,
                                         fpset_high=fpset_high,
                                         fpset_det=fpset_det,
-                                        sf=synth_factory)
+                                        mask_fracs=mask_fracs)
     else:
-        if inject_synths: 
-            results = lsst.pipe.base.Struct(sources=sources, sf=synth_factory)
-        else:
-            assert synth_factory is None
-            results = sources
+        results = lsst.pipe.base.Struct(sources=sources, mask_fracs=mask_fracs)
+        cfg.reset_mask_planes()
 
     return results
