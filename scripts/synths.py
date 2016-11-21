@@ -97,8 +97,6 @@ def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
     fn = os.path.join(outdir, 'synth-param-lims.csv')
     pset_lims.to_csv(fn, index=True, index_label='limit')
 
-    #combine_results(outdir)
-
 
 if __name__=='__main__':
     args = hp.parse_args(os.path.join(hp.io, 'synth-results'))
