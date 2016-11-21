@@ -17,6 +17,7 @@ pset_lims = {'n': [0.6, 1.2],
 
 
 def worker(p):
+
     data_id = {'tract': p['tract'], 'patch': p['patch'], 'filter': 'HSC-I'}
     prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
                                                            p['patch']))
@@ -54,6 +55,7 @@ def worker(p):
 
 
 def combine_results(outdir):
+
     all_files = os.listdir(outdir)
     join = os.path.join
     parse = lambda key: [join(outdir, f) for f in all_files if key in f]
@@ -80,6 +82,7 @@ def combine_results(outdir):
 
 
 def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
+
     patches['outdir'] = outdir
     patches['num_synths'] = num_synths
     patches['seed'] = seed
@@ -107,10 +110,12 @@ if __name__=='__main__':
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
         outdir = os.path.join(args.outdir, 'synths-{}-{}'.format(tract, patch))
+        outdir = outdir+'_'+args.label if args.label else outdir
         hp.utils.mkdir_if_needed(outdir)
     else:
         patches = hp.get_group_patches(group_id=args.group_id) 
         outdir = args.group_dir
+        outdir = outdir+'_'+args.label if args.label else outdir
         hp.utils.mkdir_if_needed(outdir)
         print('searching in', len(patches), 'patches')
 
