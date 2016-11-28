@@ -3,14 +3,19 @@
 #SBATCH -J synths      # job name
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=16
-#SBATCH -t 3:00:00 
+#SBATCH -t 2:00:00 
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end 
 #SBATCH --mail-user=jgreco@princeton.edu 
 
 cd /home/jgreco/projects/hugs-pipe/scripts
 
-group_id=4736
+if [[ $# -ne 1 ]]; then
+    echo "must give group id"
+    return 1
+fi
+
+group_id=$1
 num_synths=15
 nrepeat=10
 
