@@ -103,24 +103,27 @@ def run(cfg, debug_return=False, synth_factory=None):
     cfg.logger.info('building source catalog')
     sources = prim.measure_sources(
         exp_clean, logger=cfg.logger, sf=synth_factory, **cfg.measure_sources)
-    img_data = cfg.mi.getImage().getArray()
 
     ############################################################
     # Perform aperture photometry
     ############################################################
 
-    cfg.logger.info('performing aperture photometry')
-    if cfg.phot_colors:
-        cfg.color_data['I'] = img_data
-        prim.photometry(cfg.color_data, sources, **cfg.photometry)
-    else:
-        prim.photometry(img_data, sources, **cfg.photometry)
+    if len(sources)>0:
+        cfg.logger.info('performing aperture photometry')
+        img_data = cfg.mi.getImage().getArray()
+        if cfg.phot_colors:
+            cfg.color_data['I'] = img_data
+            prim.photometry(cfg.color_data, sources, **cfg.photometry)
+        else:
+            prim.photometry(img_data, sources, **cfg.photometry)
 
-    if type(cfg.data_id)==dict:
-        tract, patch = cfg.data_id['tract'], cfg.data_id['patch']
-        utils.add_cat_params(sources, tract, patch)
+        if type(cfg.data_id)==dict:
+            tract, patch = cfg.data_id['tract'], cfg.data_id['patch']
+            utils.add_cat_params(sources, tract, patch)
+        else:
+            utils.add_cat_params(sources)
     else:
-        utils.add_cat_params(sources)
+        cfg.logger.warning('**** skipping aperture photometry ****')
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
 

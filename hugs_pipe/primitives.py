@@ -336,30 +336,37 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
 
         table = vstack([table, props])
     
-    table['id'] = np.arange(0, len(table))
-    table.remove_columns(['xcentroid', 'ycentroid'])
+    if len(table)>0:
+        table['id'] = np.arange(0, len(table))
+        table.remove_columns(['xcentroid', 'ycentroid'])
 
-    # use wcs to add ra & dec to table
-    ra_list = []
-    dec_list = []
-    wcs = exposure.getWcs()
-    if wcs is None:
-        warn = 'no wcs with exposure'
+        # use wcs to add ra & dec to table
+        ra_list = []
+        dec_list = []
+        wcs = exposure.getWcs()
+        if wcs is None:
+            warn = 'no wcs with exposure'
+            if logger:
+                logger.warning(warn)
+            else:
+                print(warn)
+        else:
+            for x, y in table['x_hsc', 'y_hsc']:
+                ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
+                dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
+                ra_list.append(ra)
+                dec_list.append(dec)
+            table['ra'] = ra_list
+            table['dec'] = dec_list
+
+        # masked columns make to_pandas convert ints to floats
+        table = Table(table, masked=False)
+    else:
+        warn = '**** no sources found! ****'
         if logger:
             logger.warning(warn)
         else:
             print(warn)
-    else:
-        for x, y in table['x_hsc', 'y_hsc']:
-            ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
-            dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
-            ra_list.append(ra)
-            dec_list.append(dec)
-        table['ra'] = ra_list
-        table['dec'] = dec_list
-
-    # masked columns make to_pandas convert ints to floats
-    table = Table(table, masked=False)
 
     return table
 
