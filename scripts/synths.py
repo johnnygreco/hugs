@@ -68,8 +68,11 @@ def combine_results(outdir):
     for fnames, suffix in zip(files, suffixes):
         df = []
         for fn in fnames:
-            df.append(pd.read_csv(fn))
-            os.remove(fn)
+            try: 
+                df.append(pd.read_csv(fn))
+                os.remove(fn)
+            except pd.io.common.EmptyDataError:
+                os.rename(fn, fn[:-3]+'empty')
         df = pd.concat(df, ignore_index=True)
         df.to_csv(prefix+suffix, index=False)
 
