@@ -34,10 +34,10 @@ class Config(object):
             Level of python logger.
         log_fn : string, optional
             Log file name.
-	random_state : int, RandomState instance or None, optional 
-	    If int, random_state is the rng seed.
-	    If RandomState instance, random_state is the rng.
-	    If None, the rng is the RandomState instance used by np.random.
+        random_state : int, list of ints, RandomState instance, or None, optional 
+            If int or list of ints, random_state is the rng seed.
+            If RandomState instance, random_state is the rng.
+            If None, the rng is the RandomState instance used by np.random.
         """
 
         # read parameter file & setup param dicts
