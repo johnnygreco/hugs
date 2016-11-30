@@ -26,9 +26,8 @@ def worker(p):
     log_fn = prefix+'.log'
 
     if p['seed'] is None:
-        p1, p2 = int(p['patch'][0]), int(p['patch'][-1])
         pid = multiprocessing.current_process().pid
-        seed = int(time())*(p1+p2+1) + pid
+        seed = int(time()) + pid
     else:
         seed = p['seed']
 
