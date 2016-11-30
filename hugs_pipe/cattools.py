@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+from .utils import check_random_state
 
 __all__ = ['find_duplicates', 'get_random_subset', 'remove_duplicates']
 
@@ -13,9 +14,9 @@ def find_duplicates(cat, max_sep=0.7, ra_col='ra', dec_col='dec'):
     ----------
     cat : pandas DataFrame
         Source catalog. 
-    max_sep : float
+    max_sep : float, optional
         Max separation to be considered the same source (in arcsec).
-    ra_col, dec_col : string
+    ra_col, dec_col : string, optional
         The name of the ra and dec columns, which should be in degrees. 
 
     Returns
@@ -29,7 +30,7 @@ def find_duplicates(cat, max_sep=0.7, ra_col='ra', dec_col='dec'):
     return ind
 
 
-def get_random_subset(cat, size):
+def get_random_subset(cat, size, random_state=None):
     """
     Get random subset of source catalog.
 
@@ -39,13 +40,18 @@ def get_random_subset(cat, size):
         Source catalog.
     size : int
         Size of the random sample. 
+    random_state : int, RandomState instance or None, optional 
+        If int, random_state is the rng seed.
+        If RandomState instance, random_state is the rng.
+        If None, the rng is the RandomState instance used by np.random.
 
     Returns
     -------
     subset : pandas DataFrame
         The random subset.
     """
-    random_rows = np.random.choice(len(cat), size, replace=False)
+    rng = check_random_state(random_state)
+    random_rows = rng.choice(len(cat), size, replace=False)
     subset = cat.iloc[random_rows]
     return subset
 

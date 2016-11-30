@@ -18,7 +18,7 @@ class Config(object):
     """
 
     def __init__(self, config_fn=None, data_id=None, log_level='info',
-                 log_fn=None, outdir=None):
+                 log_fn=None, outdir=None, random_state=None):
         """
         Initialization
 
@@ -34,6 +34,10 @@ class Config(object):
             Level of python logger.
         log_fn : string, optional
             Log file name.
+	random_state : int, RandomState instance or None, optional 
+	    If int, random_state is the rng seed.
+	    If RandomState instance, random_state is the rng.
+	    If None, the rng is the RandomState instance used by np.random.
         """
 
         # read parameter file & setup param dicts
@@ -59,6 +63,8 @@ class Config(object):
         self._timer = None
         self.log_fn = log_fn
         self.log_level = log_level
+        self.rng = utils.check_random_state(random_state)
+        self._clean['random_state'] = self.rng
 
         self.phot_colors = params['phot_colors']
 
