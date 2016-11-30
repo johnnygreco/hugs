@@ -4,6 +4,8 @@ Run hugs-pipe on data with synthetic UGDs.
 from __future__ import division, print_function
 
 import os
+from time import time
+import multiprocessing
 import numpy as np
 import pandas as pd
 import schwimmbad
@@ -22,11 +24,22 @@ def worker(p):
     prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
                                                            p['patch']))
     log_fn = prefix+'.log'
-    config = hp.Config(config_fn=p['config_fn'], log_fn=log_fn)
+
+    if p['seed'] is None:
+        p1, p2 = int(p['patch'][0]), int(p['patch'][-1])
+        pid = multiprocessing.current_process().pid
+        seed = int(time())*(p1+p2+1) + pid
+    else:
+        seed = p['seed']
+
+    config = hp.Config(config_fn=p['config_fn'], 
+                       log_fn=log_fn, 
+                       random_state=seed)
     config.set_data_id(data_id)
+    config.logger.info('random seed set to {}'.format(seed))
     
     synths_kwargs = {'num_synths': p['num_synths'],
-                     'seed': p['seed'],
+                     'random_state': config.rng,
                      'pset_lims': pset_lims}
 
     sf = hp.SynthFactory(**synths_kwargs)

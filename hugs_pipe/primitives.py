@@ -18,7 +18,7 @@ __all__ = ['clean',
 
 
 def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
-          max_frac_high_thresh=0.3, rgrow=None):
+          max_frac_high_thresh=0.3, rgrow=None, random_state=None):
     """
     Clean image of bright sources and associated diffuse regions by 
     replacing them with sky noise. Also, remove low-threshold regions 
@@ -46,11 +46,12 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     """
     
     # generate array of gaussian noise
+    rng = utils.check_random_state(random_state)
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
     shape = mask.getArray().shape
     back_rms = mi.getImage().getArray()[mask.getArray()==0].std()
-    noise_array = back_rms*np.random.randn(shape[0], shape[1])
+    noise_array = back_rms*rng.randn(shape[0], shape[1])
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())

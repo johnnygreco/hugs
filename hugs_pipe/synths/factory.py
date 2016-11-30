@@ -26,7 +26,7 @@ class SynthFactory(object):
     """
 
     def __init__(self, num_synths=None, psets=None,
-                 pset_lims={}, seed=None):
+                 pset_lims={}, random_state=None):
         """
         Initialize.
         
@@ -38,14 +38,19 @@ class SynthFactory(object):
             Set of galaxy parameters.
         pset_lims : dict, optional
             Parameter limits. 
-        seed : int, optional
-            Random number generator seed.
+	random_state : int, RandomState instance or None, optional 
+	    If int, random_state is the rng seed.
+	    If RandomState instance, random_state is the rng.
+	    If None, the rng is the RandomState instance used by np.random.
+	
+        random_state : int, optional
+            Random number generator random_state.
         """
 
         self.pset_lims = PSET_LIMS.copy()
         for k, v in pset_lims.items():
             self.pset_lims[k] = v
-        self.rng = check_random_state(seed)
+        self.rng = check_random_state(random_state)
         self._psets = None
         if psets or num_synths:
             self.set_psets(psets=psets, num_synths=num_synths)
