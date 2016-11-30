@@ -231,7 +231,7 @@ def check_random_state(seed):
 
     Parameters
     ----------
-    seed : `None`, int, or `numpy.random.RandomState`
+    seed : `None`, int, list of ints, or `numpy.random.RandomState`
         If ``seed`` is `None`, return the `~numpy.random.RandomState`
         singleton used by ``numpy.random``.  If ``seed`` is an `int`,
         return a new `~numpy.random.RandomState` instance seeded with
@@ -245,7 +245,7 @@ def check_random_state(seed):
 
     Notes
     -----
-    This routine is from scikit-learn.  See
+    This routine is adapted from scikit-learn.  See
     http://scikit-learn.org/stable/developers/utilities.html#validation-tools.
     """
     import numbers
@@ -256,6 +256,9 @@ def check_random_state(seed):
         return np.random.RandomState(seed)
     if isinstance(seed, np.random.RandomState):
         return seed
+    if type(seed)==list:
+        if type(seed[0])==int:
+            return np.random.RandomState(seed)
 
     raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
                      ' instance'.format(seed))
