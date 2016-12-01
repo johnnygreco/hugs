@@ -22,7 +22,7 @@ num_synths=15
 nrepeat=50
 
 for label in $(seq 1 $nrepeat); do
-    python synths.py --ncores 32 -g $group_id --num_synths $num_synths --label $label \
+    python synth_runner.py --ncores 32 -g $group_id --num_synths $num_synths --label $label \
         -c $HUGS_PIPE_IO/config-11-17-2016.yml \
         -o /scratch/network/jgreco/hugs-pipe-output/synth-results
 done

@@ -26,9 +26,9 @@ def worker(p):
     log_fn = prefix+'.log'
 
     if p['seed'] is None:
-        p1, p2 = int(p['patch'][0]), int(p['patch'][-1])
+        tract, p1, p2 = p['tract'], int(p['patch'][0]), int(p['patch'][-1])
         pid = multiprocessing.current_process().pid
-        seed = [int(time())+pid, p1, p2, pid]
+        seed = [int(time())+pid, tract, p1, p2, pid]
     else:
         seed = p['seed']
 
@@ -130,9 +130,11 @@ if __name__=='__main__':
         hp.utils.mkdir_if_needed(outdir)
     else:
         patches = hp.get_group_patches(group_id=args.group_id) 
+        hp.utils.mkdir_if_needed(args.group_dir)
         outdir = args.group_dir
-        outdir = outdir+'_'+args.label if args.label else outdir
-        hp.utils.mkdir_if_needed(outdir)
+        if args.label:
+            outdir = os.path.join(outdir, 'synth-run-'+args.label)
+            hp.utils.mkdir_if_needed(outdir)
         print('searching in', len(patches), 'patches')
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
