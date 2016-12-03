@@ -68,7 +68,7 @@ def get_cutout(center, size, exp=None, data_id=None, butler=None):
     center = afwGeom.Point2I(int(center[0]), int(center[1]))
     bbox = afwGeom.Box2I(center, center)
     bbox.grow(size)
-    bbox.clip(exp.getBBox())
+    bbox.clip(exp.getBBox(afwImage.PARENT))
     cutout = exp.Factory(exp, bbox, afwImage.PARENT)
 
     return cutout

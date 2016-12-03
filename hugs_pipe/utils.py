@@ -2,14 +2,16 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
+import lsst.afw.image as afwImage
 import lsst.afw.math as afwMath
+from astropy.table import Table
 
 __all__ = [
     'io', 'pixscale', 'zpt', 'annuli', 'get_astropy_wcs',
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
     'combine_cats', 'check_random_state', 'embed_slices', 
-    'get_group_patches', 'calc_mask_bit_fracs'
+    'get_group_patches', 'calc_mask_bit_fracs', 'get_exposure'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
@@ -147,6 +149,34 @@ def get_test_exp():
     return exposure
 
 
+def get_exposure(data_id, butler=None, datadir=os.environ.get('HSC_DIR')):
+    """
+    Return HSC exposure. 
+
+    Parameters
+    ----------
+    data_id : str, afwImage.ExposureF, or dict
+        Exposure info. Can be file name, an exposure object, 
+        or dict of HSC data ID.
+    butler : lsst.daf.persistence.Butler
+        The Butler.
+    datadir : str, optional
+        Location of exposure data.
+    """
+    if type(data_id)==str:
+        exp = afwImage.ExposureF(data_id)
+    elif type(data_id)==afwImage.ExposureF:
+        exp = data_id
+    elif type(data_id)==dict:
+        for key in ['tract', 'patch', 'filter']:
+            assert key in data_id.keys()
+        if butler is None:
+            import lsst.daf.persistence.Butler
+            butler = lsst.daf.persistence.Butler(datadir)
+        exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
+    return exp
+
+
 def mkdir_if_needed(directory):
     """"
     Create directory if it does not exist.
@@ -211,7 +241,7 @@ def combine_cats(catdir, label='master', outdir='same'):
     """
     Combine catalogs from a group of runs.
     """
-    from astropy.table import Table, vstack
+    from astropy.table import vstack
 
     files = [fn for fn in os.listdir(catdir) if fn[-3:]=='csv']
 
@@ -268,7 +298,6 @@ def get_group_patches(z_max=0.065, Mh_lims=[12.75, 14.0], group_id=None):
     """
     Get HSC patches associated with galaxy groups.
     """
-    from astropy.table import Table
     prefix = 'cat_z{}_Mh{}-{}'.format(z_max, Mh_lims[0], Mh_lims[1])
     prefix = os.path.join(io, prefix)
     patches_fn = prefix+'_tracts_n_patches.npy'
@@ -291,3 +320,9 @@ def calc_mask_bit_fracs(exp):
              'blend_frac': [npix_blend/npix]}
 
     return fracs
+
+
+def check_astropy_to_pandas(cat):
+    if type(cat)==Table:
+        cat = cat.to_pandas()
+    return cat
