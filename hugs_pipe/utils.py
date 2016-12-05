@@ -11,7 +11,8 @@ __all__ = [
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
     'combine_cats', 'check_random_state', 'embed_slices', 
-    'get_group_patches', 'calc_mask_bit_fracs', 'get_exposure'
+    'get_group_patches', 'calc_mask_bit_fracs', 'get_exposure',
+    'check_kwargs_defaults'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
@@ -321,8 +322,14 @@ def calc_mask_bit_fracs(exp):
 
     return fracs
 
-
 def check_astropy_to_pandas(cat):
     if type(cat)==Table:
         cat = cat.to_pandas()
     return cat
+
+
+def check_kwargs_defaults(kwargs, defaults):
+    kw = defaults.copy()
+    for k, v in kwargs.items():
+        kw[k] = v
+    return kw
