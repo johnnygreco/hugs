@@ -21,7 +21,7 @@ __all__ = ['Viewer']
 
 class Viewer(object):
 
-    def __init__(self, data_id, butler=None, 
+    def __init__(self, data_id=None, butler=None, 
                  data_dir=DATADIR, hsc_rgb_bands='IRG'):
         """
         Parameters
@@ -37,14 +37,14 @@ class Viewer(object):
             HSC bands in 'RGB' order for visualization.
         """
 
-        self._data_id = data_id
         self._butler = butler
         self.data_dir = data_dir
         self.frames = {}
-        self.exp = utils.get_exposure(data_id, self.butler, data_dir)
-        self._rgb_images = None
         self.hsc_rgb_bands = hsc_rgb_bands
         self.current_axis = None
+        self._data_id = None
+        if data_id:
+            self.set_data_id(data_id)
 
     @property
     def butler(self):
@@ -225,7 +225,7 @@ class Viewer(object):
 
         return self.current_axis
 
-    def mpl_display_cutout(self, coord_hsc, size=200, hsc_bands='IRG', 
+    def mpl_display_cutout(self, coord_hsc, size=100, hsc_bands='IRG', 
                            show=False, subplots_kw={}, imshow_kw={}, 
                            subplots=None, rgb_kw={}):
         """
@@ -320,6 +320,7 @@ class Viewer(object):
 
         ax.set_xlim(ax.get_xlim())
         ax.set_ylim(ax.get_ylim())
+        points = []
 
         for _, source in cat.iterrows():
             x_hsc, y_hsc = source['x_hsc'], source['y_hsc']
@@ -332,7 +333,14 @@ class Viewer(object):
                 ell = Ellipse((x, y), a_diam, b_diam, theta, 
                               fc='none', **ell_kw)
                 ax.add_patch(ell)
-                ax.plot(x, y, ls='none', **plot_kw)
+                p, = ax.plot(x, y, ls='none', **plot_kw)
+                points.append(p)
                 if coord:
                     if (x_hsc, y_hsc) == coord:
-                        ax.plot(x, y, 'wo', mfc='none', mew=1, mec='w', ms=10)
+                        p, = ax.plot(x, y, 'wo', mfc='none', 
+                                     mew=1, mec='w', ms=10)
+                        points.append(p)
+
+        ca = self.current_axis
+        self.current_axis = lsst.pipe.base.Struct(
+            fig=ca.fig, ax=ca.ax, bbox=ca.bbox, points=points)
