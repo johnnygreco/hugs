@@ -341,6 +341,8 @@ class Viewer(object):
                                      mew=1, mec='w', ms=10)
                         points.append(p)
 
-        ca = self.current_axis
+        cax = self.current_axis
         self.current_axis = lsst.pipe.base.Struct(
-            fig=ca.fig, ax=ca.ax, bbox=ca.bbox, points=points)
+            fig=cax.fig, ax=cax.ax, bbox=cax.bbox, points=points)
+
+        return self.current_axis
