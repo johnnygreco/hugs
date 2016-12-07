@@ -18,8 +18,7 @@ viz_dir = os.path.join(hp.io, 'viz-inspect-results')
 
 class GUI(object):
 
-    def __init__(self, root, master, cat_fn, out_fn, 
-                 group_id, apply_cuts):
+    def __init__(self, root, master, cat_fn, out_fn, group_id, apply_cuts):
 
         # initialize attributes
         self.root = root
@@ -281,7 +280,6 @@ if __name__=='__main__':
     parser.add_argument('-c', '--cat_fn', default=None)
     parser.add_argument(
         '--no-cuts', dest='apply_cuts', action='store_false', default=True)
-
     args = parser.parse_args()
 
     if args.out_fn is None:
