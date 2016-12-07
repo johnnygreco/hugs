@@ -48,7 +48,7 @@ class GUI(object):
                 self.current_idx = self.cat[self.cat['candy']==-1].index[0]
             else:
                 verify = tkMessageBox.askyesno(
-                    'Verify', 'Progress will be lost, okay?')
+                    'Verify', 'Progress will be lost, okay?', default='no')
                 if verify:
                     self._load_cat(cat_fn, group_id, apply_cuts)
                 else:
