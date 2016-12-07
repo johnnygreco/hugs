@@ -60,7 +60,7 @@ class GUI(object):
         top_fr = tk.Frame(master)
         mid_fr = tk.Frame(master)
         bot_fr = tk.Frame(master)
-
+        
         # status info
         self.status = tk.Label(
             master, text='', bd=1, relief='sunken', anchor='w')
@@ -78,7 +78,7 @@ class GUI(object):
             row=0, column=0, sticky='w')
         self.idx_evar= tk.IntVar()
         self.idx_evar.set(self.current_idx)
-        idx_entry = tk.Entry(bot_fr, textvariable=self.idx_evar)
+        idx_entry = tk.Entry(bot_fr, textvariable=self.idx_evar, takefocus=0)
         idx_entry.grid(row=0, column=1, sticky='w', padx=8)
         idx_entry.bind('<Return>', self.set_idx)
 
@@ -143,6 +143,7 @@ class GUI(object):
         master.bind('s', self.save_progress)
         master.bind('<Left>', self.prev_idx)
         master.bind('<Right>', self.next_idx)
+        master.bind_all("<1>", lambda event: event.widget.focus_set())
 
         # build canvas
         self.fig.set_tight_layout(True)
