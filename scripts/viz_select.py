@@ -14,7 +14,7 @@ from matplotlib.figure import Figure
 import hugs_pipe as hp
 import lsst.daf.persistence
 
-viz_dir = os.path.join(os.environ.get('DATA_DIR'), 'viz-inspect-results')
+viz_dir = os.path.join(hp.io, 'viz-inspect-results')
 
 class GUI(object):
 
@@ -254,20 +254,16 @@ if __name__=='__main__':
 
     if args.out_fn is None:
         outdir = viz_dir
-        out_fn = 'viz-inspect-group-'+args.group_id+'.csv'
-        out_fn = os.path.join(outdir, out_fn)
-    else:
-        out_fn = args.out_fn
-
+        args.out_fn = 'viz-inspect-group-'+args.group_id+'.csv'
+        args.out_fn = os.path.join(outdir, args.out_fn)
+    
     if args.cat_fn is None:
-        catdir = '/Users/protostar/Dropbox/tiger-transfer/run-results/'
+        catdir = os.path.join(hp.io, 'run-results')
         catdir = os.path.join(catdir, 'group_'+args.group_id)
-        cat_fn = os.path.join(catdir, 'hugs-pipe-cat.csv')
-    else:
-        cat_fn = args.cat_fn
+        args.cat_fn = os.path.join(catdir, 'hugs-pipe-cat.csv')
 
-    root = tk.Tk()
+    root = tk.Toplevel()
     root.title('hugs-pipe viz inspect')
-    gui = GUI(root, cat_fn, out_fn, args.group_id, 
+    gui = GUI(root, args.cat_fn, args.out_fn, args.group_id, 
               args.apply_cuts, args.use_ds9)
     root.mainloop()
