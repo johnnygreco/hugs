@@ -170,7 +170,6 @@ class GUI(object):
         return self._coord
 
     def _load_cat(self, cat_fn, group_id, apply_cuts):
-        # get catalog and remove duplicate entries
         self.cat = pd.read_csv(cat_fn)
         if apply_cuts:
             hp.cattools.cutter(self.cat, group_id=group_id, inplace=True)
