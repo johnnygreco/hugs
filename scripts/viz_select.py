@@ -1,14 +1,13 @@
 from __future__ import division, print_function
 
 import os
-import numpy as np
 import pandas as pd
 import Tkinter as tk
 import tkMessageBox
-import matplotlib 
 from functools import partial
-matplotlib.use("TkAgg")
 
+import matplotlib 
+matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
@@ -276,8 +275,8 @@ class GUI(object):
 
 if __name__=='__main__':
     from argparse import ArgumentParser
-    parser = ArgumentParser('view candidates')
 
+    parser = ArgumentParser('view candidates')
     parser.add_argument('group_id', type=str, help='group id')
     parser.add_argument('-o', '--out_fn', default=None)
     parser.add_argument('-c', '--cat_fn', default=None)
