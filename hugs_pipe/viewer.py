@@ -71,8 +71,10 @@ class Viewer(object):
 
         if self._rgb_images is None:
             self._rgb_images = {}
+            _id = self.get_data_id()
+            print('getting color exposures for {} | {}'.format(
+                _id['tract'], _id['patch']))
             for band in self.hsc_rgb_bands:
-                _id = self.get_data_id()
                 _id['filter'] = 'HSC-'+band
                 exp = self.butler.get('deepCoadd_calexp', _id, immediate=True)
                 self._rgb_images.update({band: exp.getMaskedImage()})
