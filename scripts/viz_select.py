@@ -25,6 +25,7 @@ class GUI(object):
         self.master = master
         self.save_delta_t = 5 # minutes
         self.current_idx = 0
+        self.group_id = group_id
         self.rgb_kw = dict(Q=8, dataRange=0.25)
         self.tract = None
         self.patch = None
@@ -41,21 +42,26 @@ class GUI(object):
 
         # if output catalog exists, check if we want to reload progress
         if os.path.isfile(out_fn):
-            answer = tkMessageBox.askyesno(
-                'Output catalog exists', 'Want to start where you left off?')
+            msg = 'Output catalog exists. Want to start where you left off?'
+            answer = tkMessageBox.askyesno('HSC-HUGs Message', msg)
             if answer:
                 self.cat = pd.read_csv(out_fn)
+                flagged = self.cat['candy']==-1
+                if flagged.sum()==0:
+                    msg = 'All sources have been classified.'
+                    tkMessageBox.showinfo('HSC-HUGs Message', msg)
+                    sys.exit('Exiting without changing anything...')
                 self.current_idx = self.cat[self.cat['candy']==-1].index[0]
             else:
                 verify = tkMessageBox.askyesno(
                     'Verify', 'Progress will be lost, okay?', default='no')
                 if verify:
-                    self._load_cat(cat_fn, group_id, apply_cuts)
+                    self._load_cat(cat_fn, apply_cuts)
                 else:
                     self.root.destroy()
                     sys.exit('Exiting without changing anything...')
         else:
-            self._load_cat(cat_fn, group_id, apply_cuts)
+            self._load_cat(cat_fn, apply_cuts)
 
         top_fr = tk.Frame(master)
         mid_fr = tk.Frame(master)
@@ -169,10 +175,10 @@ class GUI(object):
             self.update_info()
         return self._coord
 
-    def _load_cat(self, cat_fn, group_id, apply_cuts):
+    def _load_cat(self, cat_fn, apply_cuts):
         self.cat = pd.read_csv(cat_fn)
         if apply_cuts:
-            hp.cattools.cutter(self.cat, group_id=group_id, inplace=True)
+            hp.cattools.cutter(self.cat, group_id=self.group_id, inplace=True)
         # sort by tract and patch
         self.cat.sort_values(['tract', 'patch'], inplace=True)
         self.cat.reset_index(drop=True, inplace=True)
@@ -197,9 +203,18 @@ class GUI(object):
 
     def next_idx(self, event=None):
         self.current_idx += 1
-        self.is_new_idx = True
-        self.idx_evar.set(self.current_idx)
-        self.display_image()
+        if self.current_idx > (len(self.cat)-1):
+            msg = 'Congrats, visual inspection for group '
+            msg += self.group_id+' is complete!'
+            w = tk.Tk()
+            w.withdraw()
+            tkMessageBox.showinfo('HSC-HUGs Message', msg, parent=w)
+            w.destroy()
+            self.quit()
+        else:
+            self.is_new_idx = True
+            self.idx_evar.set(self.current_idx)
+            self.display_image()
 
     def prev_idx(self, event=None):
         if self.current_idx >0:
