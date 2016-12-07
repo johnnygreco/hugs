@@ -54,6 +54,7 @@ class GUI(object):
                 else:
                     print('Exiting without changing anything...')
                     self.root.destroy()
+                    exit(1)
         else:
             self._load_cat(cat_fn, group_id, apply_cuts)
 
