@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-import os
+import os, sys
 import pandas as pd
 import Tkinter as tk
 import tkMessageBox
@@ -52,9 +52,8 @@ class GUI(object):
                 if verify:
                     self._load_cat(cat_fn, group_id, apply_cuts)
                 else:
-                    print('Exiting without changing anything...')
                     self.root.destroy()
-                    exit(1)
+                    sys.exit('Exiting without changing anything...')
         else:
             self._load_cat(cat_fn, group_id, apply_cuts)
 
