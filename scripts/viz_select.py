@@ -149,7 +149,7 @@ class GUI(object):
         master.bind('s', self.save_progress)
         master.bind('<Left>', self.prev_idx)
         master.bind('<Right>', self.next_idx)
-        master.bind_all("<1>", lambda event: event.widget.focus_set())
+        master.bind_all('<1>', lambda event: event.widget.focus_set())
 
         # build canvas
         self.fig.set_tight_layout(True)
