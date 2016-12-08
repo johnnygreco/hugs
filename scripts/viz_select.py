@@ -38,7 +38,7 @@ class GUI(object):
         self.out_fn = out_fn
         self._coord = None
         self._viewer = hp.Viewer()
-        master.withdraw()
+        self.master.withdraw()
 
         # if output catalog exists, check if we want to reload progress
         if os.path.isfile(out_fn):
@@ -63,13 +63,13 @@ class GUI(object):
         else:
             self._load_cat(cat_fn, apply_cuts)
 
-        top_fr = tk.Frame(master)
-        mid_fr = tk.Frame(master)
-        bot_fr = tk.Frame(master)
+        top_fr = tk.Frame(self.master)
+        mid_fr = tk.Frame(self.master)
+        bot_fr = tk.Frame(self.master)
         
         # status info
-        self.status = tk.Label(
-            master, text='', bd=1, relief='sunken', anchor='w')
+        self.status = tk.Text(
+            self.master, height=1, relief='sunken', bg=self.master.cget('bg'))
         self.status.pack(side='bottom', fill='x', anchor='w')
 
         top_fr.pack(side='top', expand=0)
@@ -142,22 +142,22 @@ class GUI(object):
         quit_button.pack(side='left', padx=padx)
 
         # useful key bindings
-        master.bind('y', up_flag)
-        master.bind('n', down_flag)
-        master.bind('q', question_flag)
-        master.bind('t', self.toggle_source)
-        master.bind('s', self.save_progress)
-        master.bind('<Left>', self.prev_idx)
-        master.bind('<Right>', self.next_idx)
-        master.bind_all('<1>', lambda event: event.widget.focus_set())
+        self.master.bind('1', up_flag)
+        self.master.bind('2', down_flag)
+        self.master.bind('3', question_flag)
+        self.master.bind('t', self.toggle_source)
+        self.master.bind('s', self.save_progress)
+        self.master.bind('<Left>', self.prev_idx)
+        self.master.bind('<Right>', self.next_idx)
+        self.master.bind_all('<1>', lambda event: event.widget.focus_set())
 
         # build canvas
         self.fig.set_tight_layout(True)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=master)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
         self.display_image()
         self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
         self.canvas.show()
-        master.deiconify()
+        self.master.deiconify()
 
         # save progress every save_delta_t minutes
         self.root.after(self.save_delta_t*60*1000, self.save_progress)
@@ -257,7 +257,7 @@ class GUI(object):
         self.canvas.draw()
 
     def update_info(self):
-        txt = 'tract: {}  -   patch: {}  -  coord: {:.4f}, {:.4f}  -  '
+        txt = 'tract: {}  -   patch: {}  -  coord: {:.5f} {:.5f}  -  '
         txt += 'r: {:.2f}  -  mu: {:.2f}  -  flag: {}'
         cols = ['ra', 'dec', 'r_circ_seg', 'mu_2_i']
         cols += ['candy', 'junk', 'ambiguous']
@@ -270,7 +270,11 @@ class GUI(object):
         else:
             flag = 'n/a'
         txt = txt.format(self.tract, self.patch, ra, dec, r_circ, mu, flag)
-        self.status.configure(text=txt)
+        self.status.config(state='normal')
+        self.status.delete(1.0, 'end')
+        self.status.insert('insert', txt)
+        self.status.config(state='disabled')
+        #self.status.configure(text=txt)
 
     def set_flag(self, flag, event=None):
         self.cat.loc[self.current_idx, flag] = 1
