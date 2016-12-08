@@ -147,8 +147,8 @@ class GUI(object):
         self.master.bind('3', question_flag)
         self.master.bind('t', self.toggle_source)
         self.master.bind('s', self.save_progress)
-        self.master.bind('<Left>', self.prev_idx)
-        self.master.bind('<Right>', self.next_idx)
+        self.master.bind('<Down>', self.prev_idx)
+        self.master.bind('<Up>', self.next_idx)
         self.master.bind_all('<1>', lambda event: event.widget.focus_set())
 
         # build canvas
