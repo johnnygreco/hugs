@@ -14,14 +14,14 @@ thresh_low:
     thresh_type: stdev
 
 thresh_high:
-    thresh: 28.0
+    thresh: 30.0
     npix: 1
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
 
 clean:
-    max_frac_high_thresh: 0.15      # per footprint
+    max_frac_high_thresh: 0.2      # per footprint
     min_pix_low_thresh: 3 psf sigma  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4

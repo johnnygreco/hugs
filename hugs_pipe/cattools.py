@@ -13,9 +13,9 @@ __all__ = ['cutter',
 # Default selection cuts
 ##################################
 
-MIN_CUTS = {'r_circ_seg': 2.0,
-            'mu_2_i': 23.0}
-MAX_CUTS = {}
+MIN_CUTS = {'a_2_sig': 2.0,
+            'mu_2_i': 24.0}
+MAX_CUTS = {'num_edge_pix': 1}
 
 
 def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True, 
@@ -57,10 +57,6 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
     if verbose:
         print(len(cat), 'objects in cat before cuts')
 
-    if cut_duplicates:
-        remove_duplicates(cat)
-        if verbose:
-            print(len(cat), 'objects after removing duplicates')
 
     min_mask = np.ones(len(cat), dtype=bool)
     for key, min_val in min_cuts.items():
@@ -93,6 +89,17 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
         print(mask.sum(), 'objects in cat after cuts')
 
     cut_cat = cat.drop(cat.index[~mask], inplace=inplace)
+
+    if cut_duplicates:
+        if inplace:
+            cut_cat = remove_duplicates(cat, inplace=inplace)
+            if verbose:
+                print(len(cat), 'objects after removing duplicates')
+        else:
+            cut_cat = remove_duplicates(cut_cat, inplace=inplace)
+            if verbose:
+                print(len(cut_cat), 'objects after removing duplicates')
+
     return cut_cat
 
 
@@ -165,7 +172,7 @@ def max_r_vir_mask(cat, group_id, max_r_vir=2.0):
     return mask
 
 
-def remove_duplicates(cat, **kwargs):
+def remove_duplicates(cat, inplace=True, **kwargs):
     """
     Remove duplicate entries from in source catalog.
 
@@ -177,4 +184,5 @@ def remove_duplicates(cat, **kwargs):
         Keywords for find_duplicates.
     """
     ind = find_duplicates(cat, **kwargs)
-    cat.drop(cat.index[ind[:,1]], inplace=True)
+    return cat.drop(cat.index[ind[:,1]], inplace=inplace)
+

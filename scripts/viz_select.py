@@ -26,7 +26,7 @@ class GUI(object):
         self.save_delta_t = 5 # minutes
         self.current_idx = 0
         self.group_id = group_id
-        self.rgb_kw = dict(Q=8, dataRange=0.25)
+        self.rgb_kw = dict(Q=8, dataRange=0.3)
         self.tract = None
         self.patch = None
         self.tract_prev = None
@@ -240,7 +240,8 @@ class GUI(object):
         self.ax.cla()
         self.ax.set(xticks=[], yticks=[])
         self.viewer.mpl_display_cutout(self.coord, rgb_kw=self.rgb_kw,
-                                       subplots=(self.fig, self.ax))
+                                       subplots=(self.fig, self.ax), 
+                                       size=50)
         self.viewer.mpl_draw_ell(self.patch_cat, coord=self.coord)
         for p in self.viewer.current_axis.ax.patches:
             p.set_visible(self.ell_visible)
@@ -259,17 +260,17 @@ class GUI(object):
     def update_info(self):
         txt = 'tract: {}  -   patch: {}  -  coord: {:.5f} {:.5f}  -  '
         txt += 'r: {:.2f}  -  mu: {:.2f}  -  flag: {}'
-        cols = ['ra', 'dec', 'r_circ_seg', 'mu_2_i']
+        cols = ['ra', 'dec', 'a_2_sig', 'mu_2_i']
         cols += ['candy', 'junk', 'ambiguous']
         info = self.cat.ix[self.current_idx, cols]
-        ra, dec, r_circ, mu = info[['ra', 'dec', 'r_circ_seg', 'mu_2_i']]
+        ra, dec, size, mu = info[['ra', 'dec', 'a_2_sig', 'mu_2_i']]
         flags = info[['candy', 'junk', 'ambiguous']]
         flag = flags[flags==1]
         if len(flag)==1:
             flag = flag.index[0]
         else:
             flag = 'n/a'
-        txt = txt.format(self.tract, self.patch, ra, dec, r_circ, mu, flag)
+        txt = txt.format(self.tract, self.patch, ra, dec, size, mu, flag)
         self.status.config(state='normal')
         self.status.delete(1.0, 'end')
         self.status.insert('insert', txt)
@@ -309,14 +310,14 @@ if __name__=='__main__':
     
     if args.cat_fn is None:
         catdir = os.path.join(hp.io, 'run-results')
-        catdir = os.path.join(catdir, 'group_'+args.group_id)
+        catdir = os.path.join(catdir, 'group-'+args.group_id)
         args.cat_fn = os.path.join(catdir, 'hugs-pipe-cat.csv')
 
     root = tk.Tk()
     root.withdraw()
     top = tk.Toplevel(root)
     top.protocol("WM_DELETE_WINDOW", root.destroy)
-    top.title('hugs-pipe viz inspect')
+    top.title('hugs-pipe viz inspect group '+args.group_id)
     gui = GUI(root, top, args.cat_fn, args.out_fn, args.group_id, 
               args.apply_cuts)
     root.mainloop()

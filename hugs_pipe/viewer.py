@@ -94,7 +94,14 @@ class Viewer(object):
         self.exp = utils.get_exposure(data_id, self.butler, self.data_dir)
         self._rgb_images = None
 
-    def ds9_display_patch(self, frame=1, mask_trans=100):
+    def create_ds9_display(self, frame=1):
+        """
+        Create and return a ds9 display object.
+        """
+        disp = afwDisp.Display(frame)
+        return disp
+
+    def ds9_display_patch(self, frame=1, mask_trans=100, disp=None):
         """
         Display patch with candidates using ds9.
 
@@ -106,14 +113,15 @@ class Viewer(object):
             Mask transparency
         """
 
-        disp = afwDisp.Display(frame)
+        disp = disp if disp else afwDisp.Display(frame) 
         disp.mtv(self.exp)
         disp.setMaskTransparency(mask_trans)
         frame_props = lsst.pipe.base.Struct(
             disp=disp, bbox=self.exp.getBBox(afwImage.PARENT)) 
         self.frames.update({frame:frame_props})
 
-    def ds9_display_cutout(self, coord_hsc, frame=1, mask_trans=100, size=100):
+    def ds9_display_cutout(self, coord_hsc, frame=1, mask_trans=100, 
+                           size=100, disp=None):
         """
         Display cutout of source with ds9.
 
@@ -125,11 +133,11 @@ class Viewer(object):
             ds9 frame.
         mask_trans : float, optional
             Mask transparency
-	size : int, optional
+	    size : int, optional
              Size to grow bbox in all directions.
         """
 
-        disp = afwDisp.Display(frame)
+        disp = disp if disp else afwDisp.Display(frame)
         cutout = imtools.get_cutout(coord_hsc, size, exp=self.exp)
         disp.mtv(cutout)
         disp.setMaskTransparency(mask_trans)
@@ -137,7 +145,7 @@ class Viewer(object):
             disp=disp, bbox=cutout.getBBox(afwImage.PARENT)) 
         self.frames.update({frame:frame_props})
 
-    def ds9_draw_ell(self, cat, frame, scale=3.0, ec='cyan', cc='red'):
+    def ds9_draw_ell(self, cat, frame, scale=2.0, ec='cyan', cc='red'):
         """
         Draw hugs-pipe measurements on ds9 frame.
 
@@ -237,7 +245,7 @@ class Viewer(object):
         ----------
         coord_hsc : tuple
             Central coordinate in HSC tract system.
-	size : int, optional
+    	size : int, optional
              Size to grow bbox in all directions.
         hsc_bands : str, optional
             HSC bands in RGB order.
@@ -287,7 +295,7 @@ class Viewer(object):
 
         return self.current_axis
 
-    def mpl_draw_ell(self, cat, ax=None, coord=None, scale=3.0, 
+    def mpl_draw_ell(self, cat, ax=None, coord=None, scale=2.0, 
                      ell_kw={}, plot_kw={}):
         """
         Draw hugs-pipe measurements with matplotlib.

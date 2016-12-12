@@ -205,11 +205,14 @@ def add_cat_params(sources, tract=None, patch=None):
         sources['tract'] = [tract]*len(sources)
     if patch:
         sources['patch'] = [patch]*len(sources)
-    sources['a_3_sig'] = 3.0*pixscale*sources['semimajor_axis_sigma']
-    sources['b_3_sig'] = 3.0*pixscale*sources['semiminor_axis_sigma']
+    
+    for s in [2, 3]:
+        scale = s*pixscale
+        sources['a_'+str(s)+'_sig'] = scale*sources['semimajor_axis_sigma']
+        sources['b_'+str(s)+'_sig'] = scale*sources['semiminor_axis_sigma']
     sources['r_circ_seg'] = pixscale*sources['equivalent_radius']
     q = 1-sources['ellipticity']
-    sources['r_circ_ell'] = sources['a_3_sig']*np.sqrt(q)
+    sources['r_circ_ell'] = sources['a_2_sig']*np.sqrt(q)
 
 
 def remove_mask_planes(mask, planes):

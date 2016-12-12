@@ -5,7 +5,7 @@
 #SBATCH -e /scratch/network/jgreco/run-%j.err             
 #SBATCH -N 2
 #SBATCH --ntasks-per-node=16
-#SBATCH -t 5:00:00 
+#SBATCH -t 3:00:00 
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end 
 #SBATCH --mail-user=jgreco@princeton.edu 
