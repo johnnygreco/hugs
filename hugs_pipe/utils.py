@@ -16,6 +16,7 @@ __all__ = [
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
+local_io = os.environ.get('LOCAL_IO')
 pixscale = 0.168
 zpt = 27.0
 
@@ -300,7 +301,7 @@ def get_group_patches(z_max=0.065, Mh_lims=[12.75, 14.0], group_id=None):
     Get HSC patches associated with galaxy groups.
     """
     prefix = 'cat_z{}_Mh{}-{}'.format(z_max, Mh_lims[0], Mh_lims[1])
-    prefix = os.path.join(io, prefix)
+    prefix = os.path.join(local_io, prefix)
     patches_fn = prefix+'_tracts_n_patches.npy'
     patches_dict = np.load(patches_fn).item()
     return Table(patches_dict[group_id]) if group_id else patches_dict
