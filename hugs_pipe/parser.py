@@ -18,7 +18,7 @@ def parse_args(which='all', default_outdir=io, parser=None):
                             type=str, 
                             help='HSC patch')
 
-    if 'config fn' in which or which=='all':
+    if 'config_fn' in which or which=='all':
         parser.add_argument('-c', 
                             '--config_fn', 
                             type=str, 

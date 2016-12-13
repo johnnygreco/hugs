@@ -57,7 +57,6 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
     if verbose:
         print(len(cat), 'objects in cat before cuts')
 
-
     min_mask = np.ones(len(cat), dtype=bool)
     for key, min_val in min_cuts.items():
         if min_val is not None:
@@ -79,11 +78,11 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
     mask = min_mask & max_mask
 
     if group_id and max_r_vir:
-        cut = ~max_r_vir_mask(cat, group_id, max_r_vir)
+        cut = max_r_vir_mask(cat, group_id, max_r_vir)
         mask &= cut
         if verbose:
             print('will cut {} objects outside {} r_vir'.format(
-                (cut).sum(), max_r_vir))
+                  (cut).sum(), max_r_vir))
 
     if verbose:
         print(mask.sum(), 'objects in cat after cuts')

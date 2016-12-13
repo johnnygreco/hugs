@@ -1,7 +1,7 @@
 import os
 import hugs_pipe as hp
 
-args = hp.parse_args('patch')
+args = hp.parse_args(['patch', 'outdir', 'config_fn'])
 
 assert (args.tract is not None) and (args.patch is not None)
 tract, patch = args.tract, args.patch
