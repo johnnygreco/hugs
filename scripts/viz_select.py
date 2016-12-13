@@ -36,6 +36,7 @@ class GUI(object):
         self.is_new_patch = True
         self.ell_visible = False
         self.out_fn = out_fn
+        self.flags = ['candy', 'junk', 'blend', 'red', 'ambiguous']
         self._coord = None
         self._viewer = hp.Viewer()
         self.master.withdraw()
@@ -125,6 +126,15 @@ class GUI(object):
         blend_button.image = blend_img 
         blend_button.grid(row=0, column=2, sticky='w', padx=padx)
 
+        red_flag = partial(self.set_flag, 'red')
+        fn = os.path.join(viz_dir, 'buttons/RedEllipse.gif')
+        red_img = tk.PhotoImage(file=fn)
+        red_button = tk.Button(
+            mid_fr, image=red_img, width='100', 
+            height='100', command=red_flag)
+        red_button.image = red_img 
+        red_button.grid(row=0, column=3, sticky='w', padx=padx)
+
         question_flag = partial(self.set_flag, 'ambiguous')
         fn = os.path.join(viz_dir, 'buttons/question-mark.gif')
         question_img = tk.PhotoImage(file=fn)
@@ -132,7 +142,7 @@ class GUI(object):
             mid_fr, image=question_img, width='100', 
             height='100', command=question_flag)
         question_button.image = question_img 
-        question_button.grid(row=0, column=3, sticky='w', padx=padx)
+        question_button.grid(row=0, column=4, sticky='w', padx=padx)
 
 
         # create top buttons
@@ -155,7 +165,8 @@ class GUI(object):
         self.master.bind('1', up_flag)
         self.master.bind('2', down_flag)
         self.master.bind('3', blend_flag)
-        self.master.bind('4', question_flag)
+        self.master.bind('4', red_flag)
+        self.master.bind('5', question_flag)
         self.master.bind('t', self.toggle_source)
         self.master.bind('s', self.save_progress)
         self.master.bind('<Down>', self.prev_idx)
@@ -196,6 +207,7 @@ class GUI(object):
         self.cat['candy'] = -1
         self.cat['junk'] = -1
         self.cat['blend'] = -1
+        self.cat['red'] = -1
         self.cat['ambiguous'] = -1
 
     def update_data_id(self):
@@ -273,10 +285,10 @@ class GUI(object):
         txt = 'tract: {}  -   patch: {}  -  coord: {:.5f} {:.5f}  -  '
         txt += 'r: {:.2f}  -  mu: {:.2f}  -  flag: {}'
         cols = ['ra', 'dec', 'a_2_sig', 'mu_2_i']
-        cols += ['candy', 'junk', 'blend', 'ambiguous']
+        cols += self.flags
         info = self.cat.ix[self.current_idx, cols]
         ra, dec, size, mu = info[['ra', 'dec', 'a_2_sig', 'mu_2_i']]
-        flags = info[['candy', 'junk', 'blend', 'ambiguous']]
+        flags = info[self.flags]
         flag = flags[flags==1]
         if len(flag)==1:
             flag = flag.index[0]
@@ -291,8 +303,7 @@ class GUI(object):
 
     def set_flag(self, flag, event=None):
         self.cat.loc[self.current_idx, flag] = 1
-        flags = ['candy', 'junk', 'blend', 'ambiguous']
-        others = [f for f in flags if f!=flag]
+        others = [f for f in self.flags if f!=flag]
         self.cat.loc[self.current_idx, others] = 0
         self.next_idx()
 
