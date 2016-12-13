@@ -4,26 +4,9 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('cat_fn', type=str)
-parser.add_argument('-b', 
-                    '--band', 
-                    type=str, 
-                    default='I')
-parser.add_argument('-t',
-                    '--tract',
-                    type=int,
-                    help='HSC tract', 
-                    default=None)
-parser.add_argument('-p',
-                    '--patch',
-                    type=str,
-                    help='HSC patch', 
-                    default=None)
-parser.add_argument('-f',
-                    '--frame',
-                    type=int,
-                    help='ds9 frame', 
-                    default=1)
-args = parser.parse_args()
+parser.add_argument('-b', '--band', type=str, default='I')
+parser.add_argument('-f', '--frame', type=int, help='ds9 frame', default=1)
+args = hp.parse_args('patch', parser=parser)
 
 cat = pd.read_csv(args.cat_fn)
 
