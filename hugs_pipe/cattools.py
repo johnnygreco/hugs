@@ -63,7 +63,7 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
             cut = cat[key].values <= min_val
             min_mask[cut] = False
             if verbose:
-                print('will cut {} objects with {} < {}'.format(
+                print('will cut {} objects with {} <= {}'.format(
                     (cut).sum(), key, min_val))
 
     max_mask = np.ones(len(cat), dtype=bool)
@@ -72,7 +72,7 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
             cut = cat[key].values >= max_val
             max_mask[cut] = False
             if verbose:
-                print('will cut {} objects with {} > {}'.format(
+                print('will cut {} objects with {} >= {}'.format(
                     (cut).sum(), key, max_val))
 
     mask = min_mask & max_mask
