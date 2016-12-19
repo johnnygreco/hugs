@@ -18,7 +18,8 @@ viz_dir = os.path.join(hp.io, 'viz-inspect-results')
 
 class GUI(object):
 
-    def __init__(self, root, master, cat_fn, out_fn, group_id, apply_cuts):
+    def __init__(self, root, master, cat_fn, out_fn, group_id, 
+                 apply_cuts, review):
 
         # initialize attributes
         self.root = root
@@ -40,27 +41,36 @@ class GUI(object):
         self._coord = None
         self._viewer = hp.Viewer()
         self.master.withdraw()
+        self.review = review
 
         # if output catalog exists, check if we want to reload progress
         if os.path.isfile(out_fn):
-            msg = 'Output catalog exists. Want to start where you left off?'
-            answer = tkMessageBox.askyesno('HSC-HUGs Message', msg)
-            if answer:
+            if review:
                 self.cat = pd.read_csv(out_fn)
-                flagged = self.cat['candy']==-1
-                if flagged.sum()==0:
-                    msg = 'All sources have been classified.'
-                    tkMessageBox.showinfo('HSC-HUGs Message', msg)
-                    sys.exit('Exiting without changing anything...')
-                self.current_idx = self.cat[self.cat['candy']==-1].index[0]
+                if review != 'all':
+                    self.cat = self.cat[self.cat[review]==1]
+                    self.cat_idx = self.cat.index
+                    self.cat.reset_index(inplace=True)
+
             else:
-                verify = tkMessageBox.askyesno(
-                    'Verify', 'Progress will be lost, okay?', default='no')
-                if verify:
-                    self._load_cat(cat_fn, apply_cuts)
+                msg = 'Catalog exists. Want to start where you left off?'
+                answer = tkMessageBox.askyesno('HSC-HUGs Message', msg)
+                if answer:
+                    self.cat = pd.read_csv(out_fn)
+                    flagged = self.cat['candy']==-1
+                    if flagged.sum()==0:
+                        msg = 'All sources have been classified.'
+                        tkMessageBox.showinfo('HSC-HUGs Message', msg)
+                        sys.exit('Exiting without changing anything...')
+                    self.current_idx = self.cat[flagged].index[0]
                 else:
-                    self.root.destroy()
-                    sys.exit('Exiting without changing anything...')
+                    verify = tkMessageBox.askyesno(
+                        'Verify', 'Progress will be lost, okay?', default='no')
+                    if verify:
+                        self._load_cat(cat_fn, apply_cuts)
+                    else:
+                        self.root.destroy()
+                        sys.exit('Exiting without changing anything...')
         else:
             self._load_cat(cat_fn, apply_cuts)
 
@@ -97,62 +107,70 @@ class GUI(object):
             bot_fr, text='Next', command=self.next_idx)
         next_button.grid(row=0, column=9, sticky='w', columnspan=5)
 
-        # create middle buttons
         padx = 15
-        up_flag = partial(self.set_flag, 'candy')
-        fn = os.path.join(viz_dir, 'buttons/up.gif')
-        sig_img = tk.PhotoImage(file=fn)
-        signal_button = tk.Button(
-            mid_fr, image=sig_img, width='100', 
-            height='100', command=up_flag) 
-        signal_button.image = sig_img
-        signal_button.grid(row=0, column=0, sticky='w', padx=padx)
+        if not review:
+            # create middle buttons
+            up_flag = partial(self.set_flag, 'candy')
+            fn = os.path.join(viz_dir, 'buttons/up.gif')
+            sig_img = tk.PhotoImage(file=fn)
+            signal_button = tk.Button(
+                mid_fr, image=sig_img, width='100', 
+                height='100', command=up_flag) 
+            signal_button.image = sig_img
+            signal_button.grid(row=0, column=0, sticky='w', padx=padx)
 
-        down_flag = partial(self.set_flag, 'junk')
-        fn = os.path.join(viz_dir, 'buttons/down.gif')
-        noise_img = tk.PhotoImage(file=fn)
-        noise_button = tk.Button(
-            mid_fr, image=noise_img, width='100', 
-            height='100', command=down_flag)
-        noise_button.image = noise_img
-        noise_button.grid(row=0, column=1, sticky='w', padx=padx)
+            down_flag = partial(self.set_flag, 'junk')
+            fn = os.path.join(viz_dir, 'buttons/down.gif')
+            noise_img = tk.PhotoImage(file=fn)
+            noise_button = tk.Button(
+                mid_fr, image=noise_img, width='100', 
+                height='100', command=down_flag)
+            noise_button.image = noise_img
+            noise_button.grid(row=0, column=1, sticky='w', padx=padx)
 
-        blend_flag = partial(self.set_flag, 'blend')
-        fn = os.path.join(viz_dir, 'buttons/blend.gif')
-        blend_img = tk.PhotoImage(file=fn)
-        blend_button = tk.Button(
-            mid_fr, image=blend_img, width='100', 
-            height='100', command=blend_flag)
-        blend_button.image = blend_img 
-        blend_button.grid(row=0, column=2, sticky='w', padx=padx)
+            blend_flag = partial(self.set_flag, 'blend')
+            fn = os.path.join(viz_dir, 'buttons/blend.gif')
+            blend_img = tk.PhotoImage(file=fn)
+            blend_button = tk.Button(
+                mid_fr, image=blend_img, width='100', 
+                height='100', command=blend_flag)
+            blend_button.image = blend_img 
+            blend_button.grid(row=0, column=2, sticky='w', padx=padx)
 
-        red_flag = partial(self.set_flag, 'red')
-        fn = os.path.join(viz_dir, 'buttons/RedEllipse.gif')
-        red_img = tk.PhotoImage(file=fn)
-        red_button = tk.Button(
-            mid_fr, image=red_img, width='100', 
-            height='100', command=red_flag)
-        red_button.image = red_img 
-        red_button.grid(row=0, column=3, sticky='w', padx=padx)
+            red_flag = partial(self.set_flag, 'red')
+            fn = os.path.join(viz_dir, 'buttons/RedEllipse.gif')
+            red_img = tk.PhotoImage(file=fn)
+            red_button = tk.Button(
+                mid_fr, image=red_img, width='100', 
+                height='100', command=red_flag)
+            red_button.image = red_img 
+            red_button.grid(row=0, column=3, sticky='w', padx=padx)
 
-        question_flag = partial(self.set_flag, 'ambiguous')
-        fn = os.path.join(viz_dir, 'buttons/question-mark.gif')
-        question_img = tk.PhotoImage(file=fn)
-        question_button = tk.Button(
-            mid_fr, image=question_img, width='100', 
-            height='100', command=question_flag)
-        question_button.image = question_img 
-        question_button.grid(row=0, column=4, sticky='w', padx=padx)
+            question_flag = partial(self.set_flag, 'ambiguous')
+            fn = os.path.join(viz_dir, 'buttons/question-mark.gif')
+            question_img = tk.PhotoImage(file=fn)
+            question_button = tk.Button(
+                mid_fr, image=question_img, width='100', 
+                height='100', command=question_flag)
+            question_button.image = question_img 
+            question_button.grid(row=0, column=4, sticky='w', padx=padx)
 
+            save_button = tk.Button(
+                top_fr, text='Save Progess', command=self.save_progress)
+            save_button.pack(side='left', padx=padx)
+
+            # useful key bindings
+            self.master.bind('s', self.save_progress)
+            self.master.bind('1', up_flag)
+            self.master.bind('2', down_flag)
+            self.master.bind('3', blend_flag)
+            self.master.bind('4', red_flag)
+            self.master.bind('5', question_flag)
 
         # create top buttons
         ds9_button = tk.Button(
             top_fr, text='Display with ds9', command=self.show_ds9)
         ds9_button.pack(side='left', padx=padx)
-
-        save_button = tk.Button(
-            top_fr, text='Save Progess', command=self.save_progress)
-        save_button.pack(side='left', padx=padx)
 
         source_button = tk.Button(
             top_fr, text='Toggle Sources', command=self.toggle_source)
@@ -162,13 +180,7 @@ class GUI(object):
         quit_button.pack(side='left', padx=padx)
 
         # useful key bindings
-        self.master.bind('1', up_flag)
-        self.master.bind('2', down_flag)
-        self.master.bind('3', blend_flag)
-        self.master.bind('4', red_flag)
-        self.master.bind('5', question_flag)
         self.master.bind('t', self.toggle_source)
-        self.master.bind('s', self.save_progress)
         self.master.bind('<Down>', self.prev_idx)
         self.master.bind('<Up>', self.next_idx)
         self.master.bind_all('<1>', lambda event: event.widget.focus_set())
@@ -182,7 +194,8 @@ class GUI(object):
         self.master.deiconify()
 
         # save progress every save_delta_t minutes
-        self.root.after(self.save_delta_t*60*1000, self.save_progress)
+        if not review:
+            self.root.after(self.save_delta_t*60*1000, self.save_progress)
 
     @property
     def viewer(self):
@@ -294,12 +307,14 @@ class GUI(object):
             flag = flag.index[0]
         else:
             flag = 'n/a'
+        if (self.review is not None) and (self.review != 'all'):
+            txt = txt.replace('flag', 'idx') 
+            flag = self.cat_idx[self.current_idx]
         txt = txt.format(self.tract, self.patch, ra, dec, size, mu, flag)
         self.status.config(state='normal')
         self.status.delete(1.0, 'end')
         self.status.insert('insert', txt)
         self.status.config(state='disabled')
-        #self.status.configure(text=txt)
 
     def set_flag(self, flag, event=None):
         self.cat.loc[self.current_idx, flag] = 1
@@ -308,11 +323,15 @@ class GUI(object):
         self.next_idx()
 
     def save_progress(self, event=None):
-        self.cat.to_csv(self.out_fn, index=False)
-        self.root.after(self.save_delta_t*60*1000, self.save_progress)
+        if self.review:
+            print('No saving progess during review')
+        else:
+            self.cat.to_csv(self.out_fn, index=False)
+            self.root.after(self.save_delta_t*60*1000, self.save_progress)
 
     def quit(self):
-        self.save_progress()
+        if not self.review:
+            self.save_progress()
         self.root.destroy()
 
 
@@ -323,6 +342,7 @@ if __name__=='__main__':
     parser.add_argument('group_id', type=str, help='group id')
     parser.add_argument('-o', '--out_fn', default=None)
     parser.add_argument('-c', '--cat_fn', default=None)
+    parser.add_argument('-r', '--review', type=str, default=None)
     parser.add_argument(
         '--no-cuts', dest='apply_cuts', action='store_false', default=True)
     args = parser.parse_args()
@@ -337,11 +357,15 @@ if __name__=='__main__':
         catdir = os.path.join(catdir, 'group-'+args.group_id)
         args.cat_fn = os.path.join(catdir, 'hugs-pipe-cat.csv')
 
+    title = 'hugs-pipe viz inspect group '+args.group_id
+    if args.review:
+        title += ' (reviewing '+args.review+')'
+    
     root = tk.Tk()
     root.withdraw()
     top = tk.Toplevel(root)
     top.protocol("WM_DELETE_WINDOW", root.destroy)
-    top.title('hugs-pipe viz inspect group '+args.group_id)
+    top.title(title)
     gui = GUI(root, top, args.cat_fn, args.out_fn, args.group_id, 
-              args.apply_cuts)
+              args.apply_cuts, args.review)
     root.mainloop()
