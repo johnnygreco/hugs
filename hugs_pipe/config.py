@@ -18,7 +18,7 @@ class Config(object):
     """
 
     def __init__(self, config_fn=None, data_id=None, log_level='info',
-                 log_fn=None, outdir=None, random_state=None):
+                 log_fn=None, random_state=None):
         """
         Initialization
 
@@ -224,7 +224,7 @@ class Config(object):
             self.psf_sigma = utils.get_psf_sigma(self.exp)
         except AttributeError:
             self.logger.warning('no psf with exposure... using mean seeing')
-            self.psf_sigma = 1.5
+            self.psf_sigma = self.mean_seeing_sigma
 
         # setup thresh low/high/det: n_sig_grow --> rgrow
         ngrow = self.thresh_low.pop('n_sig_grow')
