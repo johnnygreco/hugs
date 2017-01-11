@@ -70,10 +70,10 @@ def parse_args(which='all', default_outdir=io, parser=None):
                             type=int, 
                             help='group id', 
                             default=None)
-        if args.group_id:
-            args.group_dir = os.path.join(args.outdir, 
-                                          'group-'+str(args.group_id))
+
     args = parser.parse_args()
+    if args.group_id:
+        args.group_dir = os.path.join(args.outdir, 'group-'+str(args.group_id))
 
     if len(sys.argv)==1:
         parser.print_help()

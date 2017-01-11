@@ -32,7 +32,7 @@ def worker(p):
     config.set_data_id(data_id)
     config.logger.info('random seed set to {}'.format(seed))
     
-    results = hp.run(config)
+    results = hp.run_use_sex(config)
 
     # write source catalog
     sources = results.sources.to_pandas()

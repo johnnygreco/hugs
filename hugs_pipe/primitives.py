@@ -1,8 +1,10 @@
 from __future__ import division, print_function
 
+import os
 import numpy as np
 import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
+from astropy.io import fits
 from astropy.table import Table, vstack
 from astropy.convolution import Gaussian2DKernel
 from scipy.spatial.distance import cdist
@@ -14,7 +16,8 @@ __all__ = ['clean',
            'find_blends',
            'image_threshold', 
            'measure_sources', 
-           'photometry']
+           'photometry', 
+           'sex_measure']
 
 
 def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
@@ -87,7 +90,8 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
 
 
 def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
-                min_fp_area=100, min_parent_area=0.3, min_parent_flux=0.8):
+                min_fp_area=100, min_parent_area=0.3, min_parent_flux=0.8, 
+                plane_name='DETECTED'):
     """
     Search footprints for obvious blends of multiple small sources. 
     The search is carried out by counting the number of low-thresh 
@@ -111,6 +115,8 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
     min_parent_flux : float, optional
         Minimum fraction of the total flux that must 
         be contributed by the parent. 
+    plane_name : str
+        Name of bit plane to search for blends.
 
     Notes
     -----
@@ -156,13 +162,13 @@ def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
                     for s in fp_det.getSpans():
                         y = s.getY() - y0
                         for x in range(s.getX0()-x0, s.getX1()-x0+1):
-                            msk_arr[y][x] -= mask.getPlaneBitMask('DETECTED')
+                            msk_arr[y][x] -= mask.getPlaneBitMask(plane_name)
             elif (areas < min_fp_area).sum() == areas.size:
                 fp_list.append(fp_det)
                 for s in fp_det.getSpans():
                     y = s.getY() - y0
                     for x in range(s.getX0()-x0, s.getX1()-x0+1):
-                        msk_arr[y][x] -= mask.getPlaneBitMask('DETECTED')
+                        msk_arr[y][x] -= mask.getPlaneBitMask(plane_name)
 
     # create footprint set and set mask plane
     fpset_blends = afwDet.FootprintSet(exp.getBBox())
@@ -422,3 +428,92 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
             sources['mag_circ_{}_{}'.format(r, band.lower())] = mag
             mu = mag + 2.5*np.log10(np.pi*r_arcsec**2)
             sources['mu_{}_{}'.format(r, band.lower())] = mu
+
+
+def sex_measure(exp, label='run'):
+    """
+    Perform mesurements using SExtractor (because I'm feeling desperate). 
+
+    Parameters
+    ----------
+    exp : lsst.afw.image.ExposureF
+        Exposure object to run sextractor on.
+    label : str
+        Label for this run.
+
+    Returns
+    -------
+    cat : astropy.table.Table
+        Sextractor catalog.
+    """
+    import sexpy
+        
+    #########################################################
+    # setup configuration and extra save params
+    #########################################################
+
+    apertures = [3., 4., 5., 6., 7., 8., 16., 32.]
+    param_fn = label+'.params'
+    config = {
+        'DETECT_THRESH': 0.7, 
+        'FILTER_NAME': 'gauss_15.0_31x31.conv',
+        'BACK_SIZE': 128,
+        'VERBOSE_TYPE': 'NORMAL', 
+        'PHOT_APERTURES': ','.join([str(int(a)) for a in apertures]),
+        'DETECT_MINAREA': 100,
+        'PARAMETERS_NAME': param_fn
+    }
+    params = ['MAG_APER('+str(i+1)+')' for i in range(len(apertures))]
+
+    sw = sexpy.SexWrapper(config, params=params)
+    sw.set_check_images('s', prefix=label+'-')
+
+    #########################################################
+    # write exposure for sextractor input and run
+    #########################################################
+
+    exp_fn = 'exp-'+label+'.fits'
+    exp.writeFits(sw.get_indir(exp_fn))
+
+    cat_label = 'sex-'+label
+    sw.run(exp_fn+'[1]', cat=cat_label+'.cat')
+
+    #########################################################
+    # read catalog, add params, and write to csv file
+    #########################################################
+
+    cat = sexpy.read_cat(sw.get_outdir(cat_label+'.cat'))
+
+    x0, y0 = exp.getXY0()
+    cat['x_hsc'] = cat['X_IMAGE'] + x0
+    cat['y_hsc'] = cat['Y_IMAGE'] + y0
+    cat.rename_column('MAG_APER', 'MAG_APER_0')
+
+    for i, diam in enumerate(apertures):
+        r = utils.pixscale*diam/2 # arcsec
+        sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
+        cat['mu_aper_'+str(i)] = sb
+
+    cat.write(sw.get_outdir(cat_label+'.csv'))
+
+    #########################################################
+    # open seg map and add to bit mask
+    #########################################################
+
+    seg_fn = sw.get_outdir(label+'-'+'SEGMENTATION.fits')
+    seg = fits.getdata(seg_fn)
+
+    mask = exp.getMaskedImage().getMask()
+    mask.addMaskPlane('SEX_SEG')
+    mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
+
+    #########################################################
+    # delete files created by and for sextractor
+    #########################################################
+
+    os.remove(sw.get_indir(exp_fn))
+    os.remove(sw.get_outdir(cat_label+'.cat'))
+    os.remove(sw.get_configdir(param_fn))
+    os.remove(seg_fn)
+
+    return cat

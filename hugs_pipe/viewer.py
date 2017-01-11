@@ -145,7 +145,8 @@ class Viewer(object):
             disp=disp, bbox=cutout.getBBox(afwImage.PARENT)) 
         self.frames.update({frame:frame_props})
 
-    def ds9_draw_ell(self, cat, frame, scale=2.0, ec='cyan', cc='red'):
+    def ds9_draw_ell(self, cat, frame, scale=2.0, ec='cyan', cc='red', 
+                     ellpars='photutils'):
         """
         Draw hugs-pipe measurements on ds9 frame.
 
@@ -161,20 +162,33 @@ class Viewer(object):
             Ellipse color. 
         cc : str, optional
             Centroid color.
+        ellpars : str, optional
+            Naming convention for ellipse params (photutils or sex).
         """
 
         cat = utils.check_astropy_to_pandas(cat)
         disp = self.frames[frame].disp
         bbox = self.frames[frame].bbox
 
+        if ellpars=='photutils':
+            a_name = 'semimajor_axis_sigma'
+            b_name = 'semiminor_axis_sigma'
+            theta_name = 'orientation'
+            theta_factor = 1.0
+        elif ellpars=='sex':
+            a_name = 'A_IMAGE'
+            b_name = 'B_IMAGE'
+            theta_name = 'THETA_IMAGE'
+            theta_factor = np.pi/180.0
+
         with disp.Buffering():
             for _, source in cat.iterrows():
                 x, y = source['x_hsc'], source['y_hsc']
                 point = lsst.afw.geom.Point2I(int(x), int(y))
                 if bbox.contains(point):
-                    a = source['semimajor_axis_sigma']
-                    b = source['semiminor_axis_sigma']
-                    theta = source['orientation']
+                    a = source[a_name]
+                    b = source[b_name]
+                    theta = source[theta_name]*theta_factor
                     ell = afwGeom.ellipses.Axes(scale*a, scale*b, theta)
                     disp.dot(ell, x, y, ctype=ec)
                     disp.dot('+', x, y, ctype=cc)
@@ -296,7 +310,7 @@ class Viewer(object):
         return self.current_axis
 
     def mpl_draw_ell(self, cat, ax=None, coord=None, scale=2.0, 
-                     ell_kw={}, plot_kw={}):
+                     ell_kw={}, plot_kw={}, ellpars='photutils'):
         """
         Draw hugs-pipe measurements with matplotlib.
 
@@ -315,6 +329,8 @@ class Viewer(object):
             Matplotlib Ellipse keywords.
         plot_kw : dict, optional
             Matplotlib plot keywords.
+        ellpars : str, optional
+            Naming convention for ellipse params (photutils or sex).
         """
         
         ell_kw_default = dict(ec='cyan', lw=1.0)
@@ -332,14 +348,25 @@ class Viewer(object):
         ax.set_ylim(ax.get_ylim())
         points = []
 
+        if ellpars=='photutils':
+            a_name = 'semimajor_axis_sigma'
+            b_name = 'semiminor_axis_sigma'
+            theta_name = 'orientation'
+            theta_factor = 180.0/np.pi
+        elif ellpars=='sex':
+            a_name = 'A_IMAGE'
+            b_name = 'B_IMAGE'
+            theta_name = 'THETA_IMAGE'
+            theta_factor = 1.0
+
         for _, source in cat.iterrows():
             x_hsc, y_hsc = source['x_hsc'], source['y_hsc']
             point = lsst.afw.geom.Point2I(int(x_hsc), int(y_hsc))
             if bbox.contains(point):
                 x, y = source['x_img']-shift[0], source['y_img']-shift[1]
-                a_diam = scale*2*source['semimajor_axis_sigma']
-                b_diam = scale*2*source['semiminor_axis_sigma']
-                theta = source['orientation']*180.0/np.pi
+                a_diam = scale*2*source[a_name]
+                b_diam = scale*2*source[b_name]
+                theta = source[theta_name]*theta_factor
                 ell = Ellipse((x, y), a_diam, b_diam, theta, 
                               fc='none', **ell_kw)
                 ax.add_patch(ell)
