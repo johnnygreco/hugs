@@ -4,6 +4,7 @@ import os
 import numpy as np
 import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
+import lsst.afw.geom as afwGeom
 from astropy.io import fits
 from astropy.table import Table, vstack
 from astropy.convolution import Gaussian2DKernel
@@ -12,12 +13,15 @@ import photutils as phut
 from . import utils
 from . import imtools
 
-__all__ = ['clean', 
-           'find_blends',
-           'image_threshold', 
-           'measure_sources', 
-           'photometry', 
-           'sex_measure']
+__all__ = [
+    'clean', 
+    'find_blends',
+    'image_threshold', 
+    'measure_sources', 
+    'photometry', 
+    'run_imfit',
+    'sex_measure'
+]
 
 
 def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
@@ -234,7 +238,7 @@ def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3,
     Parameters
     ----------
     exposure : lsst.afw.ExposureF
-        Exposure object with masks from hugsPipe.run.
+        Exposure object with masks from hugs_pipe.run.
     thresh_snr : float, optional
         The signal-to-noise ratio per pixel above the background 
         for which to consider a pixel as possibly being part of a source.
@@ -430,6 +434,13 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
             sources['mu_{}_{}'.format(r, band.lower())] = mu
 
 
+def run_imfit(exp, cat):
+    """
+    Run imfit on postage stamps to make cuts on sample.
+    """
+    pass
+
+
 def sex_measure(exp, label='run'):
     """
     Perform mesurements using SExtractor (because I'm feeling desperate). 
@@ -461,7 +472,7 @@ def sex_measure(exp, label='run'):
         'VERBOSE_TYPE': 'NORMAL', 
         'PHOT_APERTURES': ','.join([str(int(a)) for a in apertures]),
         'DETECT_MINAREA': 100,
-        'PARAMETERS_NAME': param_fn
+        'PARAMETERS_NAME': param_fn,
     }
     params = ['MAG_APER('+str(i+1)+')' for i in range(len(apertures))]
 
@@ -479,6 +490,17 @@ def sex_measure(exp, label='run'):
     sw.run(exp_fn+'[1]', cat=cat_label+'.cat')
 
     #########################################################
+    # open seg map and add to bit mask
+    #########################################################
+
+    seg_fn = sw.get_outdir(label+'-'+'SEGMENTATION.fits')
+    seg = fits.getdata(seg_fn)
+
+    mask = exp.getMaskedImage().getMask()
+    mask.addMaskPlane('SEX_SEG')
+    mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
+
+    #########################################################
     # read catalog, add params, and write to csv file
     #########################################################
 
@@ -494,18 +516,37 @@ def sex_measure(exp, label='run'):
         sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
         cat['mu_aper_'+str(i)] = sb
 
-    cat.write(sw.get_outdir(cat_label+'.csv'))
+    sex_plane = mask.getPlaneBitMask('SEX_SEG')
+    edge_plane = mask.getPlaneBitMask('EDGE')
+    bright_plane = mask.getPlaneBitMask('BRIGHT_OBJECT')
 
-    #########################################################
-    # open seg map and add to bit mask
-    #########################################################
+    fpset = afwDet.FootprintSet(
+        mask, afwDet.Threshold(sex_plane, afwDet.Threshold.BITMASK))
 
-    seg_fn = sw.get_outdir(label+'-'+'SEGMENTATION.fits')
-    seg = fits.getdata(seg_fn)
+    cat['num_edge_pix'] = -1 
+    cat['num_bright_pix'] = -1
+    cat['parent_fp_area'] = -1
+    cat['fp_id'] = -1
+    cat['nchild'] = -1
+    
+    for obj_i in range(len(cat)):
+        x, y = cat['x_hsc', 'y_hsc'][obj_i]
+        point = afwGeom.Point2I(int(x), int(y))
+        for fp_id, fp in enumerate(fpset.getFootprints()):
+            if fp.contains(point):
+                hfp = afwDet.HeavyFootprintF(fp, exp.getMaskedImage())
+                pix = hfp.getMaskArray()
+                num_edge = (pix & edge_plane != 0 ).sum()
+                num_bright = (pix & bright_plane != 0).sum()
+                cat['num_edge_pix'][obj_i] = num_edge
+                cat['num_bright_pix'][obj_i] = num_bright
+                cat['parent_fp_area'][obj_i] = hfp.getArea()
+                cat['fp_id'][obj_i] = fp_id
+                break
 
-    mask = exp.getMaskedImage().getMask()
-    mask.addMaskPlane('SEX_SEG')
-    mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
+    for fp_id in np.unique(cat['fp_id']):
+        obj_mask = cat['fp_id']==fp_id
+        cat['nchild'][obj_mask] = obj_mask.sum()
 
     #########################################################
     # delete files created by and for sextractor

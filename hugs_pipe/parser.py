@@ -72,7 +72,7 @@ def parse_args(which='all', default_outdir=io, parser=None):
                             default=None)
 
     args = parser.parse_args()
-    if args.group_id:
+    if hasattr(args, 'group_id'):
         args.group_dir = os.path.join(args.outdir, 'group-'+str(args.group_id))
 
     if len(sys.argv)==1:

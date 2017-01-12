@@ -21,6 +21,9 @@ results = hp.run_use_sex(config, debug_return=True)
 
 df = results.sources.to_pandas()
 
+mask = results.exp_clean.getMaskedImage().getMask()
+mask.removeAndClearMaskPlane('SMOOTHED')
+
 v1 = hp.Viewer(data_id=results.exposure)
 disp1 = v1.create_ds9_display(frame=1)
 disp1.setMaskPlaneColor('THRESH_HIGH', 'magenta')
