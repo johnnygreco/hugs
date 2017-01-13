@@ -6,7 +6,7 @@ import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
 import lsst.afw.geom as afwGeom
 from astropy.io import fits
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, hstack
 from astropy.convolution import Gaussian2DKernel
 from scipy.spatial.distance import cdist
 import photutils as phut
@@ -434,11 +434,58 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
             sources['mu_{}_{}'.format(r, band.lower())] = mu
 
 
-def run_imfit(exp, cat):
+def run_imfit(exp, cat, label='run', clean=True):
     """
     Run imfit on postage stamps to make cuts on sample.
     """
-    pass
+    from hugs.tasks import sersic_fit
+
+    size = 120
+    band = exp.getFilter().getName().lower()
+    wcs = exp.getWcs()
+
+    results = Table()
+    
+    for obj in cat:
+        num = str(obj['NUMBER'])
+        coord_hsc = obj['x_hsc'], obj['y_hsc']
+        cutout = imtools.get_cutout(coord_hsc, size, exp=exp)
+        
+        prefix = os.path.join(utils.io, 'temp-io')
+        fn = os.path.join(prefix, 'cutout-{}-{}.fits'.format(label, num))
+        cutout.writeFits(fn)
+
+        X0 = coord_hsc[0] - cutout.getX0()
+        Y0 = coord_hsc[1] - cutout.getY0()
+
+        init_params = {
+            'X0': X0, 
+            'Y0': Y0,
+            'PA': [obj['THETA_IMAGE'] + 90, 0, 180],
+            'ell': [obj['ELLIPTICITY'], 0, 0.999],
+        }
+
+        fit_prefix = os.path.join(prefix, label)
+        fit = sersic_fit(fn, init_params=init_params, prefix=fit_prefix)
+
+        coord = wcs.pixelToSky(fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0())
+        ra, dec = coord.getPosition(afwGeom.degrees)
+        dX0, dY0 = fit.X0 - X0, fit.Y0 - Y0
+
+        data = [ra, dec, fit.n, fit.m_tot, fit.mu_0, fit.ell, 
+                fit.r_e*utils.pixscale, fit.PA, dX0, dY0]
+
+        names = ['ra_imfit', 'dec_imfit', 'n', 'm_tot('+band+')', 'mu_0('+band+')', 
+                 'ell('+band+')', 'r_e('+band+')', 'PA('+band+')',
+                 'dX0', 'dY0']
+
+        results = vstack([results, Table(rows=[data], names=names)])
+
+        if clean:
+            os.remove(fn)
+            os.remove(fit_prefix+'_bestfit_params.txt')
+
+    return hstack([cat, results])
 
 
 def sex_measure(exp, label='run'):

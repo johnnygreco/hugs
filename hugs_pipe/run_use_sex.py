@@ -3,9 +3,11 @@ from __future__ import division, print_function
 import os
 import numpy as np
 import lsst.pipe.base
+from astropy.table import Table
 from . import utils
 from . import imtools
 from . import primitives as prim
+from .cattools import cutter
 
 __all__ = ['run']
 
@@ -38,7 +40,7 @@ def run_use_sex(cfg, debug_return=False, synth_factory=None):
     cfg.timer # start timer
 
     # don't need this mask for sextractor run
-    utils.remove_mask_planes(cfg.mask, ['DETECTED'])
+    #utils.remove_mask_planes(cfg.mask, ['DETECTED'])
 
     ############################################################
     # If desired, inject synthetic galaxies 
@@ -112,13 +114,23 @@ def run_use_sex(cfg, debug_return=False, synth_factory=None):
     mi_clean.getImage().getArray()[replace] = noise_array[replace]
 
     ############################################################
-    # Detect final sources and measure props with SExtractor
+    # Detect sources and measure props with SExtractor
     ############################################################
 
     cfg.logger.info('detecting final sources with sextractor')
     p1, p2 = cfg.data_id['patch'][0], cfg.data_id['patch'][-1]
     label = '{}-{}-{}'.format(cfg.data_id['tract'], p1, p2)
     sources = prim.sex_measure(exp_clean, label)
+
+    ############################################################
+    # Cut catalog and run imfit on cutouts
+    ############################################################
+
+    cfg.logger.info('cutting catalog and running imfit on cutouts')
+    sources_big = cutter(sources.to_pandas(), min_cuts={'FWHM_IMAGE':25})
+    sources_big = Table.from_pandas(sources_big)
+
+    sources_big = prim.run_imfit(exp_clean, sources_big, label=label)
 
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
 
@@ -127,12 +139,14 @@ def run_use_sex(cfg, debug_return=False, synth_factory=None):
     if debug_return:
         # detection plane was modified by find_blends
         results = lsst.pipe.base.Struct(sources=sources,
+                                        candy=sources_big,
                                         exposure=cfg.exp,
                                         exp_clean=exp_clean,
                                         mi_clean_smooth=mi_clean_smooth,
                                         mask_fracs=mask_fracs)
     else:
         results = lsst.pipe.base.Struct(sources=sources, 
+                                        candy=sources_big,
                                         mask_fracs=mask_fracs)
         cfg.reset_mask_planes()
 

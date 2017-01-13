@@ -20,7 +20,7 @@ MAX_CUTS = {'num_edge_pix': 1}
 
 def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True, 
            inplace=False, group_id=None, max_r_vir=2.0, 
-           cut_duplicates=True, **kwargs):
+           cut_duplicates=False, **kwargs):
     """
     Make selection cuts on input catalog.
 
@@ -51,8 +51,6 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
     cut_cat : ndarray or None
         Cut catalog. Will be None if inplace=True
     """
-    min_cuts = check_kwargs_defaults(min_cuts, MIN_CUTS)
-    max_cuts = check_kwargs_defaults(max_cuts, MAX_CUTS)
 
     if verbose:
         print(len(cat), 'objects in cat before cuts')
