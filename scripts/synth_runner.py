@@ -44,7 +44,8 @@ def worker(p):
 
     sf = hp.SynthFactory(**synths_kwargs)
 
-    results = hp.run(config, synth_factory=sf)
+    run = hp.run_use_sex if p['use_sex'] else hp.run
+    results = run(config, synth_factory=sf)
 
     # write source catalog
     sources = results.sources.to_pandas()
@@ -97,12 +98,14 @@ def combine_results(outdir):
             os.remove(fn)
 
 
-def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
+def main(pool, patches, outdir, config_fn, num_synths=10, 
+         seed=None, use_sex=False):
 
     patches['outdir'] = outdir
     patches['num_synths'] = num_synths
     patches['seed'] = seed
     patches['config_fn'] = config_fn
+    patches['use_sex'] = use_sex
 
     pool.map(worker, patches)
     pool.close()
@@ -139,4 +142,4 @@ if __name__=='__main__':
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
     main(pool, patches, outdir, config_fn=args.config_fn, 
-         num_synths=args.num_synths, seed=args.seed)
+         num_synths=args.num_synths, seed=args.seed, use_sex=args.use_sex)

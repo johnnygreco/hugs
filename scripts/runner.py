@@ -32,7 +32,8 @@ def worker(p):
     config.set_data_id(data_id)
     config.logger.info('random seed set to {}'.format(seed))
     
-    results = hp.run_use_sex(config)
+    run = hp.run_use_sex if p['use_sex'] else hp.run
+    results = run(config)
 
     # write source catalog
     sources = results.sources.to_pandas()
@@ -77,11 +78,12 @@ def combine_results(outdir):
             os.remove(fn)
 
 
-def main(pool, patches, outdir, config_fn, seed=None):
+def main(pool, patches, outdir, config_fn, seed=None, use_sex=False):
 
     patches['outdir'] = outdir
     patches['seed'] = seed
     patches['config_fn'] = config_fn
+    patches['use_sex'] = use_sex
 
     pool.map(worker, patches)
     pool.close()
@@ -108,4 +110,5 @@ if __name__=='__main__':
         print('searching in', len(patches), 'patches')
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    main(pool, patches, outdir, config_fn=args.config_fn, seed=args.seed)
+    main(pool, patches, outdir, config_fn=args.config_fn, 
+         seed=args.seed, use_sex=args.use_sex)
