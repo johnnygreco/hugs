@@ -17,7 +17,7 @@ config = hp.Config(data_id=data_id,
                    config_fn=args.config_fn, 
                    log_fn=prefix+'.log')
 
-results = hp.run_use_sex(config, debug_return=True)
+results = hp.run(config, debug_return=True)
 
 df = results.sources.to_pandas()
 

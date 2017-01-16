@@ -13,7 +13,7 @@
 cd /home/jgreco/projects/hugs-pipe/scripts
 
 for group_id in $(cat /home/jgreco/projects/hugs-pipe/slurm/thegroups.txt); do
-    python runner.py --ncores 32 -g $group_id -c $LOCAL_IO/config-11-17-2016.yml \
-        -o $HUGS_PIPE_IO/run-results
+    python runner.py --ncores 32 -g $group_id -c $LOCAL_IO/config-01-16-2017.yml \
+        -o $HUGS_PIPE_IO/sex-results
 done
 wait

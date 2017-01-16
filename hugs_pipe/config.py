@@ -164,7 +164,8 @@ class Config(object):
                                              'CLEANED', 
                                              'SYNTH',
                                              'THRESH_HIGH', 
-                                             'THRESH_LOW'])
+                                             'THRESH_LOW', 
+                                             'SMOOTHED'])
 
     def set_data_id(self, data_id):
         """
@@ -218,7 +219,9 @@ class Config(object):
         utils.remove_mask_planes(self.mask, ['CR', 
                                              'CROSSTALK',
                                              'DETECTED_NEGATIVE', 
-                                             'NOT_DEBLENDED']) 
+                                             'NOT_DEBLENDED', 
+                                             'SUSPECT', 
+                                             'UNMASKEDNAN']) 
 
         try:
             self.psf_sigma = utils.get_psf_sigma(self.exp)

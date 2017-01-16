@@ -71,11 +71,6 @@ def parse_args(which='all', default_outdir=io, parser=None):
                             help='group id', 
                             default=None)
 
-    if 'sex' in which or which=='all':
-        parser.add_argument('--use_sex',
-                            help='use sextractor for final detection',
-                            action='store_true')
-
     args = parser.parse_args()
     if hasattr(args, 'group_id'):
         args.group_dir = os.path.join(args.outdir, 'group-'+str(args.group_id))

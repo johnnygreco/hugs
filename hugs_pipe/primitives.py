@@ -434,24 +434,53 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
             sources['mu_{}_{}'.format(r, band.lower())] = mu
 
 
-def run_imfit(exp, cat, label='run', clean=True):
+def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
+              psf_convolve=False):
     """
     Run imfit on postage stamps to make cuts on sample.
+
+    Parameters
+    ----------
+    exp : lsst.afw.image.ExposureF
+        Exposure object. 
+    cat : astropy.table.Table
+        Source catalog (from sextractor run)
+    label : string
+        Label for this run. 
+    clean : bool
+        If True, delete files created by this function.
+    psf_convolve : bool
+        If True, convolve image with psf.
+
+    Returns
+    -------
+    results : astropy.table.Table
+        Source catalog with columns added for fit params.
     """
     from hugs.tasks import sersic_fit
+    from hugs.imfit.viz import img_mod_res
+    if viz_fit:
+        import matplotlib.pyplot as plt
 
     size = 120
     band = exp.getFilter().getName().lower()
     wcs = exp.getWcs()
+    prefix = os.path.join(utils.io, 'temp-io')
 
     results = Table()
+
+    if psf_convolve:
+        psf = exp.getPsf().computeImage().getArray()
+        psf_fn = os.path.join(prefix, 'psf-{}.fits'.format(label))
+        fits.writeto(psf_fn, psf, clobber=True)
+    else:
+        psf_fn = None
     
     for obj in cat:
         num = str(obj['NUMBER'])
         coord_hsc = obj['x_hsc'], obj['y_hsc']
         cutout = imtools.get_cutout(coord_hsc, size, exp=exp)
         
-        prefix = os.path.join(utils.io, 'temp-io')
         fn = os.path.join(prefix, 'cutout-{}-{}.fits'.format(label, num))
         cutout.writeFits(fn)
 
@@ -466,26 +495,41 @@ def run_imfit(exp, cat, label='run', clean=True):
         }
 
         fit_prefix = os.path.join(prefix, label)
-        fit = sersic_fit(fn, init_params=init_params, prefix=fit_prefix)
+        fit = sersic_fit(
+            fn, init_params=init_params, prefix=fit_prefix, 
+            clean='config', psf_fn=psf_fn)
 
-        coord = wcs.pixelToSky(fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0())
+        x0_imfit, y0_imfit = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
+        coord = wcs.pixelToSky(x0_imfit, y0_imfit)
         ra, dec = coord.getPosition(afwGeom.degrees)
-        dX0, dY0 = fit.X0 - X0, fit.Y0 - Y0
+        dr0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
+        dmu = fit.mu_0 - obj['mu_aper_0']
 
         data = [ra, dec, fit.n, fit.m_tot, fit.mu_0, fit.ell, 
-                fit.r_e*utils.pixscale, fit.PA, dX0, dY0]
+                fit.r_e*utils.pixscale, fit.PA, x0_imfit, y0_imfit, dr0, dmu]
 
-        names = ['ra_imfit', 'dec_imfit', 'n', 'm_tot('+band+')', 'mu_0('+band+')', 
-                 'ell('+band+')', 'r_e('+band+')', 'PA('+band+')',
-                 'dX0', 'dY0']
+        names = ['ra_imfit', 'dec_imfit', 'n', 'm_tot('+band+')', 
+                 'mu_0('+band+')', 'ell('+band+')', 'r_e('+band+')', 
+                 'PA('+band+')', 'x_hsc_imfit', 'y_hsc_imfit', 'dr0', 'dmu']
 
         results = vstack([results, Table(rows=[data], names=names)])
+
+        if viz_fit:
+            img_mod_res(fn,
+                        fit.params, 
+                        fit_prefix+'_photo_mask.fits',
+                        band='i', 
+                        show=True, 
+                        subplots=plt.subplots(1, 3, figsize=(15,5)))
 
         if clean:
             os.remove(fn)
             os.remove(fit_prefix+'_bestfit_params.txt')
+            os.remove(fit_prefix+'_photo_mask.fits')
 
-    return hstack([cat, results])
+    results = hstack([cat, results])
+
+    return results
 
 
 def sex_measure(exp, label='run'):
@@ -514,7 +558,7 @@ def sex_measure(exp, label='run'):
     param_fn = label+'.params'
     config = {
         'DETECT_THRESH': 0.7, 
-        'FILTER_NAME': 'gauss_15.0_31x31.conv',
+        'FILTER_NAME': 'gauss_5.0_21x21.conv',
         'BACK_SIZE': 128,
         'VERBOSE_TYPE': 'NORMAL', 
         'PHOT_APERTURES': ','.join([str(int(a)) for a in apertures]),
