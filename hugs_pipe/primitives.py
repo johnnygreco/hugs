@@ -496,18 +496,20 @@ def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
             fn, init_params=init_params, prefix=fit_prefix, 
             clean='config', psf_fn=psf_fn)
 
-        x0_imfit, y0_imfit = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
-        coord = wcs.pixelToSky(x0_imfit, y0_imfit)
+        x0_hsc, y0_hsc = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
+        coord = wcs.pixelToSky(x0_hsc, y0_hsc)
         ra, dec = coord.getPosition(afwGeom.degrees)
         dr0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
+        dsize = (fit.r_e - obj['FLUX_RADIUS'])*utils.pixscale
         dmu = fit.mu_0 - obj['mu_aper_0']
 
-        data = [ra, dec, fit.n, fit.m_tot, fit.mu_0, fit.ell, 
-                fit.r_e*utils.pixscale, fit.PA, x0_imfit, y0_imfit, dr0, dmu]
+        data = [ra, dec, fit.n, fit.m_tot, fit.mu_0, fit.ell, fit.X0, fit.Y0,
+                fit.r_e*utils.pixscale, fit.PA, x0_hsc, y0_hsc, dr0, dmu, dsize]
 
         names = ['ra_imfit', 'dec_imfit', 'n', 'm_tot('+band+')', 
-                 'mu_0('+band+')', 'ell('+band+')', 'r_e('+band+')', 
-                 'PA('+band+')', 'x_hsc_imfit', 'y_hsc_imfit', 'dr0', 'dmu']
+                 'mu_0('+band+')', 'ell('+band+')', 'x_img_imfit', 
+                 'y_img_imfit', 'r_e('+band+')', 'PA('+band+')', 
+                 'x_hsc_imfit', 'y_hsc_imfit', 'dr0', 'dmu', 'dr_e']
 
         results = vstack([results, Table(rows=[data], names=names)])
 
@@ -596,6 +598,8 @@ def sex_measure(exp, label='run'):
 
     if len(cat)>0:
         x0, y0 = exp.getXY0()
+        cat['x_img'] = cat['X_IMAGE'] 
+        cat['y_img'] = cat['Y_IMAGE']
         cat['x_hsc'] = cat['X_IMAGE'] + x0
         cat['y_hsc'] = cat['Y_IMAGE'] + y0
         cat.rename_column('MAG_APER', 'MAG_APER_0')

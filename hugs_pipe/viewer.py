@@ -146,7 +146,7 @@ class Viewer(object):
         self.frames.update({frame:frame_props})
 
     def ds9_draw_ell(self, cat, frame, scale=2.0, ec='cyan', cc='red', 
-                     ellpars='photutils'):
+                     ellpars='sex'):
         """
         Draw hugs-pipe measurements on ds9 frame.
 
@@ -310,7 +310,7 @@ class Viewer(object):
         return self.current_axis
 
     def mpl_draw_ell(self, cat, ax=None, coord=None, scale=2.0, 
-                     ell_kw={}, plot_kw={}, ellpars='photutils'):
+                     ell_kw={}, plot_kw={}, ellpars='sex'):
         """
         Draw hugs-pipe measurements with matplotlib.
 

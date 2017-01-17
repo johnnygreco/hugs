@@ -6,6 +6,7 @@ import Tkinter as tk
 import tkMessageBox
 from functools import partial
 
+import numpy as np
 import matplotlib 
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -211,9 +212,23 @@ class GUI(object):
         return self._coord
 
     def _load_cat(self, cat_fn, apply_cuts):
+        from hugs.datasets.yang import get_group_prop
+        from toolbox.cosmo import Cosmology
+        cosmo = Cosmology()
         self.cat = pd.read_csv(cat_fn)
+        self.cat.reset_index(inplace=True)
+        self.z = get_group_prop(self.group_id, 'z')
+        self.D_A = cosmo.D_A(self.z)
+        self.cat['r_kpc(i)'] = 1e3*self.D_A*self.cat['r_e(i)']/206265.0
         if apply_cuts:
-            hp.cattools.cutter(self.cat, group_id=self.group_id, inplace=True)
+            cut = self.cat['dr0'] < 10
+            cut &= np.abs(self.cat['dmu']) < 1
+            cut &= self.cat['mu_0(i)'] > 23.0
+            cut &= self.cat['r_e(i)'] < 30.0
+            cut &= self.cat['n'] > 0.05
+            cut &= self.cat['n'] < 3.0
+            cut &= self.cat['r_kpc(i)'] > 1.5
+            self.cat = self.cat.loc[cut].copy()
         # sort by tract and patch
         self.cat.sort_values(['tract', 'patch'], inplace=True)
         self.cat.reset_index(drop=True, inplace=True)
@@ -295,12 +310,13 @@ class GUI(object):
         self.canvas.draw()
 
     def update_info(self):
-        txt = 'tract: {}  -   patch: {}  -  coord: {:.5f} {:.5f}  -  '
-        txt += 'r: {:.2f}  -  mu: {:.2f}  -  flag: {}'
-        cols = ['ra', 'dec', 'a_2_sig', 'mu_2_i']
-        cols += self.flags
-        info = self.cat.ix[self.current_idx, cols]
-        ra, dec, size, mu = info[['ra', 'dec', 'a_2_sig', 'mu_2_i']]
+        txt = 'patch: {}/{} - r_kpc: {:.2f} - coord: {:.5f} {:.5f} - '
+        txt += 'r: {:.2f} - mu: {:.2f} - catID: {} - flag: {}'
+        cols = ['ra_imfit', 'dec_imfit', 'r_e(i)', 
+                'index', 'mu_0(i)', 'r_kpc(i)']
+        flag_cols = cols + self.flags
+        info = self.cat.ix[self.current_idx, flag_cols]
+        ra, dec, size, idx, mu, r_kpc = info[cols]
         flags = info[self.flags]
         flag = flags[flags==1]
         if len(flag)==1:
@@ -310,7 +326,7 @@ class GUI(object):
         if (self.review is not None) and (self.review != 'all'):
             txt = txt.replace('flag', 'idx') 
             flag = self.cat_idx[self.current_idx]
-        txt = txt.format(self.tract, self.patch, ra, dec, size, mu, flag)
+        txt = txt.format(self.tract, self.patch, r_kpc, ra, dec, size, mu, idx, flag)
         self.status.config(state='normal')
         self.status.delete(1.0, 'end')
         self.status.insert('insert', txt)
@@ -353,7 +369,7 @@ if __name__=='__main__':
         args.out_fn = os.path.join(outdir, args.out_fn)
     
     if args.cat_fn is None:
-        catdir = os.path.join(hp.io, 'run-results')
+        catdir = os.path.join(hp.io, 'sex-results')
         catdir = os.path.join(catdir, 'group-'+args.group_id)
         args.cat_fn = os.path.join(catdir, 'hugs-pipe-cat.csv')
 
