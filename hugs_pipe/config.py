@@ -215,7 +215,6 @@ class Config(object):
                     self.color_data.update({color.upper(): _img})
 
         # clear detected mask and remove unnecessary plane
-        #self.mask.clearMaskPlane(self.mask.getMaskPlane('DETECTED'))
         utils.remove_mask_planes(self.mask, ['CR', 
                                              'CROSSTALK',
                                              'DETECTED_NEGATIVE', 

@@ -39,9 +39,6 @@ def run(cfg, debug_return=False, synth_factory=None):
     assert cfg.data_id is not None, 'No data id!'
     cfg.timer # start timer
 
-    # don't need this mask for sextractor run
-    #utils.remove_mask_planes(cfg.mask, ['DETECTED'])
-
     ############################################################
     # If desired, inject synthetic galaxies 
     ############################################################
@@ -107,9 +104,7 @@ def run(cfg, debug_return=False, synth_factory=None):
     prim.find_blends(exp_clean, fpset_smooth, 
                      plane_name='SMOOTHED', **cfg.find_blends)
 
-    back_rms = mi_clean.getImage().getArray()[mask_clean.getArray()==0].std()
-    shape = mask_clean.getArray().shape
-    noise_array = back_rms*cfg.rng.randn(shape[0], shape[1])
+    noise_array = utils.make_noise_image(mi_clean, cfg.rng)
     replace = mask_clean.getArray() & mask_clean.getPlaneBitMask('BLEND') != 0
     mi_clean.getImage().getArray()[replace] = noise_array[replace]
 
@@ -126,16 +121,22 @@ def run(cfg, debug_return=False, synth_factory=None):
     # Cut catalog and run imfit on cutouts
     ############################################################
 
-    cfg.logger.info('cutting catalog and running imfit on cutouts')
-    candy = cutter(sources.to_pandas(), min_cuts={'FWHM_IMAGE':25})
-    candy = Table.from_pandas(candy)
-
-    candy = prim.run_imfit(exp_clean, candy, label=label)
-
-    cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
+    if len(sources)>0:
+        cfg.logger.info('cutting catalog on FWHM')
+        candy = cutter(sources.to_pandas(), min_cuts={'FWHM_IMAGE':25})
+        candy = Table.from_pandas(candy)
+        if len(candy)>0:
+            cfg.logger.info('cutting catalog and running imfit on cutouts')
+            candy = prim.run_imfit(exp_clean, candy, label=label)
+        else:
+            cfg.logger.warning('**** no sources with FWHM > 25 pix! ****')
+    else:
+        cfg.logger.warning('**** no sources found! ****')
+        candy = Table()
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
-        
+    cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
+
     if debug_return:
         # detection plane was modified by find_blends
         results = lsst.pipe.base.Struct(sources=sources,

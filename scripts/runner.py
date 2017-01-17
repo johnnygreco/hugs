@@ -36,11 +36,17 @@ def worker(p):
 
     # write source catalog with all objects
     sources = results.sources.to_pandas()
+    if len(sources)>0:
+        sources['tract'] = p['tract']
+        sources['patch'] = p['patch']
     fn = prefix+'-cat-all.csv'
     sources.to_csv(fn, index=False)
 
     # write final source catalog
     candy = results.candy.to_pandas()
+    if len(candy)>0:
+        candy['tract'] = p['tract']
+        candy['patch'] = p['patch']
     fn = prefix+'-cat.csv'
     candy.to_csv(fn, index=False)
 
@@ -58,17 +64,21 @@ def combine_results(outdir):
     join = os.path.join
     parse = lambda key: [join(outdir, f) for f in all_files if key in f]
 
-    files = [parse('cat'), parse('all'), parse('mask-fracs')]
-
     prefix = join(outdir, 'hugs-pipe')
     suffixes = ['-cat.csv', '-cat-all.csv', '-mask-fracs.csv']
+
+    files = [parse(s) for s in suffixes]
      
     for fnames, suffix in zip(files, suffixes):
         df = []
         for fn in fnames:
             try: 
-                df.append(pd.read_csv(fn))
-                os.remove(fn)
+                df_patch = pd.read_csv(fn)
+                if len(df_patch>0):
+                    df.append(df_patch)
+                    os.remove(fn)
+                else:
+                    os.rename(fn, fn[:-3]+'empty')
             except pd.io.common.EmptyDataError:
                 os.rename(fn, fn[:-3]+'empty')
         df = pd.concat(df, ignore_index=True)
@@ -103,7 +113,8 @@ if __name__=='__main__':
         assert (args.tract is not None) and (args.patch is not None)
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
-        outdir = os.path.join(args.outdir, 'run-{}-{}'.format(tract, patch))
+        outdir = os.path.join(args.outdir, 
+                              'solo-run-{}-{}'.format(tract, patch))
         outdir = outdir+'_'+args.label if args.label else outdir
         hp.utils.mkdir_if_needed(outdir)
     else:

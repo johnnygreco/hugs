@@ -13,9 +13,9 @@ __all__ = ['cutter',
 # Default selection cuts
 ##################################
 
-MIN_CUTS = {'a_2_sig': 2.0,
-            'mu_2_i': 23.0}
-MAX_CUTS = {'num_edge_pix': 1}
+MIN_CUTS = {'FWHM_IMAGE': 25} 
+MAX_CUTS = {'num_edge_pix': 1, 
+            'num_bright_pix': 1}
 
 
 def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True, 

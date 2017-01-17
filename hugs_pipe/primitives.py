@@ -57,12 +57,9 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     """
     
     # generate array of gaussian noise
-    rng = utils.check_random_state(random_state)
     mi = exposure.getMaskedImage()
     mask = mi.getMask()
-    shape = mask.getArray().shape
-    back_rms = mi.getImage().getArray()[mask.getArray()==0].std()
-    noise_array = back_rms*rng.randn(shape[0], shape[1])
+    noise_array = utils.make_noise_image(mi, random_state)
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())
@@ -597,47 +594,48 @@ def sex_measure(exp, label='run'):
 
     cat = sexpy.read_cat(sw.get_outdir(cat_label+'.cat'))
 
-    x0, y0 = exp.getXY0()
-    cat['x_hsc'] = cat['X_IMAGE'] + x0
-    cat['y_hsc'] = cat['Y_IMAGE'] + y0
-    cat.rename_column('MAG_APER', 'MAG_APER_0')
+    if len(cat)>0:
+        x0, y0 = exp.getXY0()
+        cat['x_hsc'] = cat['X_IMAGE'] + x0
+        cat['y_hsc'] = cat['Y_IMAGE'] + y0
+        cat.rename_column('MAG_APER', 'MAG_APER_0')
 
-    for i, diam in enumerate(apertures):
-        r = utils.pixscale*diam/2 # arcsec
-        sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
-        cat['mu_aper_'+str(i)] = sb
+        for i, diam in enumerate(apertures):
+            r = utils.pixscale*diam/2 # arcsec
+            sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
+            cat['mu_aper_'+str(i)] = sb
 
-    sex_plane = mask.getPlaneBitMask('SEX_SEG')
-    edge_plane = mask.getPlaneBitMask('EDGE')
-    bright_plane = mask.getPlaneBitMask('BRIGHT_OBJECT')
+        sex_plane = mask.getPlaneBitMask('SEX_SEG')
+        edge_plane = mask.getPlaneBitMask('EDGE')
+        bright_plane = mask.getPlaneBitMask('BRIGHT_OBJECT')
 
-    fpset = afwDet.FootprintSet(
-        mask, afwDet.Threshold(sex_plane, afwDet.Threshold.BITMASK))
+        fpset = afwDet.FootprintSet(
+            mask, afwDet.Threshold(sex_plane, afwDet.Threshold.BITMASK))
 
-    cat['num_edge_pix'] = -1 
-    cat['num_bright_pix'] = -1
-    cat['parent_fp_area'] = -1
-    cat['fp_id'] = -1
-    cat['nchild'] = -1
-    
-    for obj_i in range(len(cat)):
-        x, y = cat['x_hsc', 'y_hsc'][obj_i]
-        point = afwGeom.Point2I(int(x), int(y))
-        for fp_id, fp in enumerate(fpset.getFootprints()):
-            if fp.contains(point):
-                hfp = afwDet.HeavyFootprintF(fp, exp.getMaskedImage())
-                pix = hfp.getMaskArray()
-                num_edge = (pix & edge_plane != 0 ).sum()
-                num_bright = (pix & bright_plane != 0).sum()
-                cat['num_edge_pix'][obj_i] = num_edge
-                cat['num_bright_pix'][obj_i] = num_bright
-                cat['parent_fp_area'][obj_i] = hfp.getArea()
-                cat['fp_id'][obj_i] = fp_id
-                break
+        cat['num_edge_pix'] = -1 
+        cat['num_bright_pix'] = -1
+        cat['parent_fp_area'] = -1
+        cat['fp_id'] = -1
+        cat['nchild'] = -1
+        
+        for obj_i in range(len(cat)):
+            x, y = cat['x_hsc', 'y_hsc'][obj_i]
+            point = afwGeom.Point2I(int(x), int(y))
+            for fp_id, fp in enumerate(fpset.getFootprints()):
+                if fp.contains(point):
+                    hfp = afwDet.HeavyFootprintF(fp, exp.getMaskedImage())
+                    pix = hfp.getMaskArray()
+                    num_edge = (pix & edge_plane != 0 ).sum()
+                    num_bright = (pix & bright_plane != 0).sum()
+                    cat['num_edge_pix'][obj_i] = num_edge
+                    cat['num_bright_pix'][obj_i] = num_bright
+                    cat['parent_fp_area'][obj_i] = hfp.getArea()
+                    cat['fp_id'][obj_i] = fp_id
+                    break
 
-    for fp_id in np.unique(cat['fp_id']):
-        obj_mask = cat['fp_id']==fp_id
-        cat['nchild'][obj_mask] = obj_mask.sum()
+        for fp_id in np.unique(cat['fp_id']):
+            obj_mask = cat['fp_id']==fp_id
+            cat['nchild'][obj_mask] = obj_mask.sum()
 
     #########################################################
     # delete files created by and for sextractor

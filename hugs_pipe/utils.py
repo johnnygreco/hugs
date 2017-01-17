@@ -12,7 +12,7 @@ __all__ = [
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
     'combine_cats', 'check_random_state', 'embed_slices', 
     'get_group_patches', 'calc_mask_bit_fracs', 'get_exposure',
-    'check_kwargs_defaults'
+    'check_kwargs_defaults', 'make_noise_image'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
@@ -326,6 +326,7 @@ def calc_mask_bit_fracs(exp):
 
     return fracs
 
+
 def check_astropy_to_pandas(cat):
     if type(cat)==Table:
         cat = cat.to_pandas()
@@ -337,3 +338,15 @@ def check_kwargs_defaults(kwargs, defaults):
     for k, v in kwargs.items():
         kw[k] = v
     return kw
+
+
+def make_noise_image(masked_image, random_state=None):
+    from .stats import get_clipped_sig_task
+    rng = check_random_state(random_state)
+    bad_mask_planes = ('EDGE', 'BRIGHT_OBJECT', 'DETECTED', 'SAT', 'CLIPPED')
+    task = get_clipped_sig_task(bad_mask_planes=bad_mask_planes)
+    stats = task.run(masked_image)
+    back_rms = stats.stdev
+    dims = masked_image.getDimensions()
+    noise_array = back_rms*rng.randn(dims[1], dims[0])
+    return noise_array
