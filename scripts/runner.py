@@ -14,7 +14,6 @@ from hugs_pipe.utils import calc_mask_bit_fracs
 
 def worker(p):
 
-    data_id = {'tract': p['tract'], 'patch': p['patch'], 'filter': 'HSC-I'}
     prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
                                                            p['patch']))
     log_fn = prefix+'.log'
@@ -29,25 +28,33 @@ def worker(p):
     config = hp.Config(config_fn=p['config_fn'], 
                        log_fn=log_fn, 
                        random_state=seed)
-    config.set_data_id(data_id)
+    config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     
     results = hp.run(config)
 
     # write source catalog with all objects
-    sources = results.sources.to_pandas()
-    if len(sources)>0:
-        sources['tract'] = p['tract']
-        sources['patch'] = p['patch']
+    all_det = results.all_detections.to_pandas()
+    if len(all_det)>0:
+        all_det['tract'] = p['tract']
+        all_det['patch'] = p['patch']
     fn = prefix+'-cat-all.csv'
-    sources.to_csv(fn, index=False)
+    all_det.to_csv(fn, index=False)
+
+    # write source catalog with all objects
+    verified = results.sources.to_pandas()
+    if len(verified)>0:
+        verified['tract'] = p['tract']
+        verified['patch'] = p['patch']
+    fn = prefix+'-cat-verified.csv'
+    verified.to_csv(fn, index=False)
 
     # write final source catalog
     candy = results.candy.to_pandas()
     if len(candy)>0:
         candy['tract'] = p['tract']
         candy['patch'] = p['patch']
-    fn = prefix+'-cat.csv'
+    fn = prefix+'-cat-candy.csv'
     candy.to_csv(fn, index=False)
 
     # write mask fractions 
@@ -65,7 +72,10 @@ def combine_results(outdir):
     parse = lambda key: [join(outdir, f) for f in all_files if key in f]
 
     prefix = join(outdir, 'hugs-pipe')
-    suffixes = ['-cat.csv', '-cat-all.csv', '-mask-fracs.csv']
+    suffixes = ['-cat-candy.csv',
+                '-cat-verified.csv',
+                '-cat-all.csv', 
+                '-mask-fracs.csv']
 
     files = [parse(s) for s in suffixes]
      

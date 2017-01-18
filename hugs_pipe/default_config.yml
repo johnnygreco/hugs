@@ -4,7 +4,9 @@
 
 data_dir: hsc
 
-phot_colors: 'GI'
+band_detect: 'i'
+
+band_verify: 'gr'
 
 thresh_low:
     thresh: 3.0
@@ -14,14 +16,14 @@ thresh_low:
     thresh_type: stdev
 
 thresh_high:
-    thresh: 30.0
+    thresh: 28.0
     npix: 1
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
 
 clean:
-    max_frac_high_thresh: 0.2      # per footprint
+    max_frac_high_thresh: 0.15       # per footprint
     min_pix_low_thresh: 3 psf sigma  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
@@ -41,20 +43,19 @@ find_blends:
     min_parent_area: 0.15
     min_parent_flux: 0.6
 
-measure_sources:
-    npix: 5 
-    kern_sig_pix: 2.5 psf sigma
-    thresh_snr: 0.5
-    grow_stamps: 5
-    detect_kwargs:
-        sigclip_sigma: 3.0
-        sigclip_iters: ~
-    deblend_kwargs:
-        nlevels: 32
-        contrast: 0.001
-        mode: exponential
-        connectivity: 8
+sex_measure:
+    config: 
+        DETECT_THRESH: 0.7
+        FILTER_NAME: 'gauss_7.0_31x31.conv'
+        BACK_SIZE: 128
+        VERBOSE_TYPE: 'NORMAL'
+        DETECT_MINAREA: 100
+    apertures: [3., 4., 5., 6., 7., 8., 16., 32.]
 
-photometry:
-    ell_nsig: 5.0
-    circ_radii: [1, 2, 3, 6, 9]
+verify_max_sep: 15  # pixels
+
+run_imfit:
+    bbox_grow: 120
+    psf_convolve: False
+    clean: True
+    save_fit_fig: False

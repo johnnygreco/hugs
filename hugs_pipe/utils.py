@@ -12,7 +12,7 @@ __all__ = [
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
     'combine_cats', 'check_random_state', 'embed_slices', 
     'get_group_patches', 'calc_mask_bit_fracs', 'get_exposure',
-    'check_kwargs_defaults', 'make_noise_image'
+    'check_kwargs_defaults', 'make_noise_image', 'add_band_to_name'
 ]
 
 io = os.environ.get('HUGS_PIPE_IO')
@@ -350,3 +350,19 @@ def make_noise_image(masked_image, random_state=None):
     dims = masked_image.getDimensions()
     noise_array = back_rms*rng.randn(dims[1], dims[0])
     return noise_array
+
+
+def add_band_to_name(cat, band, num_aps):
+    params = [
+        'MAG_AUTO', 'MAG_ISO', 'MU_THRESHOLD', 'MU_MAX', 'FLUX_RADIUS',
+        'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'THETA_IMAGE', 'ELLIPTICITY',
+        'ISO0', 'ISO3', 'ISO6', 'FLAGS', 'MAG_APER_', 'mu_aper_',
+    ]
+
+    for p in params:
+        if p[-1]=='_':
+            for n in range(num_aps):
+                n = str(n)
+                cat.rename_column(p+n, p+n+'('+band+')')
+        else:
+            cat.rename_column(p, p+'('+band+')')

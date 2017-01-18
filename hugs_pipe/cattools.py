@@ -1,13 +1,16 @@
 from __future__ import division, print_function
 
 import numpy as np
+from scipy.spatial import cKDTree
+from astropy.table import Table
 from .utils import check_random_state, check_kwargs_defaults
 
 __all__ = ['cutter', 
            'find_duplicates', 
            'get_random_subset',
            'max_r_vir_mask',
-           'remove_duplicates']
+           'remove_duplicates', 
+           'xmatch']
 
 ##################################
 # Default selection cuts
@@ -118,7 +121,6 @@ def find_duplicates(cat, max_sep=0.7, ra_col='ra', dec_col='dec'):
     ind : ndarray
         Index of matching pairs (i,j) with i<j. 
     """
-    from scipy.spatial import cKDTree
     kdt = cKDTree(cat[[ra_col, dec_col]].values)
     ind = kdt.query_pairs(max_sep/3600.0, output_type='ndarray')
     return ind
@@ -183,3 +185,25 @@ def remove_duplicates(cat, inplace=True, **kwargs):
     ind = find_duplicates(cat, **kwargs)
     return cat.drop(cat.index[ind[:,1]], inplace=inplace)
 
+
+def xmatch(cat_1, cat_2, xy_cols=['X_IMAGE', 'Y_IMAGE'], max_sep=5):
+    """
+    Crossmatch catalogs.
+    """
+    if type(cat_1)==Table:
+        coords_1 = cat_1[xy_cols].to_pandas().values
+    else:
+        coords_1 = cat_1[xy_cols].values
+    if type(cat_2)==Table:
+        coords_2 = cat_2[xy_cols].to_pandas().values
+    else:
+        coords_2 = cat_2[xy_cols].values
+    kdt = cKDTree(coords_1)
+    dist, idx = kdt.query(coords_2)
+    match_2 = dist < max_sep
+    match_1 = idx[match_2]
+    mismatch_2 = ~match_2
+    mismatch_1 = idx[mismatch_2]
+    match_masks = (match_1, match_2)
+    mismatch_masks = (mismatch_1, mismatch_2)
+    return match_masks, mismatch_masks 

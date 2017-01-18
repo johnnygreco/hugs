@@ -7,6 +7,7 @@ import numpy as np
 import time
 import lsst.afw.image
 from . import utils
+from .exposure import HugsPipeExposure
 try:
     import coloredlogs
 except ImportError:
@@ -17,8 +18,8 @@ class Config(object):
     Class for parsing the hugs_pipe configuration.
     """
 
-    def __init__(self, config_fn=None, data_id=None, log_level='info',
-                 log_fn=None, random_state=None):
+    def __init__(self, config_fn=None, tract=None, patch=None, 
+                 log_level='info', log_fn=None, random_state=None):
         """
         Initialization
 
@@ -27,9 +28,10 @@ class Config(object):
         config_fn : string, optional
             The parameter file name (must be a yaml file).
             If None, will use default config.
-        data_id : dict or string, optional
-            The HSC calibrated exposure data id (dict) or 
-            filename (string). 
+        tract : int, optional
+            HSC tract.
+        patch : str, optional
+            HSC patch
         log_level : string, optional
             Level of python logger.
         log_fn : string, optional
@@ -56,9 +58,9 @@ class Config(object):
         self._thresh_high = params['thresh_high']
         self._thresh_det = params['thresh_det']
         self._find_blends = params['find_blends']
-        self._measure_sources = params['measure_sources']
+        self._sex_measure = params['sex_measure']
+        self._run_imfit = params['run_imfit']
         self._clean = params['clean']
-        self._photometry = params['photometry']
         self._butler = None
         self._timer = None
         self.log_fn = log_fn
@@ -66,25 +68,23 @@ class Config(object):
         self.rng = utils.check_random_state(random_state)
         self._clean['random_state'] = self.rng
 
-        self.phot_colors = params['phot_colors']
+        self.band_detect = params['band_detect']
+        self.band_verify = params['band_verify']
+        self.verify_max_sep = params['verify_max_sep']
 
-        # set data id if given
-        if data_id:
-            self.set_data_id(data_id)
+        # set patch id if given
+        if tract is not None:
+            assert patch is not None
+            self.set_patch_id(tract, patch)
         else:
-            self.data_id = None
+            self.tract = None
+            self.patch = None
 
-    def setup_logger(self, data_id):
+    def setup_logger(self, tract, patch):
         """
         Setup the python logger.
         """
-        if type(data_id)==str:
-            name = data_id
-        elif type(data_id)==dict:
-            t, p, b = data_id['tract'], data_id['patch'], data_id['filter']
-            name = 'hugs-pipe: {} | {} | {}'.format(t, p, b)
-        else:
-            name = 'hugs-pipe'
+        name = 'hugs-pipe: {} | {}'.format(tract, patch)
         self.logger = logging.getLogger(name)
         self.logger.setLevel(getattr(logging, self.log_level.upper()))
         fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'
@@ -129,58 +129,35 @@ class Config(object):
             self._timer = time.time()
             return delta_time
 
-    def get_exposure(self, data_id):
-        """
-        Get the HSC calibrated exposure.
-
-        Parameters
-        ----------
-        data_id : dict or string
-            The HSC calibrated exposure data id (dict) or 
-            filename (string).
-
-        Returns
-        -------
-        exposure : lsst.afw.image.ExposureF
-            HSC calibrated exposure.
-        fn : string
-            The exposure filename.
-        """
-        if type(data_id)==str:
-            fn = data_id
-            exposure = lsst.afw.image.ExposureF(fn)
-        else:
-            exposure = self.butler.get('deepCoadd_calexp', 
-                                        data_id, immediate=True)
-            fn = self.butler.get('deepCoadd_calexp_filename', 
-                                 data_id, immediate=True)[0]
-        return exposure, fn
-
     def reset_mask_planes(self):
         """
         Remove mask planes created by hugs-pipe.
         """
-        utils.remove_mask_planes(self.mask, ['BLEND', 
-                                             'CLEANED', 
-                                             'SYNTH',
-                                             'THRESH_HIGH', 
-                                             'THRESH_LOW', 
-                                             'SMOOTHED'])
+        for band in self.bands:
+            mask = self.exp[band].getMaskedImage().getMask()
+            utils.remove_mask_planes(mask, ['BLEND', 
+                                            'CLEANED', 
+                                            'SYNTH',
+                                            'THRESH_HIGH', 
+                                            'THRESH_LOW', 
+                                            'SMOOTHED'])
 
-    def set_data_id(self, data_id):
+    def set_patch_id(self, tract, patch):
         """
-        Setup the data id. This must be done before passing a 
+        Setup the tract/patch. This must be done before passing a 
         config object to hugs_pipe.run.
 
         Parameters
         ----------
-        data_id : dict or string, optional
-            The HSC calibrated exposure data id (dict) or 
-            filename (string).
+        tract : int
+            HSC tract.
+        patch : str
+            HSC patch.
         """
         
-        self.data_id = data_id
-        self.setup_logger(data_id)
+        self.tract = tract
+        self.patch = patch
+        self.setup_logger(tract, patch)
 
         # careful not to modify parameters
         self.thresh_low = self._thresh_low.copy()
@@ -188,42 +165,26 @@ class Config(object):
         self.thresh_det = self._thresh_det.copy()
         self.clean = self._clean.copy()
         self.find_blends = self._find_blends.copy()
-        self.measure_sources = self._measure_sources.copy()
-        self.photometry = self._photometry.copy()
+        self.sex_measure = self._sex_measure.copy()
+        self.run_imfit = self._run_imfit.copy()
 
         # get exposure 
-        if type(data_id)==lsst.afw.image.imageLib.ExposureF:
-            self.exp = data_id
-            self.fn = None
-        else:
-            self.exp, self.fn = self.get_exposure(data_id)
-        self.mi = self.exp.getMaskedImage()
-        self.mask = self.mi.getMask()
-
-        # get color data for forced photometry
-        if self.phot_colors:
-            self.color_data = {}
-            for color in self.phot_colors:
-                if color.upper() != 'I':
-                    if type(data_id)==str:
-                        _id = self.fn.replace('HSC-I', 'HSC-'+color.upper())
-                    else:
-                        _id = data_id.copy()
-                        _id['filter'] = 'HSC-'+color.upper()
-                    _exp, _ = self.get_exposure(_id)
-                    _img = _exp.getMaskedImage().getImage().getArray() 
-                    self.color_data.update({color.upper(): _img})
+        bands = self.band_detect + self.band_verify 
+        self.bands = ''.join(set(bands))
+        self.exp = HugsPipeExposure(tract, patch, self.bands, self.butler)
 
         # clear detected mask and remove unnecessary plane
-        utils.remove_mask_planes(self.mask, ['CR', 
-                                             'CROSSTALK',
-                                             'DETECTED_NEGATIVE', 
-                                             'NOT_DEBLENDED', 
-                                             'SUSPECT', 
-                                             'UNMASKEDNAN']) 
+        for band in self.bands:
+            mask = self.exp[band].getMaskedImage().getMask()
+            utils.remove_mask_planes(mask, ['CR', 
+                                            'CROSSTALK',
+                                            'DETECTED_NEGATIVE', 
+                                            'NOT_DEBLENDED', 
+                                            'SUSPECT', 
+                                            'UNMASKEDNAN']) 
 
         try:
-            self.psf_sigma = utils.get_psf_sigma(self.exp)
+            self.psf_sigma = utils.get_psf_sigma(self.exp[self.band_detect])
         except AttributeError:
             self.logger.warning('no psf with exposure... using mean seeing')
             self.psf_sigma = self.mean_seeing_sigma
@@ -249,8 +210,3 @@ class Config(object):
             self.clean['rgrow'] = None
         else:
             self.clean['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
-
-        # convert measure_sources kernel sigma to psf units
-        if 'psf sigma' in self.measure_sources['kern_sig_pix']:
-            nsig = float(self.measure_sources['kern_sig_pix'].split()[0])
-            self.measure_sources['kern_sig_pix'] = nsig*self.psf_sigma

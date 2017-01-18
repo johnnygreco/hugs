@@ -431,8 +431,8 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
             sources['mu_{}_{}'.format(r, band.lower())] = mu
 
 
-def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
-              psf_convolve=False):
+def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120, 
+              clean=True, save_fit_fig=False, psf_convolve=False):
     """
     Run imfit on postage stamps to make cuts on sample.
 
@@ -455,14 +455,14 @@ def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
         Source catalog with columns added for fit params.
     """
     from hugs.tasks import sersic_fit
-    from hugs.imfit.viz import img_mod_res
-    if viz_fit:
+    if save_fit_fig:
         import matplotlib.pyplot as plt
+        from hugs.imfit.viz import img_mod_res
 
-    size = 120
     band = exp.getFilter().getName().lower()
     wcs = exp.getWcs()
     prefix = os.path.join(utils.io, 'temp-io')
+    label += '-'+band
 
     results = Table()
 
@@ -476,7 +476,7 @@ def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
     for obj in cat:
         num = str(obj['NUMBER'])
         coord_hsc = obj['x_hsc'], obj['y_hsc']
-        cutout = imtools.get_cutout(coord_hsc, size, exp=exp)
+        cutout = imtools.get_cutout(coord_hsc, bbox_grow, exp=exp)
         
         fn = os.path.join(prefix, 'cutout-{}-{}.fits'.format(label, num))
         cutout.writeFits(fn)
@@ -484,42 +484,61 @@ def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
         X0 = coord_hsc[0] - cutout.getX0()
         Y0 = coord_hsc[1] - cutout.getY0()
 
-        init_params = {
-            'X0': X0, 
-            'Y0': Y0,
-            'PA': [obj['THETA_IMAGE'] + 90, 0, 180],
-            'ell': [obj['ELLIPTICITY'], 0, 0.999],
-        }
+        if master_band is None:
+            init_params = {
+                'X0': X0, 
+                'Y0': Y0,
+                'PA': [obj['THETA_IMAGE('+band+')'] + 90, 0, 180],
+                'ell': [obj['ELLIPTICITY('+band+')'], 0, 0.999],
+            }
+        else:
+            init_params = {
+                'X0': [obj['x_img_imfit'], 'fixed'], 
+                'Y0': [obj['y_img_imfit'], 'fixed'], 
+                'n': [obj['n'], 'fixed'], 
+                'ell': [obj['ell'], 'fixed'], 
+                'PA': [obj['PA'], 'fixed'], 
+                'r_e': obj['r_e('+master_band+')'], 
+                'I_e': obj['I_e('+master_band+')']
+            }
 
         fit_prefix = os.path.join(prefix, label)
         fit = sersic_fit(
             fn, init_params=init_params, prefix=fit_prefix, 
             clean='config', psf_fn=psf_fn)
 
-        x0_hsc, y0_hsc = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
-        coord = wcs.pixelToSky(x0_hsc, y0_hsc)
-        ra, dec = coord.getPosition(afwGeom.degrees)
-        dr0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
-        dsize = (fit.r_e - obj['FLUX_RADIUS'])*utils.pixscale
-        dmu = fit.mu_0 - obj['mu_aper_0']
+        dsize = (fit.r_e - obj['FLUX_RADIUS('+band+')'])*utils.pixscale
+        dmu = fit.mu_0 - obj['mu_aper_0('+band+')']
 
-        data = [ra, dec, fit.n, fit.m_tot, fit.mu_0, fit.ell, fit.X0, fit.Y0,
-                fit.r_e*utils.pixscale, fit.PA, x0_hsc, y0_hsc, dr0, dmu, dsize]
+        data = [fit.m_tot, fit.mu_0, fit.r_e*utils.pixscale, 
+                dmu, dsize, fit.I_e]
+        names = ['m_tot('+band+')', 'mu_0('+band+')', 'r_e('+band+')', 
+                 'dmu('+band+')', 'dr_e('+band+')', 'I_e('+band+')']
 
-        names = ['ra_imfit', 'dec_imfit', 'n', 'm_tot('+band+')', 
-                 'mu_0('+band+')', 'ell('+band+')', 'x_img_imfit', 
-                 'y_img_imfit', 'r_e('+band+')', 'PA('+band+')', 
-                 'x_hsc_imfit', 'y_hsc_imfit', 'dr0', 'dmu', 'dr_e']
+        if master_band is None:
+            x0_hsc, y0_hsc = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
+            coord = wcs.pixelToSky(x0_hsc, y0_hsc)
+            ra, dec = coord.getPosition(afwGeom.degrees)
+            dR0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
+
+            master_data = [ra, dec, fit.n, fit.ell, dR0, fit.X0, fit.Y0, 
+                           fit.PA, x0_hsc, y0_hsc]
+            master_names = ['ra', 'dec', 'n', 'ell', 'dR0', 'x_img_imfit', 
+                            'y_img_imfit', 'PA', 'x_hsc_imfit', 'y_hsc_imfit']
+
+            names.extend(master_names)
+            data.extend(master_data)
 
         results = vstack([results, Table(rows=[data], names=names)])
 
-        if viz_fit:
+        if save_fit_fig:
             img_mod_res(fn,
                         fit.params, 
                         fit_prefix+'_photo_mask.fits',
-                        band='i', 
-                        show=True, 
-                        subplots=plt.subplots(1, 3, figsize=(15,5)))
+                        band=band, 
+                        show=False, 
+                        subplots=plt.subplots(1, 3, figsize=(18,5)),
+                        save_fn=fit_prefix+'-fit-{}-{}.png'.format(band, num))
 
         if clean:
             os.remove(fn)
@@ -531,7 +550,7 @@ def run_imfit(exp, cat, label='run', clean=True, viz_fit=False,
     return results
 
 
-def sex_measure(exp, label='run'):
+def sex_measure(exp, config, apertures, label, add_params):
     """
     Perform mesurements using SExtractor (because I'm feeling desperate). 
 
@@ -553,17 +572,9 @@ def sex_measure(exp, label='run'):
     # setup configuration and extra save params
     #########################################################
 
-    apertures = [3., 4., 5., 6., 7., 8., 16., 32.]
     param_fn = label+'.params'
-    config = {
-        'DETECT_THRESH': 0.7, 
-        'FILTER_NAME': 'gauss_5.0_21x21.conv',
-        'BACK_SIZE': 128,
-        'VERBOSE_TYPE': 'NORMAL', 
-        'PHOT_APERTURES': ','.join([str(int(a)) for a in apertures]),
-        'DETECT_MINAREA': 100,
-        'PARAMETERS_NAME': param_fn,
-    }
+    config['PHOT_APERTURES'] = ','.join([str(int(a)) for a in apertures])
+    config['PARAMETERS_NAME'] = param_fn
     params = ['MAG_APER('+str(i+1)+')' for i in range(len(apertures))]
 
     sw = sexpy.SexWrapper(config, params=params)
@@ -595,19 +606,19 @@ def sex_measure(exp, label='run'):
     #########################################################
 
     cat = sexpy.read_cat(sw.get_outdir(cat_label+'.cat'))
+    cat.rename_column('MAG_APER', 'MAG_APER_0')
+    for i, diam in enumerate(apertures):
+        r = utils.pixscale*diam/2 # arcsec
+        sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
+        cat['mu_aper_'+str(i)] = sb
 
-    if len(cat)>0:
+    if add_params and (len(cat)>0):
         x0, y0 = exp.getXY0()
         cat['x_img'] = cat['X_IMAGE'] 
         cat['y_img'] = cat['Y_IMAGE']
         cat['x_hsc'] = cat['X_IMAGE'] + x0
         cat['y_hsc'] = cat['Y_IMAGE'] + y0
-        cat.rename_column('MAG_APER', 'MAG_APER_0')
 
-        for i, diam in enumerate(apertures):
-            r = utils.pixscale*diam/2 # arcsec
-            sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
-            cat['mu_aper_'+str(i)] = sb
 
         sex_plane = mask.getPlaneBitMask('SEX_SEG')
         edge_plane = mask.getPlaneBitMask('EDGE')

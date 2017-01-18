@@ -3,11 +3,11 @@ from __future__ import division, print_function
 import os
 import numpy as np
 import lsst.pipe.base
-from astropy.table import Table
+from astropy.table import Table, hstack
 from . import utils
 from . import imtools
 from . import primitives as prim
-from .cattools import cutter
+from .cattools import cutter, xmatch
 
 __all__ = ['run']
 
@@ -36,7 +36,7 @@ def run(cfg, debug_return=False, synth_factory=None):
         Source catalog.
     """
 
-    assert cfg.data_id is not None, 'No data id!'
+    assert cfg.tract and cfg.patch, 'No patch id given!'
     cfg.timer # start timer
 
     ############################################################
@@ -46,32 +46,32 @@ def run(cfg, debug_return=False, synth_factory=None):
     if synth_factory:
         num_synths = synth_factory.num_synths
         cfg.logger.warning('**** injecting {} synths ****'.format(num_synths))
-        synth_factory.inject(cfg.exp, band='i')
-        if cfg.phot_colors:
-            for band in cfg.color_data.keys():
-                synth_factory.inject(cfg.color_data[band], band=band)
+        for band in cfg.bands:
+            synth_factory.inject(cfg.exp[band], band=band)
 
     ############################################################
     # Image thesholding at low and high thresholds. In both 
     # cases, the image is smoothed at the psf scale.
     ############################################################
-    
-    mi_smooth = imtools.smooth_gauss(cfg.mi, cfg.psf_sigma)
+        
+    mi = cfg.exp[cfg.band_detect].getMaskedImage()
+    mask = mi.getMask()
+    mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
     cfg.logger.info('performing low threshold at '
                     '{} sigma'.format(cfg.thresh_low['thresh']))
     fpset_low = prim.image_threshold(
-        mi_smooth, mask=cfg.mask, plane_name='THRESH_LOW', **cfg.thresh_low)
+        mi_smooth, mask=mask, plane_name='THRESH_LOW', **cfg.thresh_low)
     cfg.logger.info('performing high threshold at '
                     '{} sigma'.format(cfg.thresh_high['thresh']))
     fpset_high = prim.image_threshold(
-        mi_smooth, mask=cfg.mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
+        mi_smooth, mask=mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
 
     ############################################################
     # Get "cleaned" image, with noise replacement
     ############################################################
 
     cfg.logger.info('generating cleaned exposure')
-    exp_clean = prim.clean(cfg.exp, fpset_low, **cfg.clean)
+    exp_clean = prim.clean(cfg.exp[cfg.band_detect], fpset_low, **cfg.clean)
     mi_clean = exp_clean.getMaskedImage()
     mask_clean = mi_clean.getMask()
 
@@ -94,7 +94,7 @@ def run(cfg, debug_return=False, synth_factory=None):
                     '{} sigma'.format(cfg.thresh_det['thresh']))
     fpset_smooth = prim.image_threshold(mi_clean_smooth, plane_name='SMOOTHED',
                                      mask=mask_clean, **cfg.thresh_det)
-    fpset_smooth.setMask(cfg.mask, 'SMOOTHED')
+    fpset_smooth.setMask(mask, 'SMOOTHED')
 
     ############################################################
     # Find and remove "obvious" blends 
@@ -112,10 +112,32 @@ def run(cfg, debug_return=False, synth_factory=None):
     # Detect sources and measure props with SExtractor
     ############################################################
 
-    cfg.logger.info('detecting final sources with sextractor')
-    p1, p2 = cfg.data_id['patch'][0], cfg.data_id['patch'][-1]
-    label = '{}-{}-{}'.format(cfg.data_id['tract'], p1, p2)
-    sources = prim.sex_measure(exp_clean, label)
+    cfg.logger.info('detecting in {}-band'.format(cfg.band_detect))
+    label = '{}-{}-{}'.format(cfg.tract, cfg.patch[0], cfg.patch[-1])
+    sources = prim.sex_measure(
+        exp_clean, label=label+'-'+cfg.band_detect, 
+        add_params=True, **cfg.sex_measure)
+    all_detections = sources.copy()
+
+    num_aps = len(cfg.sex_measure['apertures'])
+    utils.add_band_to_name(sources, cfg.band_detect, num_aps)
+
+    replace = cfg.exp.get_mask_array(cfg.band_detect)
+    for band in cfg.band_verify:
+        mi_band = cfg.exp[band].getMaskedImage()
+        cfg.logger.info('verifying dection in {}-band'.format(band))
+        noise_array = utils.make_noise_image(mi_band, cfg.rng)
+        mi_band.getImage().getArray()[replace] = noise_array[replace]
+        sources_verify = prim.sex_measure(
+            cfg.exp[band], label=label+'-'+band, 
+            add_params=False, **cfg.sex_measure)
+        match_masks, _ = xmatch(
+            sources, sources_verify, max_sep=cfg.verify_max_sep)
+        sources = sources[match_masks[0]]
+        sources_verify = sources_verify[match_masks[1]]
+        utils.add_band_to_name(sources_verify, band, num_aps)
+        cols = [c for c in sources_verify.colnames if '('+band+')' in c]
+        sources = hstack([sources, sources_verify[cols]])
 
     ############################################################
     # Cut catalog and run imfit on cutouts
@@ -123,11 +145,19 @@ def run(cfg, debug_return=False, synth_factory=None):
 
     if len(sources)>0:
         cfg.logger.info('cutting catalog on FWHM')
-        candy = cutter(sources.to_pandas(), min_cuts={'FWHM_IMAGE':25})
+        size_name = 'FWHM_IMAGE({})'.format(cfg.band_detect)
+        candy = cutter(sources.to_pandas(), min_cuts={size_name:25})
         candy = Table.from_pandas(candy)
         if len(candy)>0:
-            cfg.logger.info('cutting catalog and running imfit on cutouts')
-            candy = prim.run_imfit(exp_clean, candy, label=label)
+            cfg.logger.info(
+                'running imfit on '+cfg.band_detect+'-band cutouts')
+            candy = prim.run_imfit(
+                exp_clean, candy, label=label, **cfg.run_imfit)
+            for band in cfg.band_verify:
+                cfg.logger.info('running imfit on '+band+'-band cutouts')
+                candy = prim.run_imfit(
+                    cfg.exp[band], candy, label=label, 
+                    master_band=cfg.band_detect, **cfg.run_imfit)
         else:
             cfg.logger.warning('**** no sources with FWHM > 25 pix! ****')
     else:
@@ -139,14 +169,16 @@ def run(cfg, debug_return=False, synth_factory=None):
 
     if debug_return:
         # detection plane was modified by find_blends
-        results = lsst.pipe.base.Struct(sources=sources,
+        results = lsst.pipe.base.Struct(all_detections=all_detections,
+                                        sources=sources,
                                         candy=candy,
                                         exposure=cfg.exp,
                                         exp_clean=exp_clean,
                                         mi_clean_smooth=mi_clean_smooth,
                                         mask_fracs=mask_fracs)
     else:
-        results = lsst.pipe.base.Struct(sources=sources, 
+        results = lsst.pipe.base.Struct(all_detections=all_detections,
+                                        sources=sources, 
                                         candy=candy,
                                         mask_fracs=mask_fracs)
         cfg.reset_mask_planes()
