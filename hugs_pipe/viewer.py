@@ -146,7 +146,7 @@ class Viewer(object):
         self.frames.update({frame:frame_props})
 
     def ds9_draw_ell(self, cat, frame, scale=2.0, ec='cyan', cc='red', 
-                     ellpars='sex'):
+                     ellpars='sex', band='i'):
         """
         Draw hugs-pipe measurements on ds9 frame.
 
@@ -176,9 +176,9 @@ class Viewer(object):
             theta_name = 'orientation'
             theta_factor = 1.0
         elif ellpars=='sex':
-            a_name = 'A_IMAGE'
-            b_name = 'B_IMAGE'
-            theta_name = 'THETA_IMAGE'
+            a_name = 'A_IMAGE('+band+')'
+            b_name = 'B_IMAGE('+band+')'
+            theta_name = 'THETA_IMAGE('+band+')'
             theta_factor = np.pi/180.0
 
         with disp.Buffering():
@@ -310,7 +310,7 @@ class Viewer(object):
         return self.current_axis
 
     def mpl_draw_ell(self, cat, ax=None, coord=None, scale=2.0, 
-                     ell_kw={}, plot_kw={}, ellpars='sex'):
+                     ell_kw={}, plot_kw={}, ellpars='sex', band='i'):
         """
         Draw hugs-pipe measurements with matplotlib.
 
@@ -354,9 +354,9 @@ class Viewer(object):
             theta_name = 'orientation'
             theta_factor = 180.0/np.pi
         elif ellpars=='sex':
-            a_name = 'A_IMAGE'
-            b_name = 'B_IMAGE'
-            theta_name = 'THETA_IMAGE'
+            a_name = 'A_IMAGE('+band+')'
+            b_name = 'B_IMAGE('+band+')'
+            theta_name = 'THETA_IMAGE('+band+')'
             theta_factor = 1.0
 
         for _, source in cat.iterrows():

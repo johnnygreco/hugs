@@ -17,9 +17,7 @@ __all__ = ['cutter',
 ##################################
 
 MIN_CUTS = {'FWHM_IMAGE': 25} 
-MAX_CUTS = {'num_edge_pix': 1, 
-            'num_bright_pix': 1}
-
+MAX_CUTS = {'num_edge_pix': 1}
 
 def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True, 
            inplace=False, group_id=None, max_r_vir=2.0, 

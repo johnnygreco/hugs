@@ -5,7 +5,6 @@ from __future__ import division, print_function
 
 import os
 from time import time
-import multiprocessing
 import numpy as np
 import pandas as pd
 import schwimmbad
@@ -20,8 +19,8 @@ def worker(p):
 
     if p['seed'] is None:
         tract, p1, p2 = p['tract'], int(p['patch'][0]), int(p['patch'][-1])
-        pid = multiprocessing.current_process().pid
-        seed = [int(time())+pid, tract, p1, p2, pid]
+        g_id = p['group_id']/1000.0
+        seed = [int(time())+gid, tract, p1, p2, g_id]
     else:
         seed = p['seed']
 
@@ -102,13 +101,15 @@ def combine_results(outdir):
             os.remove(fn)
 
 
-def main(pool, patches, outdir, config_fn, seed=None):
+def main(pool, patches, group_id, outdir, config_fn, seed=None):
 
     patches['outdir'] = outdir
     patches['seed'] = seed
     patches['config_fn'] = config_fn
+    patches['group_id'] = group_id if group_id else -1
 
-    pool.map(worker, patches)
+    list(pool.map(worker, patches))
+
     pool.close()
 
     if len(patches)>1:
@@ -129,9 +130,7 @@ if __name__=='__main__':
         hp.utils.mkdir_if_needed(outdir)
     else:
         patches = hp.get_group_patches(group_id=args.group_id) 
-        outdir = args.group_dir
-        hp.utils.mkdir_if_needed(outdir)
-        print('searching in', len(patches), 'patches')
+        outdir = args.outdir
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    main(pool, patches, outdir, config_fn=args.config_fn, seed=args.seed)
+    main(pool, patches, args.group_id, outdir, config_fn=args.config_fn, seed=args.seed)

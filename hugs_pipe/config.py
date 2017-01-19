@@ -68,8 +68,12 @@ class Config(object):
         self.rng = utils.check_random_state(random_state)
         self._clean['random_state'] = self.rng
 
+        self.min_cuts = params['min_cuts']
+        self.max_cuts = params['max_cuts']
+        self.remove_fpt_blends = params['remove_fpt_blends']
         self.band_detect = params['band_detect']
         self.band_verify = params['band_verify']
+        self.band_meas = params['band_meas']
         self.verify_max_sep = params['verify_max_sep']
 
         # set patch id if given
@@ -169,7 +173,7 @@ class Config(object):
         self.run_imfit = self._run_imfit.copy()
 
         # get exposure 
-        bands = self.band_detect + self.band_verify 
+        bands = self.band_detect + self.band_verify + self.band_meas
         self.bands = ''.join(set(bands))
         self.exp = HugsPipeExposure(tract, patch, self.bands, self.butler)
 

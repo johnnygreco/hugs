@@ -6,7 +6,19 @@ data_dir: hsc
 
 band_detect: 'i'
 
-band_verify: 'gr'
+band_verify: 'g'
+
+band_meas: 'gr'  # band_detect always included
+
+remove_fpt_blends: True
+
+verify_max_sep: 15  # pixels
+
+min_cuts: 
+    FWHM_IMAGE(i): 25 # pixels
+
+max_cuts: 
+    num_edge_pix: 1
 
 thresh_low:
     thresh: 3.0
@@ -46,16 +58,15 @@ find_blends:
 sex_measure:
     config: 
         DETECT_THRESH: 0.7
-        FILTER_NAME: 'gauss_7.0_31x31.conv'
+        FILTER_NAME: 'gauss_6.0_31x31.conv'
         BACK_SIZE: 128
         VERBOSE_TYPE: 'NORMAL'
         DETECT_MINAREA: 100
     apertures: [3., 4., 5., 6., 7., 8., 16., 32.]
-
-verify_max_sep: 15  # pixels
+    clean: True
 
 run_imfit:
     bbox_grow: 120
-    psf_convolve: False
+    psf_convolve: True
     clean: True
     save_fit_fig: False

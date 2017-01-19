@@ -315,15 +315,12 @@ def calc_mask_bit_fracs(exp):
     msk_arr = mask.getArray()
     npix = float(msk_arr.size)
     getBitVal = mask.getPlaneBitMask
-
-    npix_clean = (msk_arr & getBitVal('CLEANED') != 0).sum()
-    npix_blend = (msk_arr & getBitVal('BLEND') != 0).sum()
-    npix_bright = (msk_arr & getBitVal('BRIGHT_OBJECT') != 0).sum()
-
-    fracs = {'clean_frac': [npix_clean/npix],
-             'bright_frac': [npix_bright/npix],
-             'blend_frac': [npix_blend/npix]}
-
+    fracs = {}
+    planes = ['CLEANED', 'BRIGHT_OBJECT', 'BLEND']
+    for p in planes:
+        if p in mask.getMaskPlaneDict().keys():
+            npix_p = (msk_arr & getBitVal(p) != 0).sum()
+            fracs.update({p.lower()+'_frac': [npix_p/npix]})
     return fracs
 
 

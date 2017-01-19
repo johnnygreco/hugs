@@ -442,11 +442,15 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
         Exposure object. 
     cat : astropy.table.Table
         Source catalog (from sextractor run)
-    label : string
+    label : string, optional
         Label for this run. 
-    clean : bool
+    master_band : str, optional 
+        Master band for "forced" photometry.
+    bbox_grow : int, optional
+        Number of pixels to grow bbox in all directions.
+    clean : bool, optional
         If True, delete files created by this function.
-    psf_convolve : bool
+    psf_convolve : bool, optional
         If True, convolve image with psf.
 
     Returns
@@ -473,8 +477,7 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
     else:
         psf_fn = None
     
-    for obj in cat:
-        num = str(obj['NUMBER'])
+    for num, obj in enumerate(cat):
         coord_hsc = obj['x_hsc'], obj['y_hsc']
         cutout = imtools.get_cutout(coord_hsc, bbox_grow, exp=exp)
         
@@ -507,13 +510,15 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
             fn, init_params=init_params, prefix=fit_prefix, 
             clean='config', psf_fn=psf_fn)
 
-        dsize = (fit.r_e - obj['FLUX_RADIUS('+band+')'])*utils.pixscale
-        dmu = fit.mu_0 - obj['mu_aper_0('+band+')']
+        data = [fit.m_tot, fit.mu_0, fit.r_e*utils.pixscale, fit.I_e]
+        names = ['m_tot('+band+')', 'mu_0('+band+')', 
+                 'r_e('+band+')', 'I_e('+band+')']
 
-        data = [fit.m_tot, fit.mu_0, fit.r_e*utils.pixscale, 
-                dmu, dsize, fit.I_e]
-        names = ['m_tot('+band+')', 'mu_0('+band+')', 'r_e('+band+')', 
-                 'dmu('+band+')', 'dr_e('+band+')', 'I_e('+band+')']
+        if 'FLUX_RADIUS('+band+')' in cat.colnames:
+            dsize = (fit.r_e - obj['FLUX_RADIUS('+band+')'])*utils.pixscale
+            dmu = fit.mu_0 - obj['mu_aper_0('+band+')']
+            data.extend([dsize, dmu])
+            names.extend(['dr_e('+band+')', 'dmu('+band+')'])
 
         if master_band is None:
             x0_hsc, y0_hsc = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
@@ -532,25 +537,31 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
         results = vstack([results, Table(rows=[data], names=names)])
 
         if save_fit_fig:
+            fig, ax = plt.subplots(1, 3, figsize=(16,5))
+            fig.subplots_adjust(wspace=0.01)
             img_mod_res(fn,
                         fit.params, 
                         fit_prefix+'_photo_mask.fits',
                         band=band, 
                         show=False, 
-                        subplots=plt.subplots(1, 3, figsize=(18,5)),
+                        subplots=(fig, ax),
                         save_fn=fit_prefix+'-fit-{}-{}.png'.format(band, num))
+            plt.close('all')
 
         if clean:
             os.remove(fn)
             os.remove(fit_prefix+'_bestfit_params.txt')
             os.remove(fit_prefix+'_photo_mask.fits')
 
+    if clean and psf_convolve:
+        os.remove(psf_fn)
+
     results = hstack([cat, results])
 
     return results
 
 
-def sex_measure(exp, config, apertures, label, add_params):
+def sex_measure(exp, config, apertures, label, add_params, clean):
     """
     Perform mesurements using SExtractor (because I'm feeling desperate). 
 
@@ -600,6 +611,8 @@ def sex_measure(exp, config, apertures, label, add_params):
     mask = exp.getMaskedImage().getMask()
     mask.addMaskPlane('SEX_SEG')
     mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
+
+    del seg
 
     #########################################################
     # read catalog, add params, and write to csv file
@@ -656,9 +669,10 @@ def sex_measure(exp, config, apertures, label, add_params):
     # delete files created by and for sextractor
     #########################################################
 
-    os.remove(sw.get_indir(exp_fn))
-    os.remove(sw.get_outdir(cat_label+'.cat'))
-    os.remove(sw.get_configdir(param_fn))
-    os.remove(seg_fn)
+    if clean:
+        os.remove(sw.get_indir(exp_fn))
+        os.remove(sw.get_outdir(cat_label+'.cat'))
+        os.remove(sw.get_configdir(param_fn))
+        os.remove(seg_fn)
 
     return cat

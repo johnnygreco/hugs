@@ -33,9 +33,10 @@ class HugsPipeExposure(object):
         return self._butler
 
     def get_mask_array(self, band='i', 
-                       names=['CLEANED', 'BRIGHT_OBJECT', 'BLEND']):
+                       planes=['CLEANED', 'BRIGHT_OBJECT', 'BLEND']):
         mask = self[band].getMaskedImage().getMask()
         arr = np.zeros(mask.getArray().shape, dtype=bool)
-        for n in names:
-            arr |= mask.getArray() & mask.getPlaneBitMask(n) != 0 
+        for p in planes: 
+            if p in mask.getMaskPlaneDict().keys():
+                arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
         return arr
