@@ -299,7 +299,7 @@ def check_random_state(seed):
                      ' instance'.format(seed))
 
 
-def get_group_patches(z_max=0.065, Mh_lims=[12.75, 14.0], group_id=None):
+def get_group_patches(group_id, z_max=0.065, Mh_lims=[12.75, 14.0]):
     """
     Get HSC patches associated with galaxy groups.
     """

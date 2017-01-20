@@ -432,7 +432,7 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
 
 
 def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120, 
-              clean=True, save_fit_fig=False, psf_convolve=False):
+              clean=True, save_fit_fig=False, psf_convolve=False, quiet=False):
     """
     Run imfit on postage stamps to make cuts on sample.
 
@@ -480,17 +480,20 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
     for num, obj in enumerate(cat):
         coord_hsc = obj['x_hsc'], obj['y_hsc']
         cutout = imtools.get_cutout(coord_hsc, bbox_grow, exp=exp)
+        dimension = cutout.getDimensions()
         
         fn = os.path.join(prefix, 'cutout-{}-{}.fits'.format(label, num))
         cutout.writeFits(fn)
 
         X0 = coord_hsc[0] - cutout.getX0()
         Y0 = coord_hsc[1] - cutout.getY0()
+        xmax = np.minimum(X0 + bbox_grow, dimension[0]-1)
+        ymax = np.minimum(Y0 + bbox_grow, dimension[1]-1)
 
         if master_band is None:
             init_params = {
-                'X0': X0, 
-                'Y0': Y0,
+                'X0': [X0, 1, dimension[0]-1],
+                'Y0': [Y0, 1, dimension[1]-1],
                 'PA': [obj['THETA_IMAGE('+band+')'] + 90, 0, 180],
                 'ell': [obj['ELLIPTICITY('+band+')'], 0, 0.999],
             }
@@ -508,7 +511,7 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
         fit_prefix = os.path.join(prefix, label)
         fit = sersic_fit(
             fn, init_params=init_params, prefix=fit_prefix, 
-            clean='config', psf_fn=psf_fn)
+            clean='config', psf_fn=psf_fn, quiet=quiet)
 
         data = [fit.m_tot, fit.mu_0, fit.r_e*utils.pixscale, fit.I_e]
         names = ['m_tot('+band+')', 'mu_0('+band+')', 

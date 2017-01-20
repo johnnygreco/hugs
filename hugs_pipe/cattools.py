@@ -19,9 +19,9 @@ __all__ = ['cutter',
 MIN_CUTS = {'FWHM_IMAGE': 25} 
 MAX_CUTS = {'num_edge_pix': 1}
 
-def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True, 
+def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, 
            inplace=False, group_id=None, max_r_vir=2.0, 
-           cut_duplicates=False, **kwargs):
+           cut_duplicates=False, logger=None, **kwargs):
     """
     Make selection cuts on input catalog.
 
@@ -33,8 +33,6 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
         Minimum params and values to cut.
     max_cuts : dict, optional
         Maximum params and values to cut.
-    verbose : bool, optional
-        If True, print lots of info.
     inplace: bool, optional
         If True, cut catalog inplace.
     group_id : int, optional
@@ -53,50 +51,49 @@ def cutter(cat, min_cuts=MIN_CUTS, max_cuts=MAX_CUTS, verbose=True,
         Cut catalog. Will be None if inplace=True
     """
 
-    if verbose:
-        print(len(cat), 'objects in cat before cuts')
+    if logger:
+        log = logger.info
+    else:
+        log = print
+
+    log('cuts: {} objects in cat before cuts'.format(len(cat)))
 
     min_mask = np.ones(len(cat), dtype=bool)
     for key, min_val in min_cuts.items():
         if min_val is not None:
             cut = cat[key].values <= min_val
             min_mask[cut] = False
-            if verbose:
-                print('will cut {} objects with {} <= {}'.format(
-                    (cut).sum(), key, min_val))
+            log('cuts: will cut {} objects with {} <= {}'.format(
+                (cut).sum(), key, min_val))
 
     max_mask = np.ones(len(cat), dtype=bool)
     for key, max_val in max_cuts.items():
         if max_val is not None:
             cut = cat[key].values >= max_val
             max_mask[cut] = False
-            if verbose:
-                print('will cut {} objects with {} >= {}'.format(
-                    (cut).sum(), key, max_val))
+            log('cuts: will cut {} objects with {} >= {}'.format(
+                (cut).sum(), key, max_val))
 
     mask = min_mask & max_mask
 
     if group_id and max_r_vir:
         cut = max_r_vir_mask(cat, group_id, max_r_vir)
         mask &= cut
-        if verbose:
-            print('will cut {} objects outside {} r_vir'.format(
-                  (cut).sum(), max_r_vir))
+        log('cuts: will cut {} objects outside {} r_vir'.format(
+            (cut).sum(), max_r_vir))
 
-    if verbose:
-        print(mask.sum(), 'objects in cat after cuts')
+    log('cuts: {} objects in cat after cuts'.format(mask.sum()))
 
     cut_cat = cat.drop(cat.index[~mask], inplace=inplace)
 
     if cut_duplicates:
         if inplace:
             cut_cat = remove_duplicates(cat, inplace=inplace)
-            if verbose:
-                print(len(cat), 'objects after removing duplicates')
+            log('cuts: {} objects after removing duplicates'.format(len(cat)))
         else:
             cut_cat = remove_duplicates(cut_cat, inplace=inplace)
-            if verbose:
-                print(len(cut_cat), 'objects after removing duplicates')
+            log('cuts: {} objects after removing duplicates'.format(
+                len(cut_cat)))
 
     return cut_cat
 

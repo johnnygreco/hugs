@@ -17,6 +17,10 @@ def parse_args(which='all', default_outdir=io, parser=None):
                             '--patch', 
                             type=str, 
                             help='HSC patch')
+        parser.add_argument('--patches_fn', 
+                            type=str, 
+                            help='csv file with patches and group ids',
+                            default=None)
 
     if 'config_fn' in which or which=='all':
         parser.add_argument('-c', 

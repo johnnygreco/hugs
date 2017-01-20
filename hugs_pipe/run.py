@@ -142,6 +142,9 @@ def run(cfg, debug_return=False, synth_factory=None):
             add_params=False, **cfg.sex_measure)
         match_masks, _ = xmatch(
             sources, sources_verify, max_sep=cfg.verify_max_sep)
+        txt = 'cuts: {} out of {} objects detected in {}-band'.format(
+            len(match_masks[0]), len(sources), band)
+        cfg.logger.info(txt)
         sources = sources[match_masks[0]]
         sources_verify = sources_verify[match_masks[1]]
         utils.add_band_to_name(sources_verify, band, num_aps)
@@ -153,10 +156,10 @@ def run(cfg, debug_return=False, synth_factory=None):
     ############################################################
 
     if len(sources)>0:
-        cfg.logger.info('cutting catalog')
         candy = cutter(sources.to_pandas(), 
                        min_cuts=cfg.min_cuts, 
-                       max_cuts=cfg.max_cuts)
+                       max_cuts=cfg.max_cuts, 
+                       logger=cfg.logger)
         candy = Table.from_pandas(candy)
         if len(candy)>0:
             cfg.logger.info(

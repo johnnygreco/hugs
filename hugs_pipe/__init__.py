@@ -1,3 +1,7 @@
+import lsst.log
+Log = lsst.log.Log()
+Log.setLevel(lsst.log.ERROR)
+
 from . import imtools
 from . import stats
 from . import synths

@@ -7,23 +7,23 @@ import os
 from time import time
 import numpy as np
 import pandas as pd
+import mpi4py.MPI as MPI
 import schwimmbad
 import hugs_pipe as hp
 from hugs_pipe.utils import calc_mask_bit_fracs
 
 def worker(p):
 
-    prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
-                                                           p['patch']))
-    log_fn = prefix+'.log'
-
+    rank = MPI.COMM_WORLD.Get_rank()
     if p['seed'] is None:
         tract, p1, p2 = p['tract'], int(p['patch'][0]), int(p['patch'][-1])
-        g_id = p['group_id']/1000.0
-        seed = [int(time())+gid, tract, p1, p2, g_id]
+        seed = [int(time()), tract, p1, p2, p['group_id'], rank]
     else:
         seed = p['seed']
 
+    prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
+                                                           p['patch']))
+    log_fn = prefix+'.log'
     config = hp.Config(config_fn=p['config_fn'], 
                        log_fn=log_fn, 
                        random_state=seed)
@@ -101,25 +101,24 @@ def combine_results(outdir):
             os.remove(fn)
 
 
-def main(pool, patches, group_id, outdir, config_fn, seed=None):
+def main(pool, patches, config_fn, seed=None):
 
-    patches['outdir'] = outdir
     patches['seed'] = seed
     patches['config_fn'] = config_fn
-    patches['group_id'] = group_id if group_id else -1
 
     list(pool.map(worker, patches))
 
     pool.close()
 
     if len(patches)>1:
-        combine_results(outdir)
-
+        for outdir in np.unique(patches['outdir']):
+            combine_results(outdir)
+            
 
 if __name__=='__main__':
     args = hp.parse_args()
 
-    if args.group_id is None:
+    if args.patches_fn is None:
         from astropy.table import Table
         assert (args.tract is not None) and (args.patch is not None)
         tract, patch = args.tract, args.patch
@@ -128,9 +127,10 @@ if __name__=='__main__':
                               'solo-run-{}-{}'.format(tract, patch))
         outdir = outdir+'_'+args.label if args.label else outdir
         hp.utils.mkdir_if_needed(outdir)
+        patches['outdir'] = outdir
+        patches['group_id'] = 0
     else:
-        patches = hp.get_group_patches(group_id=args.group_id) 
-        outdir = args.outdir
+        patches = Table.read(args.patches_fn)
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    main(pool, patches, args.group_id, outdir, config_fn=args.config_fn, seed=args.seed)
+    main(pool, patches, config_fn=args.config_fn, seed=args.seed)

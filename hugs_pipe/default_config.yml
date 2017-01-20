@@ -60,7 +60,7 @@ sex_measure:
         DETECT_THRESH: 0.7
         FILTER_NAME: 'gauss_6.0_31x31.conv'
         BACK_SIZE: 128
-        VERBOSE_TYPE: 'NORMAL'
+        VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
     apertures: [3., 4., 5., 6., 7., 8., 16., 32.]
     clean: True
@@ -70,3 +70,4 @@ run_imfit:
     psf_convolve: True
     clean: True
     save_fit_fig: False
+    quiet: True
