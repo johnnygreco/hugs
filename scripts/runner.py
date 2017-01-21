@@ -116,10 +116,10 @@ def main(pool, patches, config_fn, seed=None):
             
 
 if __name__=='__main__':
+    from astropy.table import Table
     args = hp.parse_args()
 
     if args.patches_fn is None:
-        from astropy.table import Table
         assert (args.tract is not None) and (args.patch is not None)
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
