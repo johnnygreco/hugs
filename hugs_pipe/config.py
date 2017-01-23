@@ -19,7 +19,8 @@ class Config(object):
     """
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
-                 log_level='info', log_fn=None, random_state=None):
+                 log_level='info', log_fn=None, random_state=None, 
+                 group_id=None):
         """
         Initialization
 
@@ -75,6 +76,7 @@ class Config(object):
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
         self.verify_max_sep = params['verify_max_sep']
+        self.group_id = group_id
 
         # set patch id if given
         if tract is not None:

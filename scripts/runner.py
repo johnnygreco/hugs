@@ -26,7 +26,8 @@ def worker(p):
     log_fn = prefix+'.log'
     config = hp.Config(config_fn=p['config_fn'], 
                        log_fn=log_fn, 
-                       random_state=seed)
+                       random_state=seed, 
+                       group_id=p['group_id'])
     config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     

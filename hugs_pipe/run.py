@@ -120,61 +120,79 @@ def run(cfg, debug_return=False, synth_factory=None):
 
     cfg.logger.info('detecting in {}-band'.format(cfg.band_detect))
     label = '{}-{}-{}'.format(cfg.tract, cfg.patch[0], cfg.patch[-1])
+    if cfg.group_id:
+        label = str(cfg.group_id)+'-'+label
+
     sources = prim.sex_measure(
         exp_clean, label=label+'-'+cfg.band_detect, 
         add_params=True, **cfg.sex_measure)
-    num_aps = len(cfg.sex_measure['apertures'])
-    utils.add_band_to_name(sources, cfg.band_detect, num_aps)
-    all_detections = sources.copy()
-
-    ############################################################
-    # Verify detections in other bands using SExtractor
-    ############################################################
-
-    replace = cfg.exp.get_mask_array(cfg.band_detect)
-    for band in cfg.band_verify:
-        mi_band = cfg.exp[band].getMaskedImage()
-        cfg.logger.info('verifying dection in {}-band'.format(band))
-        noise_array = utils.make_noise_image(mi_band, cfg.rng)
-        mi_band.getImage().getArray()[replace] = noise_array[replace]
-        sources_verify = prim.sex_measure(
-            cfg.exp[band], label=label+'-'+band, 
-            add_params=False, **cfg.sex_measure)
-        match_masks, _ = xmatch(
-            sources, sources_verify, max_sep=cfg.verify_max_sep)
-        txt = 'cuts: {} out of {} objects detected in {}-band'.format(
-            len(match_masks[0]), len(sources), band)
-        cfg.logger.info(txt)
-        sources = sources[match_masks[0]]
-        sources_verify = sources_verify[match_masks[1]]
-        utils.add_band_to_name(sources_verify, band, num_aps)
-        cols = [c for c in sources_verify.colnames if '('+band+')' in c]
-        sources = hstack([sources, sources_verify[cols]])
-
-    ############################################################
-    # Cut catalog and run imfit on cutouts
-    ############################################################
 
     if len(sources)>0:
-        candy = cutter(sources.to_pandas(), 
-                       min_cuts=cfg.min_cuts, 
-                       max_cuts=cfg.max_cuts, 
-                       logger=cfg.logger)
-        candy = Table.from_pandas(candy)
-        if len(candy)>0:
-            cfg.logger.info(
-                'running imfit on '+cfg.band_detect+'-band cutouts')
-            candy = prim.run_imfit(
-                exp_clean, candy, label=label, **cfg.run_imfit)
-            for band in cfg.band_meas:
-                cfg.logger.info('running imfit on '+band+'-band cutouts')
+
+        ############################################################
+        # Verify detections in other bands using SExtractor
+        ############################################################
+
+        num_aps = len(cfg.sex_measure['apertures'])
+        utils.add_band_to_name(sources, cfg.band_detect, num_aps)
+        all_detections = sources.copy()
+
+        replace = cfg.exp.get_mask_array(cfg.band_detect)
+        for band in cfg.band_verify:
+            mi_band = cfg.exp[band].getMaskedImage()
+            cfg.logger.info('verifying dection in {}-band'.format(band))
+            noise_array = utils.make_noise_image(mi_band, cfg.rng)
+            mi_band.getImage().getArray()[replace] = noise_array[replace]
+            sources_verify = prim.sex_measure(
+                cfg.exp[band], label=label+'-'+band, 
+                add_params=False, **cfg.sex_measure)
+            if len(sources_verify)>0:
+                match_masks, _ = xmatch(
+                    sources, sources_verify, max_sep=cfg.verify_max_sep)
+                txt = 'cuts: {} out of {} objects detected in {}-band'.format(
+                    len(match_masks[0]), len(sources), band)
+                cfg.logger.info(txt)
+                if len(match_masks[0])==0:
+                    sources = Table()
+                    break
+                sources = sources[match_masks[0]]
+                sources_verify = sources_verify[match_masks[1]]
+                utils.add_band_to_name(sources_verify, band, num_aps)
+                col = [c for c in sources_verify.colnames if '('+band+')' in c]
+                sources = hstack([sources, sources_verify[col]])
+            else:
+                sources = Table()
+                break
+
+        ############################################################
+        # Cut catalog and run imfit on cutouts
+        ############################################################
+
+        if len(sources)>0:
+            candy = cutter(sources.to_pandas(), 
+                           min_cuts=cfg.min_cuts, 
+                           max_cuts=cfg.max_cuts, 
+                           logger=cfg.logger)
+            candy = Table.from_pandas(candy)
+            if len(candy)>0:
+                cfg.logger.info(
+                    'running imfit on '+cfg.band_detect+'-band cutouts')
                 candy = prim.run_imfit(
-                    cfg.exp[band], candy, label=label, 
-                    master_band=cfg.band_detect, **cfg.run_imfit)
+                    exp_clean, candy, label=label, **cfg.run_imfit)
+                for band in cfg.band_meas:
+                    cfg.logger.info('running imfit on '+band+'-band cutouts')
+                    candy = prim.run_imfit(
+                        cfg.exp[band], candy, label=label, 
+                        master_band=cfg.band_detect, **cfg.run_imfit)
+            else:
+                cfg.logger.warning('**** no sources satisfy cuts! ****')
         else:
-            cfg.logger.warning('**** no sources satisfy cuts! ****')
-    else:
-        cfg.logger.warning('**** no sources found! ****')
+            cfg.logger.warning('**** no sources verified in other bands! ****')
+            candy = Table()
+
+    else: 
+        cfg.logger.warn('**** no sources found by sextractor ****')
+        all_detections = Table()
         candy = Table()
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)

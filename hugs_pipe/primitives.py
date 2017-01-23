@@ -604,29 +604,33 @@ def sex_measure(exp, config, apertures, label, add_params, clean):
     cat_label = 'sex-'+label
     sw.run(exp_fn+'[1]', cat=cat_label+'.cat')
 
-    #########################################################
-    # open seg map and add to bit mask
-    #########################################################
-
-    seg_fn = sw.get_outdir(label+'-'+'SEGMENTATION.fits')
-    seg = fits.getdata(seg_fn)
-
-    mask = exp.getMaskedImage().getMask()
-    mask.addMaskPlane('SEX_SEG')
-    mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
-
-    del seg
-
-    #########################################################
-    # read catalog, add params, and write to csv file
-    #########################################################
-
     cat = sexpy.read_cat(sw.get_outdir(cat_label+'.cat'))
-    cat.rename_column('MAG_APER', 'MAG_APER_0')
-    for i, diam in enumerate(apertures):
-        r = utils.pixscale*diam/2 # arcsec
-        sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
-        cat['mu_aper_'+str(i)] = sb
+
+    if len(cat)>0:
+
+        #########################################################
+        # open seg map and add to bit mask
+        #########################################################
+
+        seg_fn = sw.get_outdir(label+'-'+'SEGMENTATION.fits')
+
+        seg = fits.getdata(seg_fn)
+        if clean: 
+            os.remove(seg_fn)
+
+        mask = exp.getMaskedImage().getMask()
+        mask.addMaskPlane('SEX_SEG')
+        mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
+
+        #########################################################
+        # read catalog, add params, and write to csv file
+        #########################################################
+
+        cat.rename_column('MAG_APER', 'MAG_APER_0')
+        for i, diam in enumerate(apertures):
+            r = utils.pixscale*diam/2 # arcsec
+            sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
+            cat['mu_aper_'+str(i)] = sb
 
     if add_params and (len(cat)>0):
         x0, y0 = exp.getXY0()
@@ -676,6 +680,5 @@ def sex_measure(exp, config, apertures, label, add_params, clean):
         os.remove(sw.get_indir(exp_fn))
         os.remove(sw.get_outdir(cat_label+'.cat'))
         os.remove(sw.get_configdir(param_fn))
-        os.remove(seg_fn)
 
     return cat
