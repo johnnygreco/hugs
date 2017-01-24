@@ -1,9 +1,9 @@
 #! /bin/bash 
 # 
-#SBATCH -J synths      # job name
-#SBATCH -o /scratch/network/jgreco/hugs-pipe-output/synths-%j.out
-#SBATCH -e /scratch/network/jgreco/hugs-pipe-output/synths-%j.err             
-#SBATCH -N 2
+#SBATCH -J hugs-pipe-run      # job name
+#SBATCH -o /scratch/network/jgreco/run-%j.out
+#SBATCH -e /scratch/network/jgreco/run-%j.err             
+#SBATCH -N 4
 #SBATCH --ntasks-per-node=16
 #SBATCH -t 6:00:00 
 #SBATCH --mail-type=begin
@@ -12,18 +12,16 @@
 
 cd /home/jgreco/projects/hugs-pipe/scripts
 
-if [[ $# -ne 1 ]]; then
-    echo "must give group id"
-    return 1
-fi
+RUN_LABEL=`date +%Y%m%d-%H%M%S`
+OUTDIR=$HUGS_PIPE_IO/synth-run-$RUN_LABEL
+PATCHES_FN=$LOCAL_IO/patches_z0.05_Mh12.5-15.0.csv
+NUM_SYNTHS=15
 
-group_id=$1
-num_synths=15
-nrepeat=50
+mkdir $OUTDIR
+cp $PATCHES_FN $OUTDIR/
 
-for label in $(seq 1 $nrepeat); do
-    python synth_runner.py --ncores 32 -g $group_id --num_synths $num_synths --label $label \
-        -c $HUGS_PIPE_IO/config-11-17-2016.yml \
-        -o /scratch/network/jgreco/hugs-pipe-output/synth-results
-done
-wait
+mpiexec -n 64 python synth_runner.py --mpi \
+    --patches_fn $PATCHES_FN \
+    -o $OUTDIR \
+    -c $LOCAL_IO/hugs-pipe-config-01-19-2017.yml \
+    --num_synths $NUM_SYNTHS

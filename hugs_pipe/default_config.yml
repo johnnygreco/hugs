@@ -67,7 +67,7 @@ sex_measure:
 
 run_imfit:
     bbox_grow: 120
-    psf_convolve: True
+    psf_convolve: False
     clean: True
     save_fit_fig: False
     quiet: True

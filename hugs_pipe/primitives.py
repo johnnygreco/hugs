@@ -564,7 +564,7 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
     return results
 
 
-def sex_measure(exp, config, apertures, label, add_params, clean):
+def sex_measure(exp, config, apertures, label, add_params, clean, sf=None):
     """
     Perform mesurements using SExtractor (because I'm feeling desperate). 
 
@@ -639,7 +639,6 @@ def sex_measure(exp, config, apertures, label, add_params, clean):
         cat['x_hsc'] = cat['X_IMAGE'] + x0
         cat['y_hsc'] = cat['Y_IMAGE'] + y0
 
-
         sex_plane = mask.getPlaneBitMask('SEX_SEG')
         edge_plane = mask.getPlaneBitMask('EDGE')
         bright_plane = mask.getPlaneBitMask('BRIGHT_OBJECT')
@@ -652,6 +651,13 @@ def sex_measure(exp, config, apertures, label, add_params, clean):
         cat['parent_fp_area'] = -1
         cat['fp_id'] = -1
         cat['nchild'] = -1
+
+        find_synths = False
+        if 'SYNTH' in mask.getMaskPlaneDict().keys() and sf is not None:
+            synth_plane = mask.getPlaneBitMask('SYNTH')
+            cat['synth_id'] = -1
+            cat['synth_offset'] = -1
+            find_synths = True
         
         for obj_i in range(len(cat)):
             x, y = cat['x_hsc', 'y_hsc'][obj_i]
@@ -660,12 +666,20 @@ def sex_measure(exp, config, apertures, label, add_params, clean):
                 if fp.contains(point):
                     hfp = afwDet.HeavyFootprintF(fp, exp.getMaskedImage())
                     pix = hfp.getMaskArray()
-                    num_edge = (pix & edge_plane != 0 ).sum()
+                    num_edge = (pix & edge_plane != 0).sum()
                     num_bright = (pix & bright_plane != 0).sum()
                     cat['num_edge_pix'][obj_i] = num_edge
                     cat['num_bright_pix'][obj_i] = num_bright
                     cat['parent_fp_area'][obj_i] = hfp.getArea()
                     cat['fp_id'][obj_i] = fp_id
+                    if find_synths:
+                        if (pix & synth_plane !=0).sum() > 0:
+                            syn_pos = sf.get_psets()[['X0', 'Y0']]
+                            x_obj, y_obj = cat['x_img', 'y_img'][obj_i]
+                            dist_sq = (syn_pos['X0']-x_obj)**2 +\
+                                      (syn_pos['Y0']-y_obj)**2
+                            cat['synth_id'][obj_i] = dist_sq.argmin()
+                            cat['synth_offset'][obj_i] = np.sqrt(dist_sq.min())
                     break
 
         for fp_id in np.unique(cat['fp_id']):

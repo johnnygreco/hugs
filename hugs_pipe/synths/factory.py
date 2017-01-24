@@ -17,7 +17,8 @@ PSET_LIMS = {
     'ell': [0.1, 0.4],     # ellipticity 
     'X0': [0, 4100],       # x position [pixel] 
     'Y0': [0, 4200],       # y position [pixel]
-    'g_i': [0.8, 1.2]      # g-i color
+    'g_i': [0.8, 1.2],     # g-i color
+    'g_r': [0.2, 1.0]      # g-r color
 }
 
 class SynthFactory(object):
@@ -81,6 +82,7 @@ class SynthFactory(object):
                 val = self.rng.uniform(lim[0], lim[1])
                 pset.update({p:val})
             pset['mu0_g'] = pset['mu0_i'] + pset['g_i']
+            pset['mu0_r'] = pset['mu0_i'] + pset['g_r']
             psets.append(pset)
         psets = pd.DataFrame(psets)
         return psets

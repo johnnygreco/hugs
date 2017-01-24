@@ -8,34 +8,32 @@ from time import time
 import multiprocessing
 import numpy as np
 import pandas as pd
+import mpi4py.MPI as MPI
 import schwimmbad
 import hugs_pipe as hp
 from hugs_pipe.utils import calc_mask_bit_fracs
 
 pset_lims = {'n': [0.6, 1.2],
-             'mu0_i': [23, 26],
+             'mu0_i': [23, 27],
              'ell': [0.2, 0.2],
-             'r_e': [2, 5]}
+             'r_e': [2, 7]}
 
 
 def worker(p):
 
-    data_id = {'tract': p['tract'], 'patch': p['patch'], 'filter': 'HSC-I'}
-    prefix = os.path.join(p['outdir'], 'hugs-{}-{}'.format(p['tract'],
-                                                           p['patch']))
-    log_fn = prefix+'.log'
-
+    rank = MPI.COMM_WORLD.Get_rank()
     if p['seed'] is None:
         tract, p1, p2 = p['tract'], int(p['patch'][0]), int(p['patch'][-1])
-        pid = multiprocessing.current_process().pid
-        seed = [int(time())+pid, tract, p1, p2, pid]
+        seed = [int(time()), tract, p1, p2, rank]
     else:
         seed = p['seed']
 
-    config = hp.Config(config_fn=p['config_fn'], 
-                       log_fn=log_fn, 
+    prefix = os.path.join(p['outdir'], 'synths')
+    log_fn = prefix+'.log'
+    config = hp.Config(config_fn=p['config_fn'],
+                       log_fn=log_fn,
                        random_state=seed)
-    config.set_data_id(data_id)
+    config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     
     synths_kwargs = {'num_synths': p['num_synths'],
@@ -46,97 +44,80 @@ def worker(p):
 
     results = hp.run(config, synth_factory=sf)
 
-    # write source catalog
-    sources = results.sources.to_pandas()
-    fn = prefix+'-cat.csv'
-    sources.to_csv(fn, index=False)
-
     # write synth catalog
-    fn = prefix+'-synths.csv'
+    fn = prefix+'.csv'
     sf_df = sf.get_psets()
-    sf_df['tract'] = p['tract']
-    sf_df['patch'] = p['patch']
     sf_df['patch_id'] = np.arange(len(sf_df))
     sf_df.to_csv(fn, index=False)
+
+    # write source catalog with all objects
+    all_det = results.all_detections.to_pandas()
+    ext = 'csv' if len(all_det)>0 else 'empty'
+    fn = prefix+'-cat-all.'+ext
+    all_det.to_csv(fn, index=False)
+
+    # write source catalog with all objects
+    verified = results.sources.to_pandas()
+    ext = 'csv' if len(verified)>0 else 'empty'
+    fn = prefix+'-cat-verified.'+ext
+    verified.to_csv(fn, index=False)
+
+    # write final source catalog
+    candy = results.candy.to_pandas()
+    ext = 'csv' if len(candy)>0 else 'empty'
+    fn = prefix+'-cat-candy.'+ext
+    candy.to_csv(fn, index=False)
 
     # write mask fractions 
     fn = prefix+'-mask-fracs.csv'
     mask_fracs = pd.DataFrame(results.mask_fracs)
-    mask_fracs['tract'] = p['tract']
-    mask_fracs['patch'] = p['patch']
     mask_fracs.to_csv(fn, index=False)
 
 
-def combine_results(outdir):
+def main(pool, patches, maindir):
 
-    all_files = os.listdir(outdir)
-    join = os.path.join
-    parse = lambda key: [join(outdir, f) for f in all_files if key in f]
-
-    files = [parse('cat'), parse('mask-fracs'), parse('synths')]
-
-    prefix = join(outdir, 'hugs-pipe')
-    suffixes = ['-cat.csv', '-mask-fracs.csv', '-synths.csv']
-     
-    for fnames, suffix in zip(files, suffixes):
-        df = []
-        for fn in fnames:
-            try: 
-                df.append(pd.read_csv(fn))
-                os.remove(fn)
-            except pd.io.common.EmptyDataError:
-                os.rename(fn, fn[:-3]+'empty')
-        df = pd.concat(df, ignore_index=True)
-        df.to_csv(prefix+suffix, index=False)
-
-    log_fn = prefix+'.log'
-    with open(log_fn, 'w') as outfile:
-        for fn in parse('log'):
-            with open(fn) as infile:
-                outfile.write(infile.read())
-            os.remove(fn)
-
-
-def main(pool, patches, outdir, config_fn, num_synths=10, seed=None):
-
-    patches['outdir'] = outdir
-    patches['num_synths'] = num_synths
-    patches['seed'] = seed
-    patches['config_fn'] = config_fn
-
-    pool.map(worker, patches)
+    list(pool.map(worker, patches))
     pool.close()
-
-    if len(patches)>1:
-        combine_results(outdir)
 
     # write synth param lims
     global pset_lims 
     pset_lims = pd.DataFrame(pset_lims, index=['min', 'max'])
-    fn = os.path.join(outdir, 'synth-param-lims.csv')
+    fn = os.path.join(maindir, 'synth-param-lims.csv')
     pset_lims.to_csv(fn, index=True, index_label='limit')
 
 
 if __name__=='__main__':
-    args = hp.parse_args(os.path.join(hp.io, 'synth-results'))
+    from astropy.table import Table
+    args = hp.parse_args()
 
-    if args.group_id is None:
-        from astropy.table import Table
-        assert (args.tract is not None) and (args.patch is not None)
+    if args.tract is not None:
+        assert args.patch is not None
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
-        outdir = os.path.join(args.outdir, 'synths-{}-{}'.format(tract, patch))
+        outdir = os.path.join(args.outdir,
+                              'synths-solo-run-{}-{}'.format(tract, patch))
         outdir = outdir+'_'+args.label if args.label else outdir
         hp.utils.mkdir_if_needed(outdir)
+        patches['outdir'] = outdir
+        maindir = outdir
     else:
-        patches = hp.get_group_patches(group_id=args.group_id) 
-        hp.utils.mkdir_if_needed(args.group_dir)
-        outdir = args.group_dir
-        if args.label:
-            outdir = os.path.join(outdir, 'synth-run-'+args.label)
-            hp.utils.mkdir_if_needed(outdir)
-        print('searching in', len(patches), 'patches')
+        assert args.patches_fn is not None
+        rank = MPI.COMM_WORLD.Get_rank()
+        patches = Table.read(args.patches_fn)
+        if rank==0:
+            outdirs = []
+            for tract, patch in patches['tract', 'patch']:
+                path = os.path.join(args.outdir, str(tract))
+                hp.utils.mkdir_if_needed(path)
+                path = os.path.join(path, patch)
+                hp.utils.mkdir_if_needed(path)
+                outdirs.append(path)
+            patches['outdir'] = outdirs
+            maindir = args.outdir 
+
+    patches['num_synths'] = args.num_synths
+    patches['seed'] = args.seed
+    patches['config_fn'] = args.config_fn
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    main(pool, patches, outdir, config_fn=args.config_fn, 
-         num_synths=args.num_synths, seed=args.seed)
+    main(pool, patches, maindir=maindir)

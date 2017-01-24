@@ -123,6 +123,7 @@ def run(cfg, debug_return=False, synth_factory=None):
     if cfg.group_id:
         label = str(cfg.group_id)+'-'+label
 
+    cfg.sex_measure['sf'] = synth_factory
     sources = prim.sex_measure(
         exp_clean, label=label+'-'+cfg.band_detect, 
         add_params=True, **cfg.sex_measure)
