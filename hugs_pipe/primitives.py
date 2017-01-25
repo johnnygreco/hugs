@@ -528,8 +528,11 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
             coord = wcs.pixelToSky(x0_hsc, y0_hsc)
             ra, dec = coord.getPosition(afwGeom.degrees)
             dR0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
+            
+            x_img = fit.X0 + cutout.getX0() - exp.getX0()
+            y_img = fit.Y0 + cutout.getY0() - exp.getY0()
 
-            master_data = [ra, dec, fit.n, fit.ell, dR0, fit.X0, fit.Y0, 
+            master_data = [ra, dec, fit.n, fit.ell, dR0, x_img, y_img,
                            fit.PA, x0_hsc, y0_hsc]
             master_names = ['ra', 'dec', 'n', 'ell', 'dR0', 'x_img_imfit', 
                             'y_img_imfit', 'PA', 'x_hsc_imfit', 'y_hsc_imfit']
