@@ -11,8 +11,6 @@ from .cattools import cutter, xmatch
 
 __all__ = ['run']
 
-sex_io = os.environ.get('SEX_IO_DIR')
-
 def run(cfg, debug_return=False, synth_factory=None):
     """
     Run hugs pipeline using SExtractor for the final detection 

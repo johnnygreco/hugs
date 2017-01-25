@@ -432,7 +432,8 @@ def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0,
 
 
 def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120, 
-              clean=True, save_fit_fig=False, psf_convolve=False, quiet=False):
+              clean=True, save_fit_fig=False, psf_convolve=False, quiet=False, 
+              relpath=None):
     """
     Run imfit on postage stamps to make cuts on sample.
 
@@ -466,6 +467,8 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
     band = exp.getFilter().getName().lower()
     wcs = exp.getWcs()
     prefix = os.path.join(utils.io, 'temp-io')
+    if relpath:
+        prefix = os.path.join(prefix, relpath)
     label += '-'+band
 
     results = Table()
@@ -487,6 +490,8 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
 
         X0 = coord_hsc[0] - cutout.getX0()
         Y0 = coord_hsc[1] - cutout.getY0()
+        img_shift = [cutout.getX0() - exp.getX0(), 
+                     cutout.getY0() - exp.getY0()] 
         xmax = np.minimum(X0 + bbox_grow, dimension[0]-1)
         ymax = np.minimum(Y0 + bbox_grow, dimension[1]-1)
 
@@ -499,8 +504,8 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
             }
         else:
             init_params = {
-                'X0': [obj['x_img_imfit'], 'fixed'], 
-                'Y0': [obj['y_img_imfit'], 'fixed'], 
+                'X0': [obj['x_img_imfit'] - img_shift[0], 'fixed'], 
+                'Y0': [obj['y_img_imfit'] - img_shift[1], 'fixed'], 
                 'n': [obj['n'], 'fixed'], 
                 'ell': [obj['ell'], 'fixed'], 
                 'PA': [obj['PA'], 'fixed'], 
@@ -529,8 +534,8 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
             ra, dec = coord.getPosition(afwGeom.degrees)
             dR0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
             
-            x_img = fit.X0 + cutout.getX0() - exp.getX0()
-            y_img = fit.Y0 + cutout.getY0() - exp.getY0()
+            x_img = fit.X0 + img_shift[0]
+            y_img = fit.Y0 + img_shift[1]
 
             master_data = [ra, dec, fit.n, fit.ell, dR0, x_img, y_img,
                            fit.PA, x0_hsc, y0_hsc]
@@ -551,7 +556,7 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
                         band=band, 
                         show=False, 
                         subplots=(fig, ax),
-                        save_fn=fit_prefix+'-fit-{}-{}.png'.format(band, num))
+                        save_fn='fit-'+fit_prefix+'-{}.png'.format(num))
             plt.close('all')
 
         if clean:
@@ -567,7 +572,7 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
     return results
 
 
-def sex_measure(exp, config, apertures, label, add_params, clean, sf=None):
+def sex_measure(exp, config, apertures, label, add_params, clean, sf=None, relpath=''):
     """
     Perform mesurements using SExtractor (because I'm feeling desperate). 
 
@@ -594,7 +599,7 @@ def sex_measure(exp, config, apertures, label, add_params, clean, sf=None):
     config['PARAMETERS_NAME'] = param_fn
     params = ['MAG_APER('+str(i+1)+')' for i in range(len(apertures))]
 
-    sw = sexpy.SexWrapper(config, params=params)
+    sw = sexpy.SexWrapper(config, params=params, relpath=relpath)
     sw.set_check_images('s', prefix=label+'-')
 
     #########################################################

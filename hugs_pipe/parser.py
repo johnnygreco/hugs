@@ -4,7 +4,7 @@ import os, sys
 from argparse import ArgumentParser
 from .utils import io
 
-def parse_args(which='all', default_outdir=io, parser=None):
+def parse_args(which='all', parser=None):
 
     parser = parser if parser else ArgumentParser('python '+sys.argv[0]) 
 
@@ -34,7 +34,7 @@ def parse_args(which='all', default_outdir=io, parser=None):
                             '--outdir', 
                             type=str, 
                             help='output directory', 
-                            default=default_outdir)
+                            default=io)
 
     if 'seed' in which or which=='all':
         parser.add_argument('-s', 
@@ -47,7 +47,7 @@ def parse_args(which='all', default_outdir=io, parser=None):
         parser.add_argument('--num_synths', 
                             type=int, 
                             help='number of synths to inject', 
-                            default=10)
+                            default=0)
 
     if 'label' in which or which=='all':
         parser.add_argument('--label',

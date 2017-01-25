@@ -14,12 +14,17 @@ cd /home/jgreco/projects/hugs-pipe/scripts
 
 RUN_LABEL=`date +%Y%m%d-%H%M%S`
 OUTDIR=$HUGS_PIPE_IO/batch-run-$RUN_LABEL
-PATCHES_FN=$LOCAL_IO/patches_z0.05_Mh12.5-15.0.csv
+ZLABEL='z0.05'
+MLABEL='Mh12.5-15.0'
+INDIR=$LOCAL_IO/group-patches
+PATCHES_FN=$INDIR/patches_$ZLABEL\_$MLABEL.csv
 
 mkdir $OUTDIR
 cp $PATCHES_FN $OUTDIR/
+cp $INDIR/cat_$ZLABEL\_$MLABEL\_group_info.txt $OUTDIR/
+cp $INDIR/cat_$ZLABEL\_$MLABEL\_tracts_n_patches.npy $OUTDIR/
 
 mpiexec -n 64 python runner.py --mpi \
     --patches_fn $PATCHES_FN \
     -o $OUTDIR \
-    -c $LOCAL_IO/hugs-pipe-config-01-19-2017.yml
+    -c $LOCAL_IO/pipe-configs/01-19-2017.yml

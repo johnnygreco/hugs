@@ -68,6 +68,7 @@ class Config(object):
         self.log_level = log_level
         self.rng = utils.check_random_state(random_state)
         self._clean['random_state'] = self.rng
+        self.synth_pset_lims = params['synth_pset_lims'] 
 
         self.min_cuts = params['min_cuts']
         self.max_cuts = params['max_cuts']
