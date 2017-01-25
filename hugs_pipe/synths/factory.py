@@ -10,7 +10,7 @@ from ..utils import embed_slices
 __all__ = ['SynthFactory']
 
 PSET_LIMS = {
-    'mu0_i': [23.5, 27.5], # i-band SB [mag/arcsec^2]
+    'mu_0(i)': [23.5, 27.5], # i-band SB [mag/arcsec^2]
     'r_e': [1.5, 4.0],     # effective radius [arcsec]
     'PA': [0, 180],        # position angle [degree]
     'n': [0.5, 1.1],       # sersic n
@@ -81,8 +81,8 @@ class SynthFactory(object):
             for p, lim in self.pset_lims.items():
                 val = self.rng.uniform(lim[0], lim[1])
                 pset.update({p:val})
-            pset['mu0_g'] = pset['mu0_i'] + pset['g_i']
-            pset['mu0_r'] = pset['mu0_i'] + pset['g_r']
+            pset['mu_0(g)'] = pset['mu_0(i)'] + pset['g_i']
+            pset['mu_0(r)'] = pset['mu_0(i)'] + pset['g_r']
             psets.append(pset)
         psets = pd.DataFrame(psets)
         return psets
@@ -143,7 +143,7 @@ class SynthFactory(object):
 
         # convert mu_0 to I_e and r_e to pixels
         p = pset.copy()
-        mu_0 = p['mu0_'+band.lower()]
+        mu_0 = p['mu_0('+band.lower()+')']
         b_n = gammaincinv(2.*p['n'], 0.5)
         mu_e = mu_0 + 2.5*b_n/np.log(10)
         I_e = (pixscale**2)*10**((zpt-mu_e)/2.5)
@@ -162,7 +162,9 @@ class SynthFactory(object):
 
         # add total mag to dataframe
         if index is not None:
-            self._psets.set_value(index, 'mtot_'+band.lower(), model.m_tot)
+            self._psets.set_value(index, 
+                                  'm_tot('+band.lower()+')', 
+                                  model.m_tot)
 
         return galaxy 
 

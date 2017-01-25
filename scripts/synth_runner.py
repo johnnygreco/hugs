@@ -14,7 +14,7 @@ import hugs_pipe as hp
 from hugs_pipe.utils import calc_mask_bit_fracs
 
 pset_lims = {'n': [0.6, 1.2],
-             'mu0_i': [23, 27],
+             'mu_0(i)': [23, 27],
              'ell': [0.2, 0.2],
              'r_e': [2, 7]}
 
@@ -47,7 +47,7 @@ def worker(p):
     # write synth catalog
     fn = prefix+'.csv'
     sf_df = sf.get_psets()
-    sf_df['patch_id'] = np.arange(len(sf_df))
+    sf_df['synth_id'] = np.arange(len(sf_df))
     sf_df.to_csv(fn, index=False)
 
     # write source catalog with all objects
@@ -95,7 +95,7 @@ if __name__=='__main__':
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
         outdir = os.path.join(args.outdir,
-                              'synths-solo-run-{}-{}'.format(tract, patch))
+                              'solo-synths-{}-{}'.format(tract, patch))
         outdir = outdir+'_'+args.label if args.label else outdir
         hp.utils.mkdir_if_needed(outdir)
         patches['outdir'] = outdir

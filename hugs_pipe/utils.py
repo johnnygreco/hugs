@@ -299,12 +299,13 @@ def check_random_state(seed):
                      ' instance'.format(seed))
 
 
-def get_group_patches(group_id, z_max=0.065, Mh_lims=[12.75, 14.0]):
+def get_group_patches(group_id, z_max=0.05, Mh_lims=[12.5, 15.0]):
     """
     Get HSC patches associated with galaxy groups.
     """
     prefix = 'cat_z{}_Mh{}-{}'.format(z_max, Mh_lims[0], Mh_lims[1])
-    prefix = os.path.join(local_io, prefix)
+    patch_dir = os.path.join(local_io, 'group-patches')
+    prefix = os.path.join(patch_dir, prefix)
     patches_fn = prefix+'_tracts_n_patches.npy'
     patches_dict = np.load(patches_fn).item()
     return Table(patches_dict[group_id]) if group_id else patches_dict
