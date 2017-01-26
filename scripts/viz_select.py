@@ -19,15 +19,13 @@ viz_dir = os.path.join(hp.io, 'viz-inspect-results')
 
 class GUI(object):
 
-    def __init__(self, root, master, cat_fn, out_fn, group_id, 
-                 apply_cuts, review):
+    def __init__(self, root, master, cat_fn, out_fn, review):
 
         # initialize attributes
         self.root = root
         self.master = master
         self.save_delta_t = 5 # minutes
         self.current_idx = 0
-        self.group_id = group_id
         self.rgb_kw = dict(Q=8, dataRange=0.3)
         self.tract = None
         self.patch = None
@@ -68,12 +66,12 @@ class GUI(object):
                     verify = tkMessageBox.askyesno(
                         'Verify', 'Progress will be lost, okay?', default='no')
                     if verify:
-                        self._load_cat(cat_fn, apply_cuts)
+                        self._load_cat(cat_fn)
                     else:
                         self.root.destroy()
                         sys.exit('Exiting without changing anything...')
         else:
-            self._load_cat(cat_fn, apply_cuts)
+            self._load_cat(cat_fn)
 
         top_fr = tk.Frame(self.master)
         mid_fr = tk.Frame(self.master)
@@ -211,24 +209,10 @@ class GUI(object):
             self.update_info()
         return self._coord
 
-    def _load_cat(self, cat_fn, apply_cuts):
-        from hugs.datasets.yang import get_group_prop
-        from toolbox.cosmo import Cosmology
-        cosmo = Cosmology()
+    def _load_cat(self, cat_fn):
         self.cat = pd.read_csv(cat_fn)
         self.cat.reset_index(inplace=True)
-        self.z = get_group_prop(self.group_id, 'z')
-        self.D_A = cosmo.D_A(self.z)
-        self.cat['r_kpc(i)'] = 1e3*self.D_A*self.cat['r_e(i)']/206265.0
-        if apply_cuts:
-            cut = self.cat['dr0'] < 10
-            cut &= np.abs(self.cat['dmu']) < 1
-            cut &= self.cat['mu_0(i)'] > 23.0
-            cut &= self.cat['r_e(i)'] < 30.0
-            cut &= self.cat['n'] > 0.05
-            cut &= self.cat['n'] < 3.0
-            cut &= self.cat['r_kpc(i)'] > 1.5
-            self.cat = self.cat.loc[cut].copy()
+
         # sort by tract and patch
         self.cat.sort_values(['tract', 'patch'], inplace=True)
         self.cat.reset_index(drop=True, inplace=True)
@@ -256,8 +240,7 @@ class GUI(object):
     def next_idx(self, event=None):
         self.current_idx += 1
         if self.current_idx > (len(self.cat)-1):
-            msg = 'Congrats, visual inspection for group '
-            msg += self.group_id+' is complete!'
+            msg = 'Congrats, visual inspection complete!'
             w = tk.Tk()
             w.withdraw()
             tkMessageBox.showinfo('HSC-HUGs Message', msg, parent=w)
@@ -312,7 +295,7 @@ class GUI(object):
     def update_info(self):
         txt = 'patch: {}/{} - r_kpc: {:.2f} - coord: {:.5f} {:.5f} - '
         txt += 'r: {:.2f} - mu: {:.2f} - catID: {} - flag: {}'
-        cols = ['ra_imfit', 'dec_imfit', 'r_e(i)', 
+        cols = ['ra', 'dec', 'r_e(i)', 
                 'index', 'mu_0(i)', 'r_kpc(i)']
         flag_cols = cols + self.flags
         info = self.cat.ix[self.current_idx, flag_cols]
@@ -355,25 +338,14 @@ if __name__=='__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser('view candidates')
-    parser.add_argument('group_id', type=str, help='group id')
-    parser.add_argument('-o', '--out_fn', default=None)
-    parser.add_argument('-c', '--cat_fn', default=None)
+    parser.add_argument('cat_fn', type=str)
     parser.add_argument('-r', '--review', type=str, default=None)
-    parser.add_argument(
-        '--no-cuts', dest='apply_cuts', action='store_false', default=True)
     args = parser.parse_args()
 
-    if args.out_fn is None:
-        outdir = viz_dir
-        args.out_fn = 'viz-inspect-group-'+args.group_id+'.csv'
-        args.out_fn = os.path.join(outdir, args.out_fn)
-    
-    if args.cat_fn is None:
-        catdir = os.path.join(hp.io, 'sex-results')
-        catdir = os.path.join(catdir, 'group-'+args.group_id)
-        args.cat_fn = os.path.join(catdir, 'hugs-pipe-cat.csv')
+    out_fn = 'viz-'+args.cat_fn.split('/')[-1]
+    out_fn = os.path.join(viz_dir, out_fn)
 
-    title = 'hugs-pipe viz inspect group '+args.group_id
+    title = 'hugs-pipe viz inspect'
     if args.review:
         title += ' (reviewing '+args.review+')'
     
@@ -382,6 +354,5 @@ if __name__=='__main__':
     top = tk.Toplevel(root)
     top.protocol("WM_DELETE_WINDOW", root.destroy)
     top.title(title)
-    gui = GUI(root, top, args.cat_fn, args.out_fn, args.group_id, 
-              args.apply_cuts, args.review)
+    gui = GUI(root, top, args.cat_fn, out_fn, args.review)
     root.mainloop()

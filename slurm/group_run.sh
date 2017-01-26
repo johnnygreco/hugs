@@ -3,9 +3,9 @@
 #SBATCH -J hugs-pipe-run      # job name
 #SBATCH -o /scratch/network/jgreco/run-%j.out
 #SBATCH -e /scratch/network/jgreco/run-%j.err             
-#SBATCH -N 4
+#SBATCH -N 5
 #SBATCH --ntasks-per-node=16
-#SBATCH -t 5:30:00 
+#SBATCH -t 6:00:00 
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end 
 #SBATCH --mail-user=jgreco@princeton.edu 
@@ -24,7 +24,7 @@ cp $PATCHES_FN $OUTDIR/
 cp $INDIR/cat_$ZLABEL\_$MLABEL\_group_info.txt $OUTDIR/
 cp $INDIR/cat_$ZLABEL\_$MLABEL\_tracts_n_patches.npy $OUTDIR/
 
-mpiexec -n 64 python runner.py --mpi \
+mpiexec -n 80 python runner.py --mpi \
     --patches_fn $PATCHES_FN \
     -o $OUTDIR \
-    -c $LOCAL_IO/pipe-configs/01-19-2017.yml
+    -c $LOCAL_IO/pipe-configs/01-25-2017.yml
