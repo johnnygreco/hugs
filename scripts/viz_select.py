@@ -295,8 +295,8 @@ class GUI(object):
     def update_info(self):
         txt = 'patch: {}/{} - r_kpc: {:.2f} - coord: {:.5f} {:.5f} - '
         txt += 'r: {:.2f} - mu: {:.2f} - catID: {} - flag: {}'
-        cols = ['ra', 'dec', 'r_e(i)', 
-                'index', 'mu_0(i)', 'r_kpc(i)']
+        cols = ['ra', 'dec', 'r_e(g)', 
+                'index', 'mu_0(g)', 'r_kpc(g)']
         flag_cols = cols + self.flags
         info = self.cat.ix[self.current_idx, flag_cols]
         ra, dec, size, idx, mu, r_kpc = info[cols]
