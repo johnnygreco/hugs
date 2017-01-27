@@ -1,6 +1,9 @@
-import lsst.log
-Log = lsst.log.Log()
-Log.setLevel(lsst.log.ERROR)
+try:
+    import lsst.log
+    Log = lsst.log.Log()
+    Log.setLevel(lsst.log.ERROR)
+except ImportError:
+    pass
 
 from . import imtools
 from . import stats
