@@ -1,6 +1,6 @@
 #! /bin/bash 
 # 
-#SBATCH -J hugs-pipe-run      # job name
+#SBATCH -J hugs-pipe-run-synths      # job name
 #SBATCH -o /scratch/network/jgreco/run-%j.out
 #SBATCH -e /scratch/network/jgreco/run-%j.err             
 #SBATCH -N 5

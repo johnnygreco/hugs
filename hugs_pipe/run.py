@@ -122,9 +122,34 @@ def run(cfg, debug_return=False, synth_factory=None):
         label = str(cfg.group_id)+'-'+label
 
     cfg.sex_measure['sf'] = synth_factory
-    sources = prim.sex_measure(
-        exp_clean, label=label+'-'+cfg.band_detect, 
-        add_params=True, **cfg.sex_measure)
+    num_aps = len(cfg.sex_measure['apertures'])
+
+    cfg.logger.info('cleaning non-detection bands')
+    replace = cfg.exp.get_mask_array(cfg.band_detect)
+    for band in cfg.bands:
+        if band!=cfg.band_detect:
+            mi_band = cfg.exp[band].getMaskedImage()
+            noise_array = utils.make_noise_image(mi_band, cfg.rng)
+            mi_band.getImage().getArray()[replace] = noise_array[replace]
+
+    sources = Table()
+
+    for band in cfg.bands:
+        cfg.logger.info('measuring in {}-band'.format(band))
+        add_params = band==cfg.band_detect
+        dual_exp = None if band==cfg.band_detect else cfg.exp[band]
+        sources_band = prim.sex_measure(
+            exp_clean, label=label+'-'+cfg.band_detect, add_params=add_params, 
+            dual_exp=dual_exp, **cfg.sex_measure)
+        if len(sources_band)>0:
+            utils.add_band_to_name(sources_band, band, num_aps)
+            if band!=cfg.band_detect:
+                cols = [c for c in sources_band.colnames if '('+band+')' in c]
+                sources = hstack([sources, sources_band[cols]])
+            else:
+                sources = hstack([sources, sources_band])
+        else:
+            break
 
     if len(sources)>0:
 
@@ -132,16 +157,10 @@ def run(cfg, debug_return=False, synth_factory=None):
         # Verify detections in other bands using SExtractor
         ############################################################
 
-        num_aps = len(cfg.sex_measure['apertures'])
-        utils.add_band_to_name(sources, cfg.band_detect, num_aps)
         all_detections = sources.copy()
 
-        replace = cfg.exp.get_mask_array(cfg.band_detect)
         for band in cfg.band_verify:
-            mi_band = cfg.exp[band].getMaskedImage()
             cfg.logger.info('verifying dection in {}-band'.format(band))
-            noise_array = utils.make_noise_image(mi_band, cfg.rng)
-            mi_band.getImage().getArray()[replace] = noise_array[replace]
             sources_verify = prim.sex_measure(
                 cfg.exp[band], label=label+'-'+band, 
                 add_params=False, **cfg.sex_measure)
@@ -155,10 +174,6 @@ def run(cfg, debug_return=False, synth_factory=None):
                     sources = Table()
                     break
                 sources = sources[match_masks[0]]
-                sources_verify = sources_verify[match_masks[1]]
-                utils.add_band_to_name(sources_verify, band, num_aps)
-                col = [c for c in sources_verify.colnames if '('+band+')' in c]
-                sources = hstack([sources, sources_verify[col]])
             else:
                 sources = Table()
                 break

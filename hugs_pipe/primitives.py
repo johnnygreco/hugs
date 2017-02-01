@@ -572,7 +572,8 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
     return results
 
 
-def sex_measure(exp, config, apertures, label, add_params, clean, sf=None, relpath=''):
+def sex_measure(exp, config, apertures, label, add_params, clean, 
+                dual_exp=None, sf=None, relpath=''):
     """
     Perform mesurements using SExtractor (because I'm feeling desperate). 
 
@@ -608,9 +609,18 @@ def sex_measure(exp, config, apertures, label, add_params, clean, sf=None, relpa
 
     exp_fn = 'exp-'+label+'.fits'
     exp.writeFits(sw.get_indir(exp_fn))
-
     cat_label = 'sex-'+label
-    sw.run(exp_fn+'[1]', cat=cat_label+'.cat')
+    run_fn = exp_fn+'[1]'
+
+    if dual_exp is not None:
+        meas_band = dual_exp.getFilter().getName().lower()
+        dual_label = label+'-'+meas_band
+        dual_fn = 'exp-'+dual_label+'.fits'
+        dual_exp.writeFits(sw.get_indir(dual_fn))
+        cat_label = 'sex-'+dual_label
+        run_fn = exp_fn+'[1],'+dual_fn+'[1]'
+
+    sw.run(run_fn, cat=cat_label+'.cat')
 
     cat = sexpy.read_cat(sw.get_outdir(cat_label+'.cat'))
 
@@ -699,6 +709,8 @@ def sex_measure(exp, config, apertures, label, add_params, clean, sf=None, relpa
     #########################################################
 
     if clean:
+        if dual_exp is not None:
+            os.remove(sw.get_indir(dual_fn))
         os.remove(sw.get_indir(exp_fn))
         os.remove(sw.get_outdir(cat_label+'.cat'))
         os.remove(sw.get_configdir(param_fn))
