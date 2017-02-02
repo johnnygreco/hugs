@@ -22,7 +22,7 @@ NUM_SYNTHS=15
 
 mkdir $OUTDIR
 cp $PATCHES_FN $OUTDIR/
-cp $INDIR/cat_$ZLABEL\_$MLABEL\_group_info.txt $OUTDIR/
+cp $INDIR/cat_$ZLABEL\_$MLABEL\_group_info.csv $OUTDIR/
 cp $INDIR/cat_$ZLABEL\_$MLABEL\_tracts_n_patches.npy $OUTDIR/
 
 mpiexec -n 80 python runner.py --mpi \
