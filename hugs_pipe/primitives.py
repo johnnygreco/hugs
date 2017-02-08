@@ -466,7 +466,7 @@ def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120,
 
     band = exp.getFilter().getName().lower()
     wcs = exp.getWcs()
-    prefix = os.path.join(utils.io, 'temp-io')
+    prefix = os.environ.get('TEMP_IO')
     if relpath:
         prefix = os.path.join(prefix, relpath)
     label += '-'+band

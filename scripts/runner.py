@@ -80,7 +80,7 @@ if __name__=='__main__':
     args = hp.parse_args()
 
     rank = MPI.COMM_WORLD.Get_rank()
-    temp_io = os.path.join(hp.io, 'temp-io')
+    temp_io = os.environ.get('TEMP_IO')
     sex_io = os.environ.get('SEX_IO_DIR')
     runlabel = 'run' if args.num_synths==0 else 'synths'
 
