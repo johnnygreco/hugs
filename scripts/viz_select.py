@@ -293,13 +293,13 @@ class GUI(object):
         self.canvas.draw()
 
     def update_info(self):
-        txt = 'patch: {}/{} - r_kpc: {:.2f} - coord: {:.5f} {:.5f} - '
+        txt = 'patch: {}/{} - coord: {:.5f} {:.5f} - '
         txt += 'r: {:.2f} - mu: {:.2f} - catID: {} - flag: {}'
         cols = ['ra', 'dec', 'r_e(g)', 
-                'index', 'mu_0(g)', 'r_kpc(g)']
+                'index', 'mu_0(g)']
         flag_cols = cols + self.flags
         info = self.cat.ix[self.current_idx, flag_cols]
-        ra, dec, size, idx, mu, r_kpc = info[cols]
+        ra, dec, size, idx, mu = info[cols]
         flags = info[self.flags]
         flag = flags[flags==1]
         if len(flag)==1:
@@ -309,7 +309,7 @@ class GUI(object):
         if (self.review is not None) and (self.review != 'all'):
             txt = txt.replace('flag', 'idx') 
             flag = self.cat_idx[self.current_idx]
-        txt = txt.format(self.tract, self.patch, r_kpc, ra, dec, size, mu, idx, flag)
+        txt = txt.format(self.tract, self.patch, ra, dec, size, mu, idx, flag)
         self.status.config(state='normal')
         self.status.delete(1.0, 'end')
         self.status.insert('insert', txt)

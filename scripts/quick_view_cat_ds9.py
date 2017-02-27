@@ -21,4 +21,5 @@ viewer = hp.Viewer(data_id=data_id)
 viewer.ds9_display_patch(frame=args.frame, mask_trans=args.mask_trans)
 
 if args.cat_fn:
+    cat = pd.read_csv(args.cat_fn)
     viewer.ds9_draw_ell(cat, frame=args.frame)

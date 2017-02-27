@@ -712,6 +712,6 @@ def sex_measure(exp, config, apertures, label, add_params, clean,
         os.remove(sw.get_indir(exp_fn))
         os.remove(sw.get_outdir(cat_label+'.cat'))
         os.remove(sw.get_configdir(param_fn))
-        os.remove(sw.get_outdir(label+'-'+'SEGMENTATION.fits')
+        os.remove(sw.get_outdir(label+'-'+'SEGMENTATION.fits'))
 
     return cat
