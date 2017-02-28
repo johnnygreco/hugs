@@ -22,4 +22,4 @@ cp $PATCHES_FN $OUTDIR/
 mpiexec -n 128 python runner.py --mpi \
     --patches_fn $PATCHES_FN \
     -o $OUTDIR \
-    -c $LOCAL_IO/pipe-configs/01-25-2017.yml
+    -c $LOCAL_IO/pipe-configs/02-28-2017.yml

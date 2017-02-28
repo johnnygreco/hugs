@@ -31,7 +31,7 @@ candy = results.candy.to_pandas()
 candy.to_csv(fn('cat-candy.csv'), index=False)
 
 mask = results.exp_clean.getMaskedImage().getMask()
-mask.removeAndClearMaskPlane('SMOOTHED')
+#mask.removeAndClearMaskPlane('SMOOTHED')
 mask.removeAndClearMaskPlane('DETECTED')
 
 v1 = hp.Viewer(data_id=results.exp['i'])

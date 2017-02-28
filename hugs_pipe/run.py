@@ -38,6 +38,28 @@ def run(cfg, debug_return=False, synth_factory=None):
     cfg.timer # start timer
 
     ############################################################
+    # Get masked image and check if we have enough good data
+    ############################################################
+
+    mi = cfg.exp[cfg.band_detect].getMaskedImage()
+    mask = mi.getMask()
+
+    nodata = mask.getArray() & mask.getPlaneBitMask('NO_DATA') != 0
+    nodata = nodata.astype(float)
+    no_data_frac = nodata.sum()/nodata.size
+    if no_data_frac > 0.8:
+        cfg.logger.warning('***** not enough data!!! ****')
+        _exp = cfg.exp[cfg.band_detect]
+        debug_exp = {'exp':cfg.exp, 'exp_clean':_exp} if debug_return else {}
+        results = lsst.pipe.base.Struct(all_detections=Table(),
+                                        sources=Table(), 
+                                        candy=Table(),
+                                        mask_fracs={}, 
+                                        **debug_exp)
+        cfg.reset_mask_planes()
+        return results
+
+    ############################################################
     # If desired, inject synthetic galaxies 
     ############################################################
     
@@ -52,8 +74,6 @@ def run(cfg, debug_return=False, synth_factory=None):
     # cases, the image is smoothed at the psf scale.
     ############################################################
         
-    mi = cfg.exp[cfg.band_detect].getMaskedImage()
-    mask = mi.getMask()
     mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
     cfg.logger.info('performing low threshold at '
                     '{} sigma'.format(cfg.thresh_low['thresh']))

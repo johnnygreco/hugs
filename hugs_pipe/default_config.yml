@@ -10,7 +10,7 @@ band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
 
-remove_fpt_blends: True
+remove_fpt_blends: False
 
 verify_max_sep: 15  # pixels
 
