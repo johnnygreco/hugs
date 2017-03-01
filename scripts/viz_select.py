@@ -5,6 +5,7 @@ import pandas as pd
 import Tkinter as tk
 import tkMessageBox
 from functools import partial
+import webbrowser
 
 import numpy as np
 import matplotlib 
@@ -13,6 +14,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 import hugs_pipe as hp
+from hsc_map_url import hsc_map_url
 import lsst.daf.persistence
 
 viz_dir = os.path.join(hp.io, 'viz-inspect-results')
@@ -167,6 +169,10 @@ class GUI(object):
             self.master.bind('5', question_flag)
 
         # create top buttons
+        hmap_button = tk.Button(
+            top_fr, text='hscMap', command=self.hsc_map)
+        hmap_button.pack(side='left', padx=padx)
+
         ds9_button = tk.Button(
             top_fr, text='Display with ds9', command=self.show_ds9)
         ds9_button.pack(side='left', padx=padx)
@@ -269,6 +275,10 @@ class GUI(object):
             self.is_new_patch = False
         self.viewer.ds9_display_cutout(self.coord, frame=2)
         self.viewer.ds9_draw_ell(self.patch_cat, frame=2)
+
+    def hsc_map(self):
+        ra, dec = self.cat.loc[self.current_idx, ['ra', 'dec']]
+        webbrowser.open(hsc_map_url(ra, dec), new=1)
 
     def display_image(self):
         self.update_data_id()
