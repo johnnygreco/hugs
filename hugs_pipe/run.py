@@ -7,6 +7,7 @@ from astropy.table import Table, hstack
 from . import utils
 from . import imtools
 from . import primitives as prim
+from . import randoms 
 from .cattools import cutter, xmatch
 
 __all__ = ['run']
@@ -54,7 +55,8 @@ def run(cfg, debug_return=False, synth_factory=None):
         results = lsst.pipe.base.Struct(all_detections=Table(),
                                         sources=Table(), 
                                         candy=Table(),
-                                        mask_fracs={}, 
+                                        mask_fracs={},
+                                        randoms_results=None,
                                         **debug_exp)
         cfg.reset_mask_planes()
         return results
@@ -230,6 +232,14 @@ def run(cfg, debug_return=False, synth_factory=None):
         candy = Table()
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
+    if cfg.randoms_density is not None:
+        cfg.logger.info('finding detectable randoms in patch')
+        randoms_df, randoms_db = randoms.find_randoms_in_footprint(
+            cfg.randoms_db_fn, exp_clean, return_db=True)
+        randoms_results = lsst.pipe.base.Struct(df=randoms_df, db=randoms_db)
+    else:
+        randoms_results = None
+
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
 
     if debug_return:
@@ -238,12 +248,14 @@ def run(cfg, debug_return=False, synth_factory=None):
                                         candy=candy,
                                         exp=cfg.exp,
                                         exp_clean=exp_clean,
-                                        mask_fracs=mask_fracs)
+                                        mask_fracs=mask_fracs, 
+                                        randoms_results=randoms_results)
     else:
         results = lsst.pipe.base.Struct(all_detections=all_detections,
                                         sources=sources, 
                                         candy=candy,
-                                        mask_fracs=mask_fracs)
+                                        mask_fracs=mask_fracs,
+                                        randoms_results=randoms_results)
         cfg.reset_mask_planes()
 
     return results

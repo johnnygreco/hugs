@@ -9,6 +9,7 @@ from . import imtools
 from . import stats
 from . import synths
 from . import cattools
+from . import randoms
 from .parser import parse_args
 from .synths import SynthFactory
 from .stats import get_clipped_sig_task

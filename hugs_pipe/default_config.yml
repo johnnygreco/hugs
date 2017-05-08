@@ -10,6 +10,9 @@ band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
 
+randoms_density: 36000 # per deg^2 (use None to skip) 
+randoms_db_path: '/tigress/jgreco/randoms'
+
 remove_fpt_blends: False
 
 verify_max_sep: 15  # pixels

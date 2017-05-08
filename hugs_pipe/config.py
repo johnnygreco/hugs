@@ -78,6 +78,10 @@ class Config(object):
         self.band_meas = params['band_meas']
         self.verify_max_sep = params['verify_max_sep']
         self.group_id = group_id
+        self.randoms_density = params['randoms_density']
+        self.randoms_db_path = params['randoms_db_path']
+        _fn = 'randoms-safe-{}.db'.format(self.randoms_density)
+        self.randoms_db_fn = os.path.join(self.randoms_db_path, _fn)
 
         # set patch id if given
         if tract is not None:
