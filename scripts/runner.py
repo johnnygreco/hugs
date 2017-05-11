@@ -13,6 +13,15 @@ import schwimmbad
 import hugs_pipe as hp
 from hugs_pipe.utils import calc_mask_bit_fracs
 
+
+def callback(randoms_results):
+    if randoms_results is None:
+        pass
+    else:
+        df = randoms_results.df
+        randoms_results.db.set_detected(df.loc[df['detected']==1, 'id'])
+
+
 def worker(p):
 
     rank = MPI.COMM_WORLD.Get_rank()
@@ -41,37 +50,40 @@ def worker(p):
     else:
         sf = None
 
-    results = hp.run(config, synth_factory=sf)
+    results = hp.run(config, synth_factory=sf, randoms_only=p['randoms_only'])
 
-    if p['num_synths']>0:
-        # write synth catalog
-        fn = prefix+'.csv'
-        sf_df = sf.get_psets()
-        sf_df['synth_id'] = np.arange(len(sf_df))
-        sf_df.to_csv(fn, index=False)
+    if not p['randoms_only']:
+        if p['num_synths']>0:
+            # write synth catalog
+            fn = prefix+'.csv'
+            sf_df = sf.get_psets()
+            sf_df['synth_id'] = np.arange(len(sf_df))
+            sf_df.to_csv(fn, index=False)
 
-    # write source catalog with all objects
-    all_det = results.all_detections.to_pandas()
-    ext = 'csv' if len(all_det)>0 else 'empty'
-    fn = prefix+'-cat-all.'+ext
-    all_det.to_csv(fn, index=False)
+        # write source catalog with all objects
+        all_det = results.all_detections.to_pandas()
+        ext = 'csv' if len(all_det)>0 else 'empty'
+        fn = prefix+'-cat-all.'+ext
+        all_det.to_csv(fn, index=False)
 
-    # write source catalog with all objects
-    verified = results.sources.to_pandas()
-    ext = 'csv' if len(verified)>0 else 'empty'
-    fn = prefix+'-cat-verified.'+ext
-    verified.to_csv(fn, index=False)
+        # write source catalog with all objects
+        verified = results.sources.to_pandas()
+        ext = 'csv' if len(verified)>0 else 'empty'
+        fn = prefix+'-cat-verified.'+ext
+        verified.to_csv(fn, index=False)
 
-    # write final source catalog
-    candy = results.candy.to_pandas()
-    ext = 'csv' if len(candy)>0 else 'empty'
-    fn = prefix+'-cat-candy.'+ext
-    candy.to_csv(fn, index=False)
+        # write final source catalog
+        candy = results.candy.to_pandas()
+        ext = 'csv' if len(candy)>0 else 'empty'
+        fn = prefix+'-cat-candy.'+ext
+        candy.to_csv(fn, index=False)
 
-    # write mask fractions 
-    fn = prefix+'-mask-fracs.csv'
-    mask_fracs = pd.DataFrame(results.mask_fracs)
-    mask_fracs.to_csv(fn, index=False)
+        # write mask fractions 
+        fn = prefix+'-mask-fracs.csv'
+        mask_fracs = pd.DataFrame(results.mask_fracs)
+        mask_fracs.to_csv(fn, index=False)
+
+    return results.randoms_results
 
 
 if __name__=='__main__':
@@ -127,9 +139,10 @@ if __name__=='__main__':
     patches['num_synths'] = args.num_synths
     patches['seed'] = args.seed
     patches['config_fn'] = args.config_fn
+    patches['randoms_only'] = args.randoms_only
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    list(pool.map(worker, patches))
+    list(pool.map(worker, patches, callback=callback))
     pool.close()
 
     if rank==0:

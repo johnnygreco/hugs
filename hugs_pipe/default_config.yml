@@ -10,8 +10,7 @@ band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
 
-randoms_density: 36000 # per deg^2 (use None to skip) 
-randoms_db_path: '/tigress/jgreco/randoms'
+randoms_db_fn: '/tigress/jgreco/randoms/randoms-safe-36000-bkcup.db'
 
 remove_fpt_blends: False
 

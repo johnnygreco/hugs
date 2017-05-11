@@ -74,6 +74,7 @@ def parse_args(which='all', parser=None):
                             type=int, 
                             help='group id', 
                             default=None)
+    parser.add_argument('--randoms_only', action='store_true')
 
     args = parser.parse_args()
     if hasattr(args, 'group_id'):

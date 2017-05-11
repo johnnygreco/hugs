@@ -12,7 +12,7 @@ from .cattools import cutter, xmatch
 
 __all__ = ['run']
 
-def run(cfg, debug_return=False, synth_factory=None):
+def run(cfg, debug_return=False, synth_factory=None, randoms_only=False):
     """
     Run hugs pipeline using SExtractor for the final detection 
     and photometry.
@@ -52,12 +52,7 @@ def run(cfg, debug_return=False, synth_factory=None):
         cfg.logger.warning('***** not enough data!!! ****')
         _exp = cfg.exp[cfg.band_detect]
         debug_exp = {'exp':cfg.exp, 'exp_clean':_exp} if debug_return else {}
-        results = lsst.pipe.base.Struct(all_detections=Table(),
-                                        sources=Table(), 
-                                        candy=Table(),
-                                        mask_fracs={},
-                                        randoms_results=None,
-                                        **debug_exp)
+        results = _null_return(None, debug_exp)
         cfg.reset_mask_planes()
         return results
 
@@ -133,6 +128,26 @@ def run(cfg, debug_return=False, synth_factory=None):
         replace = mask_clean.getArray() &\
                   mask_clean.getPlaneBitMask('BLEND') != 0
         mi_clean.getImage().getArray()[replace] = noise_array[replace]
+
+    ############################################################
+    # Find randoms in footprint that are not masked
+    ############################################################
+
+    if cfg.randoms_db_fn is not None:
+        cfg.logger.info('finding detectable randoms in patch')
+        randoms_df, randoms_db = randoms.find_randoms_in_footprint(
+            cfg.randoms_db_fn, exp_clean, return_db=True)
+        randoms_results = lsst.pipe.base.Struct(df=randoms_df, db=randoms_db)
+    else:
+        randoms_results = None
+
+    if randoms_only:
+        debug_exp = {'exp':cfg.exp, 'exp_clean':exp_clean} if debug_return else {}
+        results = _null_return(randoms_results, debug_exp)
+        if not debug_return:
+            cfg.reset_mask_planes()
+        cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
+        return results
 
     ############################################################
     # Detect sources and measure props with SExtractor
@@ -232,13 +247,6 @@ def run(cfg, debug_return=False, synth_factory=None):
         candy = Table()
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
-    if cfg.randoms_density is not None:
-        cfg.logger.info('finding detectable randoms in patch')
-        randoms_df, randoms_db = randoms.find_randoms_in_footprint(
-            cfg.randoms_db_fn, exp_clean, return_db=True)
-        randoms_results = lsst.pipe.base.Struct(df=randoms_df, db=randoms_db)
-    else:
-        randoms_results = None
 
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
 
@@ -259,3 +267,12 @@ def run(cfg, debug_return=False, synth_factory=None):
         cfg.reset_mask_planes()
 
     return results
+
+
+def _null_return(randoms_results, debug_exp={}):
+    return lsst.pipe.base.Struct(all_detections=Table(),
+                                 sources=Table(), 
+                                 candy=Table(),
+                                 mask_fracs={},
+                                 randoms_results=randoms_results,
+                                 **debug_exp)
