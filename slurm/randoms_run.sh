@@ -19,7 +19,7 @@ PATCHES_FN=$LOCAL_IO/patch-files/hsc-wide-patches-full.csv
 mkdir $OUTDIR
 cp $PATCHES_FN $OUTDIR/
 
-python /tigress/jgreco/randoms/randoms-safe-36000.db
+python reset_randoms_db.py /tigress/jgreco/randoms/randoms-safe-36000.db
 
 mpiexec -n 64 python runner.py --mpi \
     --patches_fn $PATCHES_FN \
