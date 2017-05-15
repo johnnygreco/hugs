@@ -10,7 +10,7 @@ band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
 
-randoms_db_fn: '/tigress/jgreco/randoms/randoms-safe-36000-bkcup.db'
+randoms_db_fn: '/tigress/jgreco/randoms/randoms-safe-36000-bckup.db'
 
 remove_fpt_blends: False
 

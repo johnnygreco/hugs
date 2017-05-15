@@ -5,7 +5,7 @@
 #SBATCH -e /scratch/network/jgreco/run-%j.err             
 #SBATCH -N 4
 #SBATCH --ntasks-per-node=16
-#SBATCH -t 2:00:00 
+#SBATCH -t 4:00:00 
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end 
 #SBATCH --mail-user=jgreco@princeton.edu 
@@ -19,7 +19,7 @@ PATCHES_FN=$LOCAL_IO/patch-files/hsc-wide-patches-full.csv
 mkdir $OUTDIR
 cp $PATCHES_FN $OUTDIR/
 
-python reset_randoms_db.py /tigress/jgreco/randoms/randoms-safe-36000.db
+python reset_randoms_db.py /tigress/jgreco/randoms/randoms-safe-360000.db
 
 mpiexec -n 64 python runner.py --mpi \
     --patches_fn $PATCHES_FN \

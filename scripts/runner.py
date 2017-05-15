@@ -14,12 +14,16 @@ import hugs_pipe as hp
 from hugs_pipe.utils import calc_mask_bit_fracs
 
 
-def callback(randoms_results):
+def callback(args):
+    randoms_results, config = args
     if randoms_results is None:
-        pass
+        config.logger.warning('no randoms for this patch')
     else:
         df = randoms_results.df
-        randoms_results.db.set_detected(df.loc[df['detected']==1, 'id'])
+        detected = df['detected']==1
+        randoms_results.db.set_detected(df.loc[detected, 'id'])
+        log_message = 'took {:.2f} min to set {} randoms to detected in db'
+        config.logger.info(log_message.format(config.timer, detected.sum()))
 
 
 def worker(p):
@@ -83,7 +87,7 @@ def worker(p):
         mask_fracs = pd.DataFrame(results.mask_fracs)
         mask_fracs.to_csv(fn, index=False)
 
-    return results.randoms_results
+    return results.randoms_results, config
 
 
 if __name__=='__main__':
