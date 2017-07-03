@@ -16,7 +16,7 @@ class HugsPipeExposure(object):
             data_id = {'tract': tract, 
                        'patch': patch, 
                        'filter': 'HSC-'+band.upper()}
-            exp = self.butler.get('deepCoadd_calexp', data_id, immediate=True)
+            exp = self.butler.get('deepCoadd_calexp_hsc', data_id, immediate=True)
             setattr(self, band.lower(), exp)
 
     def __getitem__(self, attr):

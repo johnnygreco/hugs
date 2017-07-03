@@ -650,10 +650,10 @@ def sex_measure(exp, config, apertures, label, add_params, clean,
 
     if add_params and (len(cat)>0):
         x0, y0 = exp.getXY0()
-        cat['x_img'] = cat['X_IMAGE'] 
-        cat['y_img'] = cat['Y_IMAGE']
-        cat['x_hsc'] = cat['X_IMAGE'] + x0
-        cat['y_hsc'] = cat['Y_IMAGE'] + y0
+        cat['x_img'] = cat['X_IMAGE'] - 1
+        cat['y_img'] = cat['Y_IMAGE'] - 1
+        cat['x_hsc'] = cat['X_IMAGE'] + x0 - 1
+        cat['y_hsc'] = cat['Y_IMAGE'] + y0 - 1
 
         sex_plane = mask.getPlaneBitMask('SEX_SEG')
         edge_plane = mask.getPlaneBitMask('EDGE')

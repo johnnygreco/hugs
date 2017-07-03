@@ -76,7 +76,7 @@ class Viewer(object):
                 _id['tract'], _id['patch']))
             for band in self.hsc_rgb_bands:
                 _id['filter'] = 'HSC-'+band
-                exp = self.butler.get('deepCoadd_calexp', _id, immediate=True)
+                exp = self.butler.get('deepCoadd_calexp_hsc', _id, immediate=True)
                 self._rgb_images.update({band: exp.getMaskedImage()})
         return self._rgb_images
 
@@ -180,6 +180,11 @@ class Viewer(object):
             b_name = 'B_IMAGE('+band+')'
             theta_name = 'THETA_IMAGE('+band+')'
             theta_factor = np.pi/180.0
+        elif ellpars=='sep':
+            a_name = 'a'
+            b_name = 'b'
+            theta_name = 'theta'
+            theta_factor = 1.0
 
         with disp.Buffering():
             for _, source in cat.iterrows():

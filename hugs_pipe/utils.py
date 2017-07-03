@@ -175,7 +175,7 @@ def get_exposure(data_id, butler=None, datadir=os.environ.get('HSC_DIR')):
         if butler is None:
             import lsst.daf.persistence.Butler
             butler = lsst.daf.persistence.Butler(datadir)
-        exp = butler.get('deepCoadd_calexp', data_id, immediate=True)
+        exp = butler.get('deepCoadd_calexp_hsc', data_id, immediate=True)
     return exp
 
 
@@ -354,7 +354,7 @@ def add_band_to_name(cat, band, num_aps):
     params = [
         'MAG_AUTO', 'MAG_ISO', 'MU_THRESHOLD', 'MU_MAX', 'FLUX_RADIUS',
         'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'THETA_IMAGE', 'ELLIPTICITY',
-        'ISO0', 'ISO3', 'ISO6', 'FLAGS', 'MAG_APER_', 'mu_aper_',
+        'ISO0', 'ISO3', 'ISO6', 'FLAGS', 'KRON_RADIUS', 'MAG_APER_', 'mu_aper_',
     ]
 
     for p in params:

@@ -10,9 +10,9 @@ band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
 
-randoms_db_fn: '/tigress/jgreco/randoms/randoms-safe-36000-bckup.db'
+randoms_db_fn: ~
 
-remove_fpt_blends: False
+remove_fpt_blends: True
 
 verify_max_sep: 15  # pixels
 
@@ -64,13 +64,12 @@ sex_measure:
         BACK_SIZE: 128
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
-        DEBLEND_MINCONT: 1.0
     apertures: [3., 4., 5., 6., 7., 8., 16., 32.]
     clean: True
 
 run_imfit:
     bbox_grow: 120
-    psf_convolve: False
+    psf_convolve: True
     clean: True
     save_fit_fig: False
     quiet: True
