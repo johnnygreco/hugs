@@ -1,1 +1,1 @@
-# Hunt for Ultra-diffuse Galaxies Pipeline
+# Hunt for Ultra-LSB Galaxies 
