@@ -1,1 +1,1 @@
-# Hunt for Ultra-LSB Galaxies 
+# Hunt for Ultra-lsb Galaxies 

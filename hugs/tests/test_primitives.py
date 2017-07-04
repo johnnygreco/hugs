@@ -29,32 +29,9 @@ def test_clean():
     assert img.std() > img_clean.std()
 
 
-def test_find_blends():
-    utils.remove_mask_planes(mask, ['CLEANED'])
-    mi_smooth = imtools.smooth_gauss(masked_image, 8.0)
-    fpset_det = prim.image_threshold(mi_smooth, 5, 
-                                     plane_name='DETECTED', 
-                                     mask=mask)
-    prim.find_blends(exposure, fpset_det)
-    assert 'BLEND' in mask.getMaskPlaneDict().keys()
-
-
-def test_measure_sources():
-    assert len(sources) > 0
-    assert sources['ra'][0] is not None 
-    assert sources['dec'][0] is not None 
-
-
 def test_image_threshold():
     fpset_1 = prim.image_threshold(masked_image, 20)
     assert len(fpset_1.getFootprints()) > 0
     fpset_2 = prim.image_threshold(masked_image, 20, npix=50)
     assert len(fpset_2.getFootprints()) > 0
     assert len(fpset_2.getFootprints()) < len(fpset_1.getFootprints())
-
-
-def test_photometry():
-    img = exposure.getMaskedImage().getImage().getArray()
-    prim.photometry(img, sources)
-    assert 'mag_ell_i' in sources.colnames
-    assert 'mag_circ_3_i' in sources.colnames

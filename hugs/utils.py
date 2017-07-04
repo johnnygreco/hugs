@@ -7,16 +7,19 @@ import lsst.afw.math as afwMath
 from astropy.table import Table
 
 __all__ = [
-    'io', 'pixscale', 'zpt', 'annuli', 'get_astropy_wcs',
+    'io', 'pixscale', 'zpt', 'project_dir', 'annuli', 
     'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
     'get_time_label', 'remove_mask_planes', 'get_fpset', 
-    'combine_cats', 'check_random_state', 'embed_slices', 
-    'get_group_patches', 'calc_mask_bit_fracs', 'get_exposure',
+    'check_random_state', 'embed_slices', 
+    'calc_mask_bit_fracs', 'get_exposure',
     'check_kwargs_defaults', 'make_noise_image', 'add_band_to_name'
 ]
 
+
 io = os.environ.get('HUGS_PIPE_IO')
 local_io = os.environ.get('LOCAL_IO')
+project_dir = os.path.dirname(os.path.dirname(__file__))
+
 pixscale = 0.168
 zpt = 27.0
 
@@ -108,6 +111,7 @@ def embed_slices(center, arr_shape, img_shape):
 
     return img_slice, arr_slice
 
+
 def get_psf_sigma(exposure):
     """
     Get sigma of point-spread function.
@@ -126,17 +130,6 @@ def get_psf_sigma(exposure):
     psf = exposure.getPsf()
     sigma = psf.computeShape().getDeterminantRadius()
     return sigma
-
-
-def get_astropy_wcs(fn):
-    """
-    Get an astropy WCS object from fits header.
-    """
-    from astropy import wcs
-    from astropy.io import fits
-    header = fits.open(fn)[1].header
-    exp_wcs = wcs.WCS(header)
-    return exp_wcs
 
 
 def get_test_exp():
@@ -242,24 +235,6 @@ def get_fpset(mask, plane):
     return fpset
 
 
-def combine_cats(catdir, label='master', outdir='same'):
-    """
-    Combine catalogs from a group of runs.
-    """
-    from astropy.table import vstack
-
-    files = [fn for fn in os.listdir(catdir) if fn[-3:]=='csv']
-
-    master = Table()
-    for fn in files:
-        tab = Table.read(os.path.join(catdir, fn), format='ascii')
-        master = vstack([master, tab])
-
-    outdir = catdir if outdir=='same' else outdir
-    outfile = os.path.join(outdir, label+'.csv')
-    master.write(outfile)
-
-
 def check_random_state(seed):
     """
     Turn seed into a `numpy.random.RandomState` instance.
@@ -297,18 +272,6 @@ def check_random_state(seed):
 
     raise ValueError('{0!r} cannot be used to seed a numpy.random.RandomState'
                      ' instance'.format(seed))
-
-
-def get_group_patches(group_id, z_max=0.05, Mh_lims=[12.5, 15.0]):
-    """
-    Get HSC patches associated with galaxy groups.
-    """
-    prefix = 'cat_z{}_Mh{}-{}'.format(z_max, Mh_lims[0], Mh_lims[1])
-    patch_dir = os.path.join(local_io, 'group-patches')
-    prefix = os.path.join(patch_dir, prefix)
-    patches_fn = prefix+'_tracts_n_patches.npy'
-    patches_dict = np.load(patches_fn).item()
-    return Table(patches_dict[group_id]) if group_id else patches_dict
 
 
 def calc_mask_bit_fracs(exp):

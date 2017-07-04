@@ -13,8 +13,9 @@ from . import randoms
 from .parser import parse_args
 from .synths import SynthFactory
 from .stats import get_clipped_sig_task
-from .run import run
+from . import tasks
 from .primitives import *
 from .viewer import Viewer
 from .config import Config
-from .utils import io, pixscale, get_group_patches
+from .utils import io, pixscale
+from . import sextractor

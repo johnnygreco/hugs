@@ -1,5 +1,5 @@
 import os
-import hugs_pipe as hp
+import hugs as hp
 
 args = hp.parse_args(['patch', 'outdir', 'config_fn'])
 

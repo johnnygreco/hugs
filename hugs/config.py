@@ -7,7 +7,7 @@ import numpy as np
 import time
 import lsst.afw.image
 from . import utils
-from .exposure import HugsPipeExposure
+from .exposure import HugsExposure
 try:
     import coloredlogs
 except ImportError:
@@ -15,7 +15,7 @@ except ImportError:
 
 class Config(object):
     """
-    Class for parsing the hugs_pipe configuration.
+    Class for parsing the hugs configuration.
     """
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
@@ -79,6 +79,7 @@ class Config(object):
         self.verify_max_sep = params['verify_max_sep']
         self.group_id = group_id
         self.randoms_db_fn = params['randoms_db_fn']
+        self.sex_io_dir = params['sex_io_dir']
 
         # set patch id if given
         if tract is not None:
@@ -179,7 +180,7 @@ class Config(object):
         # get exposure 
         bands = self.band_detect + self.band_verify + self.band_meas
         self.bands = ''.join(set(bands))
-        self.exp = HugsPipeExposure(tract, patch, self.bands, self.butler)
+        self.exp = HugsExposure(tract, patch, self.bands, self.butler)
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:

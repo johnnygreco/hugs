@@ -4,11 +4,11 @@ import os
 import numpy as np
 import lsst.pipe.base
 from astropy.table import Table, hstack
-from . import utils
-from . import imtools
-from . import primitives as prim
-from . import randoms 
-from .cattools import cutter, xmatch
+from .. import utils
+from .. import imtools
+from .. import primitives as prim
+from .. import randoms 
+from ..cattools import xmatch
 
 __all__ = ['run']
 
@@ -91,43 +91,6 @@ def run(cfg, debug_return=False, synth_factory=None, randoms_only=False):
     exp_clean = prim.clean(cfg.exp[cfg.band_detect], fpset_low, **cfg.clean)
     mi_clean = exp_clean.getMaskedImage()
     mask_clean = mi_clean.getMask()
-
-    if cfg.remove_fpt_blends:
-
-        ############################################################
-        # Smooth with large kernel for footprint blend detection
-        ############################################################
-
-        kern_fwhm = cfg.thresh_det.pop('kern_fwhm')
-        cfg.logger.info('gaussian smooth for blend detection with '
-                        'with fhwm = {} arcsec'.format(kern_fwhm))
-        fwhm = kern_fwhm/utils.pixscale # pixels
-        sigma = fwhm/(2*np.sqrt(2*np.log(2)))
-        mi_clean_smooth = imtools.smooth_gauss(mi_clean, sigma, use_scipy=True)
-
-        ############################################################
-        # Image thresholding 
-        ############################################################
-
-        cfg.logger.info('performing detection threshold at '
-                        '{} sigma'.format(cfg.thresh_det['thresh']))
-        fpset_smooth = prim.image_threshold(
-            mi_clean_smooth, plane_name='SMOOTHED', 
-            mask=mask_clean, **cfg.thresh_det)
-        fpset_smooth.setMask(mask, 'SMOOTHED')
-
-        ############################################################
-        # Find and remove "obvious" blends 
-        ############################################################
-
-        cfg.logger.info('finding obvious blends')
-        prim.find_blends(exp_clean, fpset_smooth, 
-                         plane_name='SMOOTHED', **cfg.find_blends)
-
-        noise_array = utils.make_noise_image(mi_clean, cfg.rng)
-        replace = mask_clean.getArray() &\
-                  mask_clean.getPlaneBitMask('BLEND') != 0
-        mi_clean.getImage().getArray()[replace] = noise_array[replace]
 
     ############################################################
     # Find randoms in footprint that are not masked
@@ -215,32 +178,6 @@ def run(cfg, debug_return=False, synth_factory=None, randoms_only=False):
                 sources = Table()
                 break
 
-        ############################################################
-        # Cut catalog and run imfit on cutouts
-        ############################################################
-
-        if len(sources)>0:
-            candy = cutter(sources.to_pandas(), 
-                           min_cuts=cfg.min_cuts, 
-                           max_cuts=cfg.max_cuts, 
-                           logger=cfg.logger)
-            candy = Table.from_pandas(candy)
-            if len(candy)>0:
-                cfg.logger.info(
-                    'running imfit on '+cfg.band_detect+'-band cutouts')
-                candy = prim.run_imfit(
-                    exp_clean, candy, label=label, **cfg.run_imfit)
-                for band in cfg.band_meas:
-                    cfg.logger.info('running imfit on '+band+'-band cutouts')
-                    candy = prim.run_imfit(
-                        cfg.exp[band], candy, label=label, 
-                        master_band=cfg.band_detect, **cfg.run_imfit)
-            else:
-                cfg.logger.warning('**** no sources satisfy cuts! ****')
-        else:
-            cfg.logger.warning('**** no sources verified in other bands! ****')
-            candy = Table()
-
     else: 
         cfg.logger.warn('**** no sources found by sextractor ****')
         all_detections = Table()
@@ -253,7 +190,6 @@ def run(cfg, debug_return=False, synth_factory=None, randoms_only=False):
     if debug_return:
         results = lsst.pipe.base.Struct(all_detections=all_detections,
                                         sources=sources,
-                                        candy=candy,
                                         exp=cfg.exp,
                                         exp_clean=exp_clean,
                                         mask_fracs=mask_fracs, 
@@ -261,7 +197,6 @@ def run(cfg, debug_return=False, synth_factory=None, randoms_only=False):
     else:
         results = lsst.pipe.base.Struct(all_detections=all_detections,
                                         sources=sources, 
-                                        candy=candy,
                                         mask_fracs=mask_fracs,
                                         randoms_results=randoms_results)
         cfg.reset_mask_planes()

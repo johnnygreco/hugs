@@ -1,11 +1,10 @@
-
 from __future__ import division, print_function
 
 import os
 import numpy as np
 import lsst.daf.persistence
 
-class HugsPipeExposure(object):
+class HugsExposure(object):
     
     def __init__(self, tract, patch, bands='gri', butler=None):
         self.tract = tract

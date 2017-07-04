@@ -7,20 +7,20 @@ import lsst.afw.detection as afwDet
 import lsst.afw.geom as afwGeom
 from astropy.io import fits
 from astropy.table import Table, vstack, hstack
-from astropy.convolution import Gaussian2DKernel
 from scipy.spatial.distance import cdist
-import photutils as phut
+from astropy.convolution import Gaussian2DKernel
+from astropy.stats import gaussian_fwhm_to_sigma
+import sep
 from . import utils
 from . import imtools
 
 __all__ = [
     'clean', 
-    'find_blends',
     'image_threshold', 
-    'measure_sources', 
-    'photometry', 
     'run_imfit',
-    'sex_measure'
+    'sex_measure',
+    'detection',
+    'photometry'
 ]
 
 
@@ -63,7 +63,7 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
 
     # associate high thresh with low thresh and find small fps
     fpset_replace = afwDet.FootprintSet(mi.getBBox())
-    fp_list = afwDet.FootprintList()
+    fp_list = []
     for fp in fpset_low.getFootprints():
         hfp = afwDet.HeavyFootprintF(fp, mi)
         pix = hfp.getMaskArray()
@@ -88,94 +88,6 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     replace |= mask.getArray() & mask.getPlaneBitMask('CLEANED') != 0
     mi_clean.getImage().getArray()[replace] = noise_array[replace]
     return exp_clean
-
-
-def find_blends(exp, fpset_det, name_low='THRESH_LOW', num_low_fps=2,
-                min_fp_area=100, min_parent_area=0.3, min_parent_flux=0.8, 
-                plane_name='DETECTED'):
-    """
-    Search footprints for obvious blends of multiple small sources. 
-    The search is carried out by counting the number of low-thresh 
-    footprints within each detection footprint and looking at properties
-    of the low-thresh footprints (e.g., size and flux).
-
-    Parameters
-    ----------
-    exp : lsst.afw.image.ExposureF
-        Exposure object. 
-    fpset_det : lsst.afw.FootprintSet
-        Detection footprint set.
-    name_low : string, optional
-        Name of the low-thresh bit plane.
-    num_low_fps : int, optional
-        Number of low-thresh fps to be considered blend.
-    min_fp_area : int, optional
-        Minimum number of pixels to be considered an object.
-    min_parent_area : float, optional
-        Minimum fraction of the footprint occupied by parent.
-    min_parent_flux : float, optional
-        Minimum fraction of the total flux that must 
-        be contributed by the parent. 
-    plane_name : str
-        Name of bit plane to search for blends.
-
-    Notes
-    -----
-    A new bit plane called BLEND will be added to the mask 
-    of the input exposure object, and DETECTED bits will be 
-    turned off for blended sources. 
-    """
-
-    mi = exp.getMaskedImage()
-    mask = mi.getMask()
-    msk_arr = mask.getArray()
-    plane_low = mask.getPlaneBitMask(name_low)
-    fp_list = afwDet.FootprintList()
-    x0, y0 = exp.getXY0()
-    
-    for fp_det in fpset_det.getFootprints():
-
-        # get bbox of detection footprint
-        bbox = fp_det.getBBox()
-        exp_fp = exp.Factory(exp, bbox, afwImage.PARENT) 
-        mask_fp = exp_fp.getMaskedImage().getMask()
-        mi_fp = exp_fp.getMaskedImage()
-        total_area = float(fp_det.getArea())
-
-        # find low-thresh footprints in bbox
-        fpset_low = afwDet.FootprintSet(
-            mask_fp, afwDet.Threshold(plane_low, afwDet.Threshold.BITMASK))
-
-        # find blends and save footprint
-        if len(fpset_low.getFootprints()) >= num_low_fps:
-            areas = np.array([fp_.getArea() for fp_ in
-                              fpset_low.getFootprints()])
-            biggest = areas.argmax()
-            if (areas > min_fp_area).sum() >= num_low_fps:
-                hfps = [afwDet.HeavyFootprintF(fp_, mi_fp)\
-                        for fp_ in fpset_low.getFootprints()]
-                fluxes = np.array(
-                    [hfp_.getImageArray().sum()for hfp_ in hfps])
-                is_blend = areas[biggest]/total_area < min_parent_area
-                is_blend  |= fluxes[biggest]/fluxes.sum() < min_parent_flux
-                if is_blend:
-                    fp_list.append(fp_det)
-                    for s in fp_det.getSpans():
-                        y = s.getY() - y0
-                        for x in range(s.getX0()-x0, s.getX1()-x0+1):
-                            msk_arr[y][x] -= mask.getPlaneBitMask(plane_name)
-            elif (areas < min_fp_area).sum() == areas.size:
-                fp_list.append(fp_det)
-                for s in fp_det.getSpans():
-                    y = s.getY() - y0
-                    for x in range(s.getX0()-x0, s.getX1()-x0+1):
-                        msk_arr[y][x] -= mask.getPlaneBitMask(plane_name)
-
-    # create footprint set and set mask plane
-    fpset_blends = afwDet.FootprintSet(exp.getBBox())
-    fpset_blends.setFootprints(fp_list)
-    mask.addMaskPlane('BLEND')
-    fpset_blends.setMask(mask, 'BLEND')
 
 
 def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
@@ -224,211 +136,6 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
             mask.clearMaskPlane(mask.getMaskPlane(plane_name))
         fpset.setMask(mask, plane_name)
     return fpset
-
-
-def measure_sources(exposure, npix=5, thresh_snr=0.5, kern_sig_pix=3, 
-                    grow_stamps=None, detect_kwargs={}, deblend_kwargs={},
-                    logger=None, sf=None):
-    """
-    Use photutils to measure sources within "detection" footprints.
-
-    Parameters
-    ----------
-    exposure : lsst.afw.ExposureF
-        Exposure object with masks from hugs_pipe.run.
-    thresh_snr : float, optional
-        The signal-to-noise ratio per pixel above the background 
-        for which to consider a pixel as possibly being part of a source.
-    kern_sig_pix : float
-        Sigma (in pixels) of Gaussian kernel used to smooth detection image.
-    npix : int, optional
-        Number of pixels above required to be an object.
-    grow_stamps : int
-        Number of pixels to grow postage stamp in all directions.
-    detect_kwargs :  dict, optional
-        Kwargs for photutils.detect_sources.
-    deblend_kwargs :  dict, optional
-        Kwargs for photutils.deblend_sources.
-    sf : hugs_pipe.synths.SynthFactory, optional
-        synth factory object for synth flag.
-
-    Returns
-    -------
-    table : astropy.table.Table
-        Source measurements. 
-    """
-
-    # get detected footprints
-    mask = exposure.getMaskedImage().getMask()
-    plane = mask.getPlaneBitMask('DETECTED')
-    fpset = afwDet.FootprintSet(
-        mask, afwDet.Threshold(plane, afwDet.Threshold.BITMASK))
-
-    # loop over footprints
-    table = Table()
-    kern = Gaussian2DKernel(kern_sig_pix)
-    kern.normalize()
-
-    # don't need these photutils columns
-    exclude_cols = [
-        'ra_icrs_centroid', 'dec_icrs_centroid', 'source_sum_err', 
-        'background_sum', 'background_mean', 'background_at_centroid',
-        'xmin', 'xmax', 'ymin', 'ymax', 'min_value',
-        'max_value', 'minval_xpos', 'minval_ypos', 'maxval_xpos',
-        'maxval_ypos'
-    ]
-
-    for fp_id, fp in enumerate(fpset.getFootprints()):
-
-        # get exposure in bbox of footprint 
-        bbox = fp.getBBox()
-        if grow_stamps:
-            bbox.grow(grow_stamps)
-            bbox.clip(exposure.getBBox())
-        exp_fp = exposure.Factory(exposure, bbox, afwImage.PARENT)
-        mi_fp = exp_fp.getMaskedImage()
-        msk_fp = mi_fp.getMask()
-        hfp = afwDet.HeavyFootprintF(fp, mi_fp)
-        pix = hfp.getMaskArray()
-
-        # detect sources in footprint
-        img = mi_fp.getImage().getArray().copy()
-        x0, y0 = exp_fp.getXY0()
-        thresh = phut.detect_threshold(img, 
-                                       snr=thresh_snr, 
-                                       **detect_kwargs)
-        seg = phut.detect_sources(img, thresh, npixels=npix, 
-                                  filter_kernel=kern)
-
-        # go to next footprint if no sources are detected
-        if seg.nlabels==0: 
-            continue
-
-        # deblend sources
-        seg_db = phut.deblend_sources(
-            img, seg, npixels=npix, 
-            filter_kernel=kern, **deblend_kwargs)
-
-        # measure source properties
-        props = phut.source_properties(img, seg_db)
-        props = phut.properties_table(props, exclude_columns=exclude_cols)
-
-        # calculate different coordinates
-        props['x_hsc'] = props['xcentroid'] + x0
-        props['y_hsc'] = props['ycentroid'] + y0
-        props['x_img'] = props['x_hsc'] - exposure.getX0()
-        props['y_img'] = props['y_hsc'] - exposure.getY0()
-
-        # generate ids and flags
-        props['fp_id'] = [fp_id]*len(props)
-        props['nchild'] = [len(props)]*len(props)
-        num_edge = (pix & msk_fp.getPlaneBitMask('EDGE')!=0).sum()
-        num_bright = (pix & msk_fp.getPlaneBitMask('BRIGHT_OBJECT')!=0).sum()
-        props['num_edge_pix'] = [num_edge]*len(props)
-        props['num_bright_pix'] = [num_bright]*len(props)
-        props['fp_det_area'] = [fp.getArea()]*len(props)
-
-        # find synths
-        max_npix_dist = 5
-        if 'SYNTH' in msk_fp.getMaskPlaneDict().keys() and sf is not None:
-            props['synth_id'] = [-111]*len(props)
-            props['synth_fail'] = [False]*len(props)
-            if (pix & msk_fp.getPlaneBitMask('SYNTH')!=0).sum() > 0:
-                synth_coords = sf.get_psets()[['X0', 'Y0']]
-                props_coords = props['x_img', 'y_img'].to_pandas()
-                dist = cdist(synth_coords, props_coords)
-                min_idx = np.unravel_index(dist.argmin(), dist.shape)
-                if dist.min() < max_npix_dist:
-                    props['synth_id'][min_idx[1]] = min_idx[0]
-                    num_pass = (np.min(dist, axis=1) < max_npix_dist).sum()
-                    if len(props)>1 and num_pass>1:
-                        props['synth_fail'] = [True]*len(props)
-                else:
-                    props['synth_fail'] = [True]*len(props)
-
-        table = vstack([table, props])
-    
-    if len(table)>0:
-        table['id'] = np.arange(0, len(table))
-        table.remove_columns(['xcentroid', 'ycentroid'])
-
-        # use wcs to add ra & dec to table
-        ra_list = []
-        dec_list = []
-        wcs = exposure.getWcs()
-        if wcs is None:
-            warn = 'no wcs with exposure'
-            if logger:
-                logger.warning(warn)
-            else:
-                print(warn)
-        else:
-            for x, y in table['x_hsc', 'y_hsc']:
-                ra = wcs.pixelToSky(x, y).getLongitude().asDegrees()
-                dec = wcs.pixelToSky(x, y).getLatitude().asDegrees()
-                ra_list.append(ra)
-                dec_list.append(dec)
-            table['ra'] = ra_list
-            table['dec'] = dec_list
-
-        # masked columns make to_pandas convert ints to floats
-        table = Table(table, masked=False)
-    else:
-        warn = '**** no sources found! ****'
-        if logger:
-            logger.warning(warn)
-        else:
-            print(warn)
-
-    return table
-
-
-def photometry(img_data, sources, zpt_mag=27.0, ell_nsig=5.0, 
-               circ_radii=[3, 6, 9]):
-    """
-    Do basic aperture photometry within circular apertures and 
-    an elliptical aperture. Results will be saved to the 
-    input table.
-
-    Parameters
-    ----------
-    img_data : 2D ndarray, or dict
-        The image data. If a dict is given, the keys
-        must be the photometric band
-    sources : astropy.table.Table
-        Output table from measure_sources.
-    zpt_mag : float, optional
-        The zero point magnitude.
-    ell_nsig : float, optional
-        Number of sigma for major/minor axis sizes.
-    circ_radii : list, optional
-        Radii within which to circular aperture photometry.
-    """
-
-    pos = [(x, y) for x,y in sources['x_img', 'y_img']] 
-
-    if type(img_data)==np.ndarray:
-        img_data = {'i': img_data}
-
-    for band, img in img_data.items():
-        mag = []
-        for idx in range(len(sources)):
-            x, y = pos[idx]
-            a, b = sources['semimajor_axis_sigma', 'semiminor_axis_sigma'][idx]
-            theta = sources['orientation'][idx]
-            aperture = phut.EllipticalAperture((x,y), ell_nsig*a, ell_nsig*b, theta)
-            flux = phut.aperture_photometry(img, aperture)['aperture_sum'][0]
-            mag.append(zpt_mag - 2.5*np.log10(flux))
-        sources['mag_ell_'+band.lower()] = mag
-
-        for r in circ_radii:
-            r_arcsec = r*utils.pixscale
-            apertures = phut.CircularAperture(pos, r=r)
-            flux = phut.aperture_photometry(img, apertures)['aperture_sum']
-            mag = zpt_mag - 2.5*np.log10(flux)
-            sources['mag_circ_{}_{}'.format(r, band.lower())] = mag
-            mu = mag + 2.5*np.log10(np.pi*r_arcsec**2)
-            sources['mu_{}_{}'.format(r, band.lower())] = mu
 
 
 def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120, 
@@ -715,3 +422,87 @@ def sex_measure(exp, config, apertures, label, add_params, clean,
         os.remove(sw.get_outdir(label+'-'+'SEGMENTATION.fits'))
 
     return cat
+
+def _byteswap(arr):
+    """
+    If array is in big-endian byte order (as astropy.io.fits
+    always returns), swap to little-endian for SEP.
+    """
+    if arr.dtype.byteorder=='>':
+        arr = arr.byteswap().newbyteorder()
+    return arr
+
+
+def detection(exp, thresh=0.7, kern_fwhm=1.0, wcs=None, bkg_kws={}, 
+              ext_kws={}):
+    """
+    Source extraction using SEP.
+    """
+
+    img = imtools.get_image_ndarray(exp)
+    img = _byteswap(img)
+    bkg = sep.Background(img, **bkg_kws)
+    bkg.subfrom(img)
+
+    kern_sigma = gaussian_fwhm_to_sigma*(kern_fwhm/utils.pixscale)
+    kernel = Gaussian2DKernel(kern_sigma)
+    kernel.normalize()
+    kernel = kernel.array
+
+    sources = sep.extract(
+        img, thresh, err=bkg.globalrms, filter_kernel=kernel, **ext_kws)
+    sources = Table(sources)
+
+    if wcs is not None:
+        x0, y0 = exp.getXY0()
+        sources['x_hsc'] = sources['x'] + x0
+        sources['y_hsc'] = sources['y'] + y0
+        coords = []
+        for obj in sources:
+            coord = wcs.pixelToSky(obj['x_hsc'], obj['y_hsc'])
+            ra, dec = coord.getPosition(afwGeom.degrees)
+            coords.append([ra, dec])
+        coords = np.array(coords)
+        sources['ra'] = coords[:, 0]
+        sources['dec'] = coords[:, 1]
+
+    return sources
+
+
+def photometry(exp, sources, circ_ap_radii=[1.5, 3, 6, 9]):
+    """
+    Perform aperture photometry with SEP.
+    """
+
+    img = imtools.get_image_ndarray(exp)
+    img = _byteswap(img)
+
+    # calc kron radius
+    x, y = sources['x'], sources['y']
+    a, b, theta = sources['a'], sources['b'], sources['theta']
+    kronrad, _ = sep.kron_radius(img, x, y, a, b, theta, 6.0)
+    
+    # flux within 2.5 kron radius
+    flux, _, _ = sep.sum_ellipse(img, x, y, a, b, theta, 2.5*kronrad, subpix=1)
+
+    # flux within large ellipse
+    flux_ell, _, _ = sep.sum_ellipse(img, x, y, a, b, theta, 6, subpix=1)
+
+    # calc flux radius and magnitude
+    flux_radius, flag = sep.flux_radius(
+        img,  x, y, 6.*a, 0.5, normflux=flux, subpix=5)
+
+    sources['flux_radius'] = flux_radius
+    sources['kron_radius'] = kronrad
+    sources['mag_auto'] = 27 - 2.5*np.log10(flux)
+    sources['mag_ell'] = 27 - 2.5*np.log10(flux_ell)
+
+    # sum flux in circles of radius=3.0
+    for i, r in enumerate(circ_ap_radii):
+        flux_circ, _, _ = sep.sum_circle(img, x, y, r)
+        mag = 27 - 2.5*np.log10(flux_circ)
+        area = np.pi*(r*utils.pixscale)**2
+        sources['mag_aper_'+str(i)] = mag
+        sources['mu_aper_'+str(i)] = mag + 2.5*np.log10(area)
+
+    return sources

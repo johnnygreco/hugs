@@ -10,20 +10,21 @@ import lsst.afw.math as afwMath
 import scipy.ndimage as ndi
 hscdir = os.environ.get('HSC_DIR')
 
-__all__ = ['get_cutout', 
+__all__ = ['get_image_ndarray',
+           'get_cutout', 
            'smooth_gauss', 
            'smooth_image', 
            'rmedian', 
            'unsharp_mask']
 
 
-def _get_image_ndarray(image):
+def get_image_ndarray(image):
     """
     Return numpy ndarray given exposure or image object.
     """
-    if type(image)==lsst.afw.image.imageLib.MaskedImageF:
+    if type(image)==lsst.afw.image.MaskedImageF:
         data = image.getImage().getArray().copy()
-    elif type(image)==lsst.afw.image.imageLib.ExposureF:
+    elif type(image)==lsst.afw.image.ExposureF:
         mi = image.getMaskedImage()
         data = mi.getImage().getArray().copy()
     elif type(image)==np.ndarray:
@@ -99,7 +100,7 @@ def smooth_gauss(masked_image, sigma=2.0, nsigma=7.0,
         The convolved masked image
     """
     if use_scipy:
-        img_arr = _get_image_ndarray(masked_image)
+        img_arr = get_image_ndarray(masked_image)
         img_arr_smooth = ndi.gaussian_filter(
             img_arr, sigma, truncate=nsigma, **kwargs)
         if inplace:
@@ -145,7 +146,7 @@ def smooth_image(masked_image, kernel='exp', **kwargs):
     elif kernel=='exp':
         from photutils.utils.convolution import filter_data
         from .kernels import exp_kern
-        img_arr = _get_image_ndarray(masked_image)
+        img_arr = get_image_ndarray(masked_image)
         kern = exp_kern(alpha=kwargs['alpha'], size=kwargs['size'])
         img_arr_smooth = filter_data(img_arr, kern, mode='reflect')
         convolved_image = masked_image.Factory(masked_image.getBBox())
@@ -206,7 +207,7 @@ def rmedian(image, r_inner, r_outer, **kwargs):
     filtered_data : ndarray
         Ring filtered image.
     """
-    data = _get_image_ndarray(image)
+    data = get_image_ndarray(image)
     fp = _ring(r_inner, r_outer, **kwargs)
     filtered_data = ndi.median_filter(data, footprint=fp)
     return filtered_data
@@ -228,7 +229,7 @@ def unsharp_mask(image, filter_size=9):
     unsharp : ndarray
         Unsharp mask.
     """
-    data = _get_image_ndarray(image)
+    data = get_image_ndarray(image)
     filtered_data = ndi.median_filter(data, size=filter_size)
     unsharp = data - filtered_data
     return unsharp

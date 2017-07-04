@@ -12,15 +12,7 @@ band_meas: 'gr'  # band_detect always included
 
 randoms_db_fn: '/tigress/jgreco/randoms/randoms-safe-36000-bckup.db'
 
-remove_fpt_blends: False
-
 verify_max_sep: 15  # pixels
-
-min_cuts: 
-    FWHM_IMAGE(i): 25 # pixels
-
-max_cuts: 
-    num_edge_pix: 1
 
 thresh_low:
     thresh: 3.0
@@ -42,38 +34,25 @@ clean:
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
 
-thresh_det:
-    thresh: 3.25
-    npix: 50
-    n_sig_grow: 2.4
-    isogrow: False
-    thresh_type: stdev
-    kern_fwhm: 6.0 # arcsec
-
-find_blends:
-    name_low: 'THRESH_LOW'
-    num_low_fps: 2
-    min_fp_area: 150
-    min_parent_area: 0.15
-    min_parent_flux: 0.6
-
-sex_measure:
+sextractor:
     config: 
         DETECT_THRESH: 0.7
         FILTER_NAME: 'gauss_6.0_31x31.conv'
         BACK_SIZE: 128
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
-        DEBLEND_MINCONT: 1.0
-    apertures: [3., 4., 5., 6., 7., 8., 16., 32.]
-    clean: True
-
-run_imfit:
-    bbox_grow: 120
-    psf_convolve: False
-    clean: True
-    save_fit_fig: False
-    quiet: True
+        PHOT_APERTURES: '3, 4, 5, 42, 54'
+        CHECKIMAGE_TYPE: 'SEGMENTATION'
+        CHECKIMAGE_NAME: 'seg-img.fits' 
+    params: [
+        'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+        'MAG_AUTO', 'FLUX_RADIUS', 'A_IMAGE', 'B_IMAGE', 
+        'THETA_IMAGE', 'ELLIPTICITY', 'KRON_RADIUS', 
+        'FWHM_IMAGE', 'FLAGS', 'MAG_APER(1)', 'MAG_APER(2)',
+        'MAG_APER(3)', 'MAG_APER(4)', 'MAG_APER(5)'
+    ]
+    delete_files: True
+    sex_io_dir: '/scratch/network/jgreco/sextractor-io'
 
 ####################################################################
 # synthetic UDG parameters (only used if num_synths>0)
@@ -83,4 +62,4 @@ synth_pset_lims:
     mu_0(i): [23, 27]
     ell: [0.2, 0.2]
     r_e: [2, 7]
-####################################################################
+        ####ex_io_dir:###############################################################
