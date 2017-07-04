@@ -2,7 +2,7 @@
 # hugs-pipe params
 ####################################################
 
-data_dir: hsc
+data_dir: '/tigress/HSC/HSC/rerun/production-20160523'
 
 band_detect: 'i'
 
@@ -10,9 +10,7 @@ band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
 
-randoms_db_fn: '/tigress/jgreco/randoms/randoms-safe-36000-bckup.db'
-
-verify_max_sep: 15  # pixels
+randoms_db_fn: ~
 
 thresh_low:
     thresh: 3.0
@@ -37,13 +35,12 @@ clean:
 sextractor:
     config: 
         DETECT_THRESH: 0.7
-        FILTER_NAME: 'gauss_6.0_31x31.conv'
+        FILTER_NAME: '/home/jgreco/projects/hugs/hugs/sextractor/config/gauss_6.0_31x31.conv'
         BACK_SIZE: 128
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
-        PHOT_APERTURES: '3, 4, 5, 42, 54'
-        CHECKIMAGE_TYPE: 'SEGMENTATION'
-        CHECKIMAGE_NAME: 'seg-img.fits' 
+        PHOT_APERTURES: '3,4,5,42,54'
+        MAG_ZEROPOINT: 27.0
     params: [
         'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
         'MAG_AUTO', 'FLUX_RADIUS', 'A_IMAGE', 'B_IMAGE', 
@@ -51,8 +48,9 @@ sextractor:
         'FWHM_IMAGE', 'FLAGS', 'MAG_APER(1)', 'MAG_APER(2)',
         'MAG_APER(3)', 'MAG_APER(4)', 'MAG_APER(5)'
     ]
-    delete_files: True
+    delete_created_files: True
     sex_io_dir: '/scratch/network/jgreco/sextractor-io'
+    verify_max_sep: 15  # pixels
 
 ####################################################################
 # synthetic UDG parameters (only used if num_synths>0)

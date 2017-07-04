@@ -13,16 +13,13 @@ from astropy.stats import gaussian_fwhm_to_sigma
 import sep
 from . import utils
 from . import imtools
+from . import sextractor
 
 __all__ = [
     'clean', 
     'image_threshold', 
-    'run_imfit',
-    'sex_measure',
-    'detection',
-    'photometry'
+    'detect_sources',
 ]
-
 
 def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
           max_frac_high_thresh=0.3, rgrow=None, random_state=None):
@@ -138,151 +135,10 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
-def run_imfit(exp, cat, label='run', master_band=None, bbox_grow=120, 
-              clean=True, save_fit_fig=False, psf_convolve=False, quiet=False, 
-              relpath=None):
+def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None, 
+                   delete_created_files=True, label='hugs'):
     """
-    Run imfit on postage stamps to make cuts on sample.
-
-    Parameters
-    ----------
-    exp : lsst.afw.image.ExposureF
-        Exposure object. 
-    cat : astropy.table.Table
-        Source catalog (from sextractor run)
-    label : string, optional
-        Label for this run. 
-    master_band : str, optional 
-        Master band for "forced" photometry.
-    bbox_grow : int, optional
-        Number of pixels to grow bbox in all directions.
-    clean : bool, optional
-        If True, delete files created by this function.
-    psf_convolve : bool, optional
-        If True, convolve image with psf.
-
-    Returns
-    -------
-    results : astropy.table.Table
-        Source catalog with columns added for fit params.
-    """
-    from hugs.tasks import sersic_fit
-    if save_fit_fig:
-        import matplotlib.pyplot as plt
-        from hugs.imfit.viz import img_mod_res
-
-    band = exp.getFilter().getName().lower()
-    wcs = exp.getWcs()
-    prefix = os.environ.get('TEMP_IO')
-    if relpath:
-        prefix = os.path.join(prefix, relpath)
-    label += '-'+band
-
-    results = Table()
-
-    if psf_convolve:
-        psf = exp.getPsf().computeImage().getArray()
-        psf_fn = os.path.join(prefix, 'psf-{}.fits'.format(label))
-        fits.writeto(psf_fn, psf, clobber=True)
-    else:
-        psf_fn = None
-    
-    for num, obj in enumerate(cat):
-        coord_hsc = obj['x_hsc'], obj['y_hsc']
-        cutout = imtools.get_cutout(coord_hsc, bbox_grow, exp=exp)
-        dimension = cutout.getDimensions()
-        
-        fn = os.path.join(prefix, 'cutout-{}-{}.fits'.format(label, num))
-        cutout.writeFits(fn)
-
-        X0 = coord_hsc[0] - cutout.getX0()
-        Y0 = coord_hsc[1] - cutout.getY0()
-        img_shift = [cutout.getX0() - exp.getX0(), 
-                     cutout.getY0() - exp.getY0()] 
-        xmax = np.minimum(X0 + bbox_grow, dimension[0]-1)
-        ymax = np.minimum(Y0 + bbox_grow, dimension[1]-1)
-
-        if master_band is None:
-            init_params = {
-                'X0': [X0, 1, dimension[0]-1],
-                'Y0': [Y0, 1, dimension[1]-1],
-                'PA': [obj['THETA_IMAGE('+band+')'] + 90, 0, 180],
-                'ell': [obj['ELLIPTICITY('+band+')'], 0, 0.999],
-            }
-        else:
-            init_params = {
-                'X0': [obj['x_img_imfit'] - img_shift[0], 'fixed'], 
-                'Y0': [obj['y_img_imfit'] - img_shift[1], 'fixed'], 
-                'n': [obj['n'], 'fixed'], 
-                'ell': [obj['ell'], 'fixed'], 
-                'PA': [obj['PA'], 'fixed'], 
-                'r_e': obj['r_e('+master_band+')'], 
-                'I_e': obj['I_e('+master_band+')']
-            }
-
-        fit_prefix = os.path.join(prefix, label)
-        fit = sersic_fit(
-            fn, init_params=init_params, prefix=fit_prefix, 
-            clean='config', psf_fn=psf_fn, quiet=quiet)
-
-        data = [fit.m_tot, fit.mu_0, fit.r_e*utils.pixscale, fit.I_e]
-        names = ['m_tot('+band+')', 'mu_0('+band+')', 
-                 'r_e('+band+')', 'I_e('+band+')']
-
-        if 'FLUX_RADIUS('+band+')' in cat.colnames:
-            dsize = (fit.r_e - obj['FLUX_RADIUS('+band+')'])*utils.pixscale
-            dmu = fit.mu_0 - obj['mu_aper_0('+band+')']
-            data.extend([dsize, dmu])
-            names.extend(['dr_e('+band+')', 'dmu('+band+')'])
-
-        if master_band is None:
-            x0_hsc, y0_hsc = fit.X0 + cutout.getX0(), fit.Y0 + cutout.getY0()
-            coord = wcs.pixelToSky(x0_hsc, y0_hsc)
-            ra, dec = coord.getPosition(afwGeom.degrees)
-            dR0 = np.sqrt((fit.X0 - X0)**2 + (fit.Y0 - Y0)**2)
-            
-            x_img = fit.X0 + img_shift[0]
-            y_img = fit.Y0 + img_shift[1]
-
-            master_data = [ra, dec, fit.n, fit.ell, dR0, x_img, y_img,
-                           fit.PA, x0_hsc, y0_hsc]
-            master_names = ['ra', 'dec', 'n', 'ell', 'dR0', 'x_img_imfit', 
-                            'y_img_imfit', 'PA', 'x_hsc_imfit', 'y_hsc_imfit']
-
-            names.extend(master_names)
-            data.extend(master_data)
-
-        results = vstack([results, Table(rows=[data], names=names)])
-
-        if save_fit_fig:
-            fig, ax = plt.subplots(1, 3, figsize=(16,5))
-            fig.subplots_adjust(wspace=0.01)
-            img_mod_res(fn,
-                        fit.params, 
-                        fit_prefix+'_photo_mask.fits',
-                        band=band, 
-                        show=False, 
-                        subplots=(fig, ax),
-                        save_fn='fit-'+fit_prefix+'-{}.png'.format(num))
-            plt.close('all')
-
-        if clean:
-            os.remove(fn)
-            os.remove(fit_prefix+'_bestfit_params.txt')
-            os.remove(fit_prefix+'_photo_mask.fits')
-
-    if clean and psf_convolve:
-        os.remove(psf_fn)
-
-    results = hstack([cat, results])
-
-    return results
-
-
-def sex_measure(exp, config, apertures, label, add_params, clean, 
-                dual_exp=None, sf=None, relpath=''):
-    """
-    Perform mesurements using SExtractor (because I'm feeling desperate). 
+    Source detection using SExtractor.
 
     Parameters
     ----------
@@ -296,213 +152,82 @@ def sex_measure(exp, config, apertures, label, add_params, clean,
     cat : astropy.table.Table
         Sextractor catalog.
     """
-    import sexpy
-        
-    #########################################################
-    # setup configuration and extra save params
-    #########################################################
 
-    param_fn = label+'.params'
-    config['PHOT_APERTURES'] = ','.join([str(int(a)) for a in apertures])
-    config['PARAMETERS_NAME'] = param_fn
-    params = ['MAG_APER('+str(i+1)+')' for i in range(len(apertures))]
-
-    sw = sexpy.SexWrapper(config, params=params, relpath=relpath)
-    sw.set_check_images('s', prefix=label+'-')
+    sw = sextractor.Wrapper(sex_config, sex_params, sex_io_dir)
 
     #########################################################
     # write exposure for sextractor input and run
     #########################################################
 
-    exp_fn = 'exp-'+label+'.fits'
-    exp.writeFits(sw.get_indir(exp_fn))
-    cat_label = 'sex-'+label
-    run_fn = exp_fn+'[1]'
+    detect_band = exp.getFilter().getName().lower()
+    exp_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, detect_band))
+    exp.writeFits(exp_fn)
 
     if dual_exp is not None:
         meas_band = dual_exp.getFilter().getName().lower()
-        dual_label = label+'-'+meas_band
-        dual_fn = 'exp-'+dual_label+'.fits'
-        dual_exp.writeFits(sw.get_indir(dual_fn))
-        cat_label = 'sex-'+dual_label
+        dual_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, meas_band))
+        dual_exp.writeFits(dual_fn)
         run_fn = exp_fn+'[1],'+dual_fn+'[1]'
+        cat_label = 'sex-{}-{}-{}'.format(label, detect_band, meas_band)
+    else:
+        meas_band = detect_band
+        cat_label = 'sex-{}-{}'.format(label, detect_band)
+        run_fn = exp_fn+'[1]'
 
-    sw.run(run_fn, cat=cat_label+'.cat')
+    cat_fn = sw.get_io_dir(cat_label+'.cat')
 
-    cat = sexpy.read_cat(sw.get_outdir(cat_label+'.cat'))
+    #########################################################
+    # run SExtactor and get catalog
+    #########################################################
+
+    sw.run(run_fn, cat_fn=cat_fn)
+    cat = sextractor.read_cat(sw.get_io_dir(cat_fn))
 
     if len(cat)>0:
 
         #########################################################
-        # open seg map and add to bit mask
+        # change mag param names and add SB within each aperture
         #########################################################
 
-        seg_fn = sw.get_outdir(label+'-'+'SEGMENTATION.fits')
+        if 'MAG_APER' in cat.colnames:
+            cat.rename_column('MAG_APER', 'MAG_APER_0')
+            for i, diam in enumerate(sex_config['PHOT_APERTURES'].split(',')):
+                r = utils.pixscale*float(diam)/2 # arcsec
+                sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
+                cat['mu_aper_'+str(i)] = sb
+      
+        #########################################################
+        # make band explicit in non-position parameter names
+        #########################################################
 
-        seg = fits.getdata(seg_fn)
+        positions = ['X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000']
 
-        mask = exp.getMaskedImage().getMask()
-        mask.addMaskPlane('SEX_SEG')
-        mask.getArray()[seg>0] += mask.getPlaneBitMask('SEX_SEG')
+        for name in cat.colnames:
+            if name not in positions: 
+                cat.rename_column(name, name+'({})'.format(meas_band))
 
         #########################################################
-        # read catalog, add params, and write to csv file
+        # only save positions from the primary detection band
         #########################################################
 
-        cat.rename_column('MAG_APER', 'MAG_APER_0')
-        for i, diam in enumerate(apertures):
-            r = utils.pixscale*diam/2 # arcsec
-            sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
-            cat['mu_aper_'+str(i)] = sb
-
-    if add_params and (len(cat)>0):
-        x0, y0 = exp.getXY0()
-        cat['x_img'] = cat['X_IMAGE'] - 1
-        cat['y_img'] = cat['Y_IMAGE'] - 1
-        cat['x_hsc'] = cat['X_IMAGE'] + x0 - 1
-        cat['y_hsc'] = cat['Y_IMAGE'] + y0 - 1
-
-        sex_plane = mask.getPlaneBitMask('SEX_SEG')
-        edge_plane = mask.getPlaneBitMask('EDGE')
-        bright_plane = mask.getPlaneBitMask('BRIGHT_OBJECT')
-
-        fpset = afwDet.FootprintSet(
-            mask, afwDet.Threshold(sex_plane, afwDet.Threshold.BITMASK))
-
-        cat['num_edge_pix'] = -1 
-        cat['num_bright_pix'] = -1
-        cat['parent_fp_area'] = -1
-        cat['fp_id'] = -1
-        cat['nchild'] = -1
-
-        find_synths = False
-        if 'SYNTH' in mask.getMaskPlaneDict().keys() and sf is not None:
-            synth_plane = mask.getPlaneBitMask('SYNTH')
-            cat['synth_id'] = -1
-            cat['synth_offset'] = -1
-            find_synths = True
-        
-        for obj_i in range(len(cat)):
-            x, y = cat['x_hsc', 'y_hsc'][obj_i]
-            point = afwGeom.Point2I(int(x), int(y))
-            for fp_id, fp in enumerate(fpset.getFootprints()):
-                if fp.contains(point):
-                    hfp = afwDet.HeavyFootprintF(fp, exp.getMaskedImage())
-                    pix = hfp.getMaskArray()
-                    num_edge = (pix & edge_plane != 0).sum()
-                    num_bright = (pix & bright_plane != 0).sum()
-                    cat['num_edge_pix'][obj_i] = num_edge
-                    cat['num_bright_pix'][obj_i] = num_bright
-                    cat['parent_fp_area'][obj_i] = hfp.getArea()
-                    cat['fp_id'][obj_i] = fp_id
-                    if find_synths:
-                        if (pix & synth_plane !=0).sum() > 0:
-                            syn_pos = sf.get_psets()[['X0', 'Y0']]
-                            x_obj, y_obj = cat['x_img', 'y_img'][obj_i]
-                            dist_sq = (syn_pos['X0']-x_obj)**2 +\
-                                      (syn_pos['Y0']-y_obj)**2
-                            cat['synth_id'][obj_i] = dist_sq.argmin()
-                            cat['synth_offset'][obj_i] = np.sqrt(dist_sq.min())
-                    break
-
-        for fp_id in np.unique(cat['fp_id']):
-            obj_mask = cat['fp_id']==fp_id
-            cat['nchild'][obj_mask] = obj_mask.sum()
+        if meas_band==detect_band:
+            x0, y0 = exp.getXY0()
+            cat['x_img'] = cat['X_IMAGE'] - 1
+            cat['y_img'] = cat['Y_IMAGE'] - 1
+            cat['x_hsc'] = cat['X_IMAGE'] + x0 - 1
+            cat['y_hsc'] = cat['Y_IMAGE'] + y0 - 1
+        else:
+            cat.remove_columns(positions)
 
     #########################################################
     # delete files created by and for sextractor
     #########################################################
 
-    if clean:
+    if delete_created_files:
         if dual_exp is not None:
-            os.remove(sw.get_indir(dual_fn))
-        os.remove(sw.get_indir(exp_fn))
-        os.remove(sw.get_outdir(cat_label+'.cat'))
-        os.remove(sw.get_configdir(param_fn))
-        os.remove(sw.get_outdir(label+'-'+'SEGMENTATION.fits'))
+            os.remove(dual_fn)
+        os.remove(exp_fn)
+        os.remove(cat_fn)
+        os.remove(sw.config['PARAMETERS_NAME'])
 
     return cat
-
-def _byteswap(arr):
-    """
-    If array is in big-endian byte order (as astropy.io.fits
-    always returns), swap to little-endian for SEP.
-    """
-    if arr.dtype.byteorder=='>':
-        arr = arr.byteswap().newbyteorder()
-    return arr
-
-
-def detection(exp, thresh=0.7, kern_fwhm=1.0, wcs=None, bkg_kws={}, 
-              ext_kws={}):
-    """
-    Source extraction using SEP.
-    """
-
-    img = imtools.get_image_ndarray(exp)
-    img = _byteswap(img)
-    bkg = sep.Background(img, **bkg_kws)
-    bkg.subfrom(img)
-
-    kern_sigma = gaussian_fwhm_to_sigma*(kern_fwhm/utils.pixscale)
-    kernel = Gaussian2DKernel(kern_sigma)
-    kernel.normalize()
-    kernel = kernel.array
-
-    sources = sep.extract(
-        img, thresh, err=bkg.globalrms, filter_kernel=kernel, **ext_kws)
-    sources = Table(sources)
-
-    if wcs is not None:
-        x0, y0 = exp.getXY0()
-        sources['x_hsc'] = sources['x'] + x0
-        sources['y_hsc'] = sources['y'] + y0
-        coords = []
-        for obj in sources:
-            coord = wcs.pixelToSky(obj['x_hsc'], obj['y_hsc'])
-            ra, dec = coord.getPosition(afwGeom.degrees)
-            coords.append([ra, dec])
-        coords = np.array(coords)
-        sources['ra'] = coords[:, 0]
-        sources['dec'] = coords[:, 1]
-
-    return sources
-
-
-def photometry(exp, sources, circ_ap_radii=[1.5, 3, 6, 9]):
-    """
-    Perform aperture photometry with SEP.
-    """
-
-    img = imtools.get_image_ndarray(exp)
-    img = _byteswap(img)
-
-    # calc kron radius
-    x, y = sources['x'], sources['y']
-    a, b, theta = sources['a'], sources['b'], sources['theta']
-    kronrad, _ = sep.kron_radius(img, x, y, a, b, theta, 6.0)
-    
-    # flux within 2.5 kron radius
-    flux, _, _ = sep.sum_ellipse(img, x, y, a, b, theta, 2.5*kronrad, subpix=1)
-
-    # flux within large ellipse
-    flux_ell, _, _ = sep.sum_ellipse(img, x, y, a, b, theta, 6, subpix=1)
-
-    # calc flux radius and magnitude
-    flux_radius, flag = sep.flux_radius(
-        img,  x, y, 6.*a, 0.5, normflux=flux, subpix=5)
-
-    sources['flux_radius'] = flux_radius
-    sources['kron_radius'] = kronrad
-    sources['mag_auto'] = 27 - 2.5*np.log10(flux)
-    sources['mag_ell'] = 27 - 2.5*np.log10(flux_ell)
-
-    # sum flux in circles of radius=3.0
-    for i, r in enumerate(circ_ap_radii):
-        flux_circ, _, _ = sep.sum_circle(img, x, y, r)
-        mag = 27 - 2.5*np.log10(flux_circ)
-        area = np.pi*(r*utils.pixscale)**2
-        sources['mag_aper_'+str(i)] = mag
-        sources['mu_aper_'+str(i)] = mag + 2.5*np.log10(area)
-
-    return sources

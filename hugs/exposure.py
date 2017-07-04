@@ -39,3 +39,14 @@ class HugsExposure(object):
             if p in mask.getMaskPlaneDict().keys():
                 arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
         return arr
+
+    def good_data_fraction(self, band='i'):
+        """
+        Find the fraction of pixels that are good in 
+        the image.
+        """
+        mask = self[band].getMask()
+        nodata = mask.getArray() & mask.getPlaneBitMask('NO_DATA') != 0
+        nodata = nodata.astype(float)
+        no_data_frac = nodata.sum()/nodata.size
+        return 1.0 - no_data_frac

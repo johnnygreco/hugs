@@ -13,14 +13,14 @@ try:
 except ImportError:
     pass
 
-class Config(object):
+class PipeConfig(object):
     """
     Class for parsing the hugs configuration.
     """
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
                  log_level='info', log_fn=None, random_state=None, 
-                 group_id=None):
+                 run_label='hugs'):
         """
         Initialization
 
@@ -45,41 +45,37 @@ class Config(object):
 
         # read parameter file & setup param dicts
         if config_fn is None:
-            filedir = os.path.dirname(os.path.realpath(__file__))
-            self.config_fn = os.path.join(filedir, 'default_config.yml')
+            file_dir = os.path.dirname(os.path.realpath(__file__))
+            self.config_fn = os.path.join(file_dir, 'default_config.yml')
         else:
             self.config_fn = config_fn
         with open(self.config_fn, 'r') as f:
             params = yaml.load(f)
-        if params['data_dir']=='hsc':
-            self.data_dir = os.environ.get('HSC_DIR')
-        else:
-            self.data_dir = params['data_dir']
+        self.data_dir = params['data_dir']
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
-        self._thresh_det = params['thresh_det']
-        self._find_blends = params['find_blends']
-        self._sex_measure = params['sex_measure']
-        self._run_imfit = params['run_imfit']
         self._clean = params['clean']
-        self._butler = None
-        self._timer = None
-        self.log_fn = log_fn
-        self.log_level = log_level
+        self.synth_pset_lims = params['synth_pset_lims'] 
         self.rng = utils.check_random_state(random_state)
         self._clean['random_state'] = self.rng
-        self.synth_pset_lims = params['synth_pset_lims'] 
+        self.log_fn = log_fn
+        self.log_level = log_level
+        self.run_label = run_label
+        self._butler = None
+        self._timer = None
 
-        self.min_cuts = params['min_cuts']
-        self.max_cuts = params['max_cuts']
-        self.remove_fpt_blends = params['remove_fpt_blends']
         self.band_detect = params['band_detect']
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
-        self.verify_max_sep = params['verify_max_sep']
-        self.group_id = group_id
         self.randoms_db_fn = params['randoms_db_fn']
-        self.sex_io_dir = params['sex_io_dir']
+
+        # setup for sextractor
+        sex_setup = params['sextractor']
+        self.sex_config = sex_setup['config']
+        self.sex_params = sex_setup['params']
+        self.delete_created_files = sex_setup['delete_created_files']
+        self.sex_io_dir = sex_setup['sex_io_dir']
+        self.verify_max_sep = sex_setup['verify_max_sep']
 
         # set patch id if given
         if tract is not None:
@@ -171,11 +167,7 @@ class Config(object):
         # careful not to modify parameters
         self.thresh_low = self._thresh_low.copy()
         self.thresh_high = self._thresh_high.copy()
-        self.thresh_det = self._thresh_det.copy()
         self.clean = self._clean.copy()
-        self.find_blends = self._find_blends.copy()
-        self.sex_measure = self._sex_measure.copy()
-        self.run_imfit = self._run_imfit.copy()
 
         # get exposure 
         bands = self.band_detect + self.band_verify + self.band_meas
@@ -205,9 +197,6 @@ class Config(object):
         ngrow = self.thresh_high.pop('n_sig_grow')
         self.thresh_high['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
 
-        ngrow = self.thresh_det.pop('n_sig_grow')
-        self.thresh_det['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
-
         # convert clean min_pix to psf units 
         if 'psf sigma' in str(self.clean['min_pix_low_thresh']):
             nsig = int(self.clean['min_pix_low_thresh'].split()[0])
@@ -219,3 +208,8 @@ class Config(object):
             self.clean['rgrow'] = None
         else:
             self.clean['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+
+        # sextractor parameter file
+        fn = '{}-{}-{}-{}.params'.format(
+            tract, patch[0], patch[-1], self.run_label)
+        self.sex_config['PARAMETERS_NAME'] = os.path.join(self.sex_io_dir, fn)
