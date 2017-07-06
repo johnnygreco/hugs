@@ -1,2 +1,3 @@
 from .connect import connect, Session, Base
-from .model import *
+from .tables import *
+from .ingest import HugsIngest

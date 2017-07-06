@@ -280,7 +280,7 @@ def calc_mask_bit_fracs(exp):
     npix = float(msk_arr.size)
     getBitVal = mask.getPlaneBitMask
     fracs = {}
-    planes = ['CLEANED', 'BRIGHT_OBJECT', 'BLEND']
+    planes = ['CLEANED', 'BRIGHT_OBJECT']
     for p in planes:
         if p in mask.getMaskPlaneDict().keys():
             npix_p = (msk_arr & getBitVal(p) != 0).sum()
