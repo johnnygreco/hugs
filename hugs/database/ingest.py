@@ -20,6 +20,7 @@ class HugsIngest(object):
         self.run_name = run_name 
         self.session = session
         self.current_tract_id = None
+        self.current_patch_id = None
         run_query = self.session.query(Run).filter(Run.name==run_name)
         num_rows = run_query.count()
         if num_rows==0:
@@ -46,25 +47,25 @@ class HugsIngest(object):
             print('Warning {} rows with tract {}... db needs attention'.format(
                 num_rows, tract))
 
-    def add_patch_catalog(self, patch, patch_meta, catalog, aper_radii=[]):
-        """
-        """
-        assert self.current_tract_id is not None
-        x0, y0, good_data_frac, cleaned_frac, bright_obj_frac = patch_meta
-
-        # add patch with metadata
+    def add_patch(self, patch, patch_meta):
         patch_row = Patch(
             hsc_id=patch, 
-            x0=x0, 
-            y0=y0, 
-            cleaned_frac=cleaned_frac, 
-            bright_obj_frac=bright_obj_frac,
-            good_data_frac=good_data_frac,
+            x0=patch_meta.x0, 
+            y0=patch_meta.y0, 
+            cleaned_frac=patch_meta.cleaned_frac, 
+            bright_obj_frac=patch_meta.bright_obj_frac,
+            good_data_frac=patch_meta.good_data_frac,
             tract_id=self.current_tract_id
         )
         self.session.add(patch_row) 
         self.session.commit()
         self.current_patch_id = _get_current_id(self.session, Patch.id)
+
+    def add_catalog(self, catalog, aper_radii=[]):
+        """
+        """
+        assert self.current_tract_id is not None
+        assert self.current_patch_id is not None
 
         # ingest source catalog
         sources = []
@@ -92,6 +93,7 @@ class HugsIngest(object):
                     bandpass=band, 
                     mag_auto=obj['MAG_AUTO('+band+')'],
                     fwhm_image=obj['FWHM_IMAGE('+band+')'], 
+                    flux_radius=obj['FLUX_RADIUS('+band+')'], 
                     source_id=source_id
                 )
                 aper_phot.append(phot)
@@ -106,3 +108,8 @@ class HugsIngest(object):
         self.session.add_all(aper_phot)
         self.session.add_all(circ_aper)
         self.session.commit()
+
+    def add_all(self, tract, patch, patch_meta, catalog, aper_radii=[]):
+        self.add_tract(tract)
+        self.add_patch(patch, patch_meta)
+        self.add_catalog(catalog, aper_radii)

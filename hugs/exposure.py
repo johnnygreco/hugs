@@ -3,20 +3,32 @@ from __future__ import division, print_function
 import os
 import numpy as np
 import lsst.daf.persistence
+from lsst.pipe.base import Struct
 
 class HugsExposure(object):
     
     def __init__(self, tract, patch, bands='gri', butler=None):
+
         self.tract = tract
         self.patch = patch
         self._butler = butler
         self.bands = bands
+
         for band in bands:
             data_id = {'tract': tract, 
                        'patch': patch, 
                        'filter': 'HSC-'+band.upper()}
             exp = self.butler.get('deepCoadd_calexp_hsc', data_id, immediate=True)
             setattr(self, band.lower(), exp)
+
+        self.x0, self.y0 = self.i.getXY0()
+        self.patch_meta = Struct(
+            x0 = float(self.x0),
+            y0 = float(self.y0),
+            good_data_frac = self.good_data_fraction(),
+            cleaned_frac = None,
+            bright_obj_frac = None
+        )
 
     def __getitem__(self, attr):
         return self.__getattribute__(attr)

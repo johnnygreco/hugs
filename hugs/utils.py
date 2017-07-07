@@ -2,26 +2,23 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
+import yaml
 import lsst.afw.image as afwImage
 import lsst.afw.math as afwMath
 from astropy.table import Table
 
-__all__ = [
-    'io', 'pixscale', 'zpt', 'project_dir', 'annuli', 
-    'get_psf_sigma', 'get_test_exp', 'add_cat_params', 
-    'get_time_label', 'remove_mask_planes', 'get_fpset', 
-    'check_random_state', 'embed_slices', 
-    'calc_mask_bit_fracs', 'get_exposure',
-    'check_kwargs_defaults', 'make_noise_image', 'add_band_to_name'
-]
-
-
 io = os.environ.get('HUGS_PIPE_IO')
 local_io = os.environ.get('LOCAL_IO')
 project_dir = os.path.dirname(os.path.dirname(__file__))
+default_config_fn = os.path.join(project_dir, 'hugs/default_config.yml')
 
 pixscale = 0.168
 zpt = 27.0
+
+def read_config(fn):
+    with open(fn, 'r') as f:
+        config_params = yaml.load(f)
+    return config_params
 
 
 def annuli(row_c, col_c, r_in, r_out, shape):
@@ -190,24 +187,6 @@ def get_time_label():
     return label
 
 
-def add_cat_params(sources, tract=None, patch=None):
-    """
-    Add useful params to final catalog.
-    """
-    if tract:
-        sources['tract'] = [tract]*len(sources)
-    if patch:
-        sources['patch'] = [patch]*len(sources)
-    
-    for s in [2, 3]:
-        scale = s*pixscale
-        sources['a_'+str(s)+'_sig'] = scale*sources['semimajor_axis_sigma']
-        sources['b_'+str(s)+'_sig'] = scale*sources['semiminor_axis_sigma']
-    sources['r_circ_seg'] = pixscale*sources['equivalent_radius']
-    q = 1-sources['ellipticity']
-    sources['r_circ_ell'] = sources['a_2_sig']*np.sqrt(q)
-
-
 def remove_mask_planes(mask, planes):
     """
     Remove mask planes if they are in mask.
@@ -284,7 +263,7 @@ def calc_mask_bit_fracs(exp):
     for p in planes:
         if p in mask.getMaskPlaneDict().keys():
             npix_p = (msk_arr & getBitVal(p) != 0).sum()
-            fracs.update({p.lower()+'_frac': [npix_p/npix]})
+            fracs.update({p.lower()+'_frac': npix_p/npix})
     return fracs
 
 
@@ -311,19 +290,3 @@ def make_noise_image(masked_image, random_state=None):
     dims = masked_image.getDimensions()
     noise_array = back_rms*rng.randn(dims[1], dims[0])
     return noise_array
-
-
-def add_band_to_name(cat, band, num_aps):
-    params = [
-        'MAG_AUTO', 'MAG_ISO', 'MU_THRESHOLD', 'MU_MAX', 'FLUX_RADIUS',
-        'FWHM_IMAGE', 'A_IMAGE', 'B_IMAGE', 'THETA_IMAGE', 'ELLIPTICITY',
-        'ISO0', 'ISO3', 'ISO6', 'FLAGS', 'KRON_RADIUS', 'MAG_APER_', 'mu_aper_',
-    ]
-
-    for p in params:
-        if p[-1]=='_':
-            for n in range(num_aps):
-                n = str(n)
-                cat.rename_column(p+n, p+n+'('+band+')')
-        else:
-            cat.rename_column(p, p+'('+band+')')

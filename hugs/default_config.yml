@@ -3,6 +3,8 @@
 ####################################################
 
 data_dir: '/tigress/HSC/HSC/rerun/production-20160523'
+hugs_io: '/scratch/network/jgreco/hugs-io'
+db_name: 'hugs-database.db' # will be saved in hugs_io
 
 band_detect: 'i'
 
@@ -51,13 +53,3 @@ sextractor:
     delete_created_files: True
     sex_io_dir: '/scratch/network/jgreco/sextractor-io'
     verify_max_sep: 15  # pixels
-
-####################################################################
-# synthetic UDG parameters (only used if num_synths>0)
-####################################################################
-synth_pset_lims:
-    n: [0.6, 1.2]
-    mu_0(i): [23, 27]
-    ell: [0.2, 0.2]
-    r_e: [2, 7]
-        ####ex_io_dir:###############################################################

@@ -20,7 +20,7 @@ class PipeConfig(object):
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
                  log_level='info', log_fn=None, random_state=None, 
-                 run_label='hugs'):
+                 run_name='hugs'):
         """
         Initialization
 
@@ -37,7 +37,7 @@ class PipeConfig(object):
             Level of python logger.
         log_fn : string, optional
             Log file name.
-        random_state : int, list of ints, RandomState instance, or None, optional 
+        random_state : int, list of ints, RandomState instance, or None 
             If int or list of ints, random_state is the rng seed.
             If RandomState instance, random_state is the rng.
             If None, the rng is the RandomState instance used by np.random.
@@ -55,12 +55,11 @@ class PipeConfig(object):
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
         self._clean = params['clean']
-        self.synth_pset_lims = params['synth_pset_lims'] 
         self.rng = utils.check_random_state(random_state)
         self._clean['random_state'] = self.rng
         self.log_fn = log_fn
         self.log_level = log_level
-        self.run_label = run_label
+        self.run_name = run_name
         self._butler = None
         self._timer = None
 
@@ -76,6 +75,13 @@ class PipeConfig(object):
         self.delete_created_files = sex_setup['delete_created_files']
         self.sex_io_dir = sex_setup['sex_io_dir']
         self.verify_max_sep = sex_setup['verify_max_sep']
+
+        self.hugs_io = params['hugs_io']
+        self.db_fn =  os.path.join(self.hugs_io, params['db_name'])
+
+        self.circ_aper_radii = self.sex_config['PHOT_APERTURES'].split(',')
+        self.circ_aper_radii = [
+            utils.pixscale*float(a)/2 for a in self.circ_aper_radii] 
 
         # set patch id if given
         if tract is not None:
@@ -140,12 +146,9 @@ class PipeConfig(object):
         """
         for band in self.bands:
             mask = self.exp[band].getMaskedImage().getMask()
-            utils.remove_mask_planes(mask, ['BLEND', 
-                                            'CLEANED', 
-                                            'SYNTH',
+            utils.remove_mask_planes(mask, ['CLEANED', 
                                             'THRESH_HIGH', 
-                                            'THRESH_LOW', 
-                                            'SMOOTHED'])
+                                            'THRESH_LOW'])
 
     def set_patch_id(self, tract, patch):
         """
@@ -211,5 +214,5 @@ class PipeConfig(object):
 
         # sextractor parameter file
         fn = '{}-{}-{}-{}.params'.format(
-            tract, patch[0], patch[-1], self.run_label)
+            tract, patch[0], patch[-1], self.run_name)
         self.sex_config['PARAMETERS_NAME'] = os.path.join(self.sex_io_dir, fn)

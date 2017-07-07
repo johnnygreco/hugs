@@ -1,5 +1,5 @@
 """
-Run hugs-pipe on data with synthetic UGDs.
+Run hugs pipeline
 """
 from __future__ import division, print_function
 
@@ -10,24 +10,22 @@ import numpy as np
 import pandas as pd
 import mpi4py.MPI as MPI
 import schwimmbad
-import hugs_pipe as hp
-from hugs_pipe.utils import calc_mask_bit_fracs
+import hugs
+from hugs.pipeline import find_lsbgs
 
 
-def callback(args):
-    randoms_results, config = args
-    if randoms_results is None:
-        config.logger.warning('no randoms for this patch')
+def ingest_data(args):
+    success, sources, meta_data = args
+    run_name, tract, patch, db_fn, patch_meta, circ_aper_radii = meta_data
+    db_ingest = hugs.database.HugsIngest(session, run_name)
+    if success:
+        db_ingest.add_all(tract, patch, patch_meta, sources, circ_aper_radii)
     else:
-        df = randoms_results.df
-        detected = df['detected']==1
-        randoms_results.db.set_detected(df.loc[detected, 'id'])
-        log_message = 'took {:.2f} min to set {} randoms to detected in db'
-        config.logger.info(log_message.format(config.timer, detected.sum()))
+        db_ingest.add_tract(tract)
+        db_ingest.add_patch(patch, patch_meta)
 
 
 def worker(p):
-
     rank = MPI.COMM_WORLD.Get_rank()
     if p['seed'] is None:
         tract, p1, p2 = p['tract'], int(p['patch'][0]), int(p['patch'][-1])
@@ -35,121 +33,103 @@ def worker(p):
     else:
         seed = p['seed']
 
-    prefix = 'hugs-pipe' if p['num_synths']==0 else 'synths'
-    prefix = os.path.join(p['outdir'], prefix)
-    log_fn = prefix+'.log'
-    config = hp.Config(config_fn=p['config_fn'],
-                       log_fn=log_fn,
-                       random_state=seed)
+    config = hugs.PipeConfig(run_name=p['run_name'], 
+                             config_fn=p['config_fn'],
+                             log_fn=p['log_fn'],
+                             random_state=seed)
     config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
-    config.sex_measure['relpath'] = p['relpath']
-    config.run_imfit['relpath'] = p['relpath']
     
-    if p['num_synths']>0:
-        synths_kwargs = {'num_synths': p['num_synths'],
-                         'random_state': config.rng,
-                         'pset_lims': config.synth_pset_lims}
-        sf = hp.SynthFactory(**synths_kwargs)
-    else:
-        sf = None
+    results = find_lsbgs.run(config)
 
-    results = hp.run(config, synth_factory=sf, randoms_only=p['randoms_only'])
+    meta_data = [
+        config.run_name,
+        config.tract,
+        config.patch,
+        config.db_fn,
+        results.exp.patch_meta,
+        config.circ_aper_radii
+    ]
 
-    if not p['randoms_only']:
-        if p['num_synths']>0:
-            # write synth catalog
-            fn = prefix+'.csv'
-            sf_df = sf.get_psets()
-            sf_df['synth_id'] = np.arange(len(sf_df))
-            sf_df.to_csv(fn, index=False)
-
-        # write source catalog with all objects
-        all_det = results.all_detections.to_pandas()
-        ext = 'csv' if len(all_det)>0 else 'empty'
-        fn = prefix+'-cat-all.'+ext
-        all_det.to_csv(fn, index=False)
-
-        # write source catalog with all objects
-        verified = results.sources.to_pandas()
-        ext = 'csv' if len(verified)>0 else 'empty'
-        fn = prefix+'-cat-verified.'+ext
-        verified.to_csv(fn, index=False)
-
-        # write final source catalog
-        candy = results.candy.to_pandas()
-        ext = 'csv' if len(candy)>0 else 'empty'
-        fn = prefix+'-cat-candy.'+ext
-        candy.to_csv(fn, index=False)
-
-        # write mask fractions 
-        fn = prefix+'-mask-fracs.csv'
-        mask_fracs = pd.DataFrame(results.mask_fracs)
-        mask_fracs.to_csv(fn, index=False)
-
-    return results.randoms_results, config
+    return results.success, results.sources, meta_data
 
 
 if __name__=='__main__':
-    import shutil
     from astropy.table import Table
-    args = hp.parse_args()
-
+    from argparse import ArgumentParser
     rank = MPI.COMM_WORLD.Get_rank()
-    temp_io = os.environ.get('TEMP_IO')
-    sex_io = os.environ.get('SEX_IO_DIR')
-    runlabel = 'run' if args.num_synths==0 else 'synths'
+    
+    # parse command-line arguments
+    parser = ArgumentParser('Run hugs pipeline')
+    parser.add_argument('run_name', type=str, help='run label')
+    parser.add_argument('-t', '--tract', type=int, help='HSC tract')
+    parser.add_argument('-p', '--patch', type=str, help='HSC patch')
+    parser.add_argument('-c', '--config_fn', help='hugs config file',
+                        default=hugs.utils.default_config_fn)
+    parser.add_argument('--patches_fn', help='patches file')
+    parser.add_argument('--seed', help='rng seed', default=None)
+    parser.add_argument('--overwrite', type=bool, 
+                        help='overwrite database', default=True)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--ncores', default=1, type=int, 
+                          help='Number of processes (uses multiprocessing).')
+    group.add_argument('--mpi', default=False, action="store_true", 
+                          help="Run with MPI.")
+    args = parser.parse_args()
+    config_params = hugs.utils.read_config(args.config_fn)
+    outdir = config_params['hugs_io']
+
+    #######################################################################
+    # run on a single patch
+    #######################################################################
 
     if args.tract is not None:
         assert args.patch is not None
         tract, patch = args.tract, args.patch
         patches = Table([[tract], [patch]], names=['tract', 'patch'])
-        outdir = os.path.join(args.outdir,
-                              'solo-{}-{}-{}'.format(runlabel, tract, patch))
-        outdir = outdir+'_'+args.label if args.label else outdir
-        hp.utils.mkdir_if_needed(outdir)
+        run_dir_name = '{}-{}-{}'.format(args.run_name, tract, patch)
+        outdir = os.path.join(outdir, run_dir_name)
+        hugs.utils.mkdir_if_needed(outdir)
+        log_fn = os.path.join(outdir, 'hugs-pipe.log')
         patches['outdir'] = outdir
-        maindir = outdir
-    else:
-        assert args.patches_fn is not None
+        patches['log_fn'] = log_fn
+
+
+    #######################################################################
+    # OR run on all patches in file
+    #######################################################################
+
+    elif args.patches_fn is not None:
         patches = Table.read(args.patches_fn)
         if rank==0:
-            if args.outdir==hp.io:
-                time_label = hp.utils.get_time_label()
-                rundir = 'batch-{}-{}'.format(runlabel, time_label)
-                maindir = os.path.join(hp.io, rundir)
-                hp.utils.mkdir_if_needed(maindir)
-            else:
-                maindir = args.outdir
-            outdirs = []
+            time_label = hugs.utils.get_time_label()
+            outdir = os.path.join(
+                outdir, '{}-{}-batch'.format(args.run_name, time_label))
+            hugs.utils.mkdir_if_needed(outdir)
+            log_dir = os.path.join(outdir, 'log')
+            hugs.utils.mkdir_if_needed(log_dir)
+            log_fn = []
             for tract, patch in patches['tract', 'patch']:
-                path = os.path.join(maindir, str(tract))
-                hp.utils.mkdir_if_needed(path)
-                path = os.path.join(path, patch)
-                hp.utils.mkdir_if_needed(path)
-                outdirs.append(path)
-            patches['outdir'] = outdirs
+                fn = os.path.join(log_dir, '{}-{}.log'.format(tract, patch))
+                log_fn.append(fn)
+            patches['outdir'] = outdir
+            patches['log_fn'] = log_fn
 
-    if rank==0:
-        tempdir_relpath = maindir.split('/')[-1].replace(',', '-')
-        tempdir = os.path.join(temp_io, tempdir_relpath)
-        hp.utils.mkdir_if_needed(tempdir)
-        sexin = os.path.join(sex_io, 'sexin/'+tempdir_relpath)
-        hp.utils.mkdir_if_needed(sexin)
-        sexout = os.path.join(sex_io, 'sexout/'+tempdir_relpath)
-        hp.utils.mkdir_if_needed(sexout)
-        patches['relpath'] = tempdir_relpath
+    else:
+        print('\n**** must give tract and patch --or-- a patch file ****\n')
+        parser.print_help()
+        exit()
 
-    patches['num_synths'] = args.num_synths
     patches['seed'] = args.seed
     patches['config_fn'] = args.config_fn
-    patches['randoms_only'] = args.randoms_only
-
-    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.n_cores)
-    list(pool.map(worker, patches, callback=callback))
-    pool.close()
+    patches['run_name'] = args.run_name
 
     if rank==0:
-        shutil.rmtree(tempdir)
-        shutil.rmtree(sexin)
-        shutil.rmtree(sexout)
+        # open database session with master process
+        db_fn = os.path.join(outdir, config_params['db_name'])
+        engine = hugs.database.connect(db_fn, args.overwrite)
+        session = hugs.database.Session()
+
+    pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.ncores)
+    list(pool.map(worker, patches, callback=ingest_data))
+    pool.close()

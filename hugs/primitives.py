@@ -160,11 +160,14 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
     #########################################################
 
     detect_band = exp.getFilter().getName().lower()
+    # some bands have numbers --> get the relevant letter
+    detect_band = [b for b in detect_band if b in 'gri'][0] 
     exp_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, detect_band))
     exp.writeFits(exp_fn)
 
     if dual_exp is not None:
         meas_band = dual_exp.getFilter().getName().lower()
+        meas_band = [b for b in meas_band if b in 'gri'][0]
         dual_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, meas_band))
         dual_exp.writeFits(dual_fn)
         run_fn = exp_fn+'[1],'+dual_fn+'[1]'
@@ -197,13 +200,15 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
                 cat['mu_aper_'+str(i)] = sb
       
         #########################################################
-        # make band explicit in non-position parameter names
+        # add band to non-position and shape parameter names
         #########################################################
 
-        positions = ['X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000']
+        detect_band_only = [
+            'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
+            'THETA_IMAGE', 'A_IMAGE', 'B_IMAGE', 'ELLIPTICITY', 'KRON_RADIUS']
 
         for name in cat.colnames:
-            if name not in positions: 
+            if name not in detect_band_only: 
                 cat.rename_column(name, name+'({})'.format(meas_band))
 
         #########################################################
@@ -217,7 +222,7 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
             cat['x_hsc'] = cat['X_IMAGE'] + x0 - 1
             cat['y_hsc'] = cat['Y_IMAGE'] + y0 - 1
         else:
-            cat.remove_columns(positions)
+            cat.remove_columns(detect_band_only)
 
     #########################################################
     # delete files created by and for sextractor

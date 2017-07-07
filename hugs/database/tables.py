@@ -107,6 +107,7 @@ class AperturePhotometry(Base):
     bandpass = Column(String, nullable=False)
     mag_auto = Column(Float, nullable=False)
     fwhm_image = Column(Float, nullable=False)  
+    flux_radius = Column(Float, nullable=False)
 
     # Relationships
     source_id = Column(Integer, ForeignKey('source.id'), nullable=False)
