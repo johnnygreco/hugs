@@ -1,22 +1,22 @@
 """
-Run hugs pipeline
+Run hugs pipeline. 
 """
 from __future__ import division, print_function
 
 import os
 from time import time
-import multiprocessing
-import numpy as np
-import pandas as pd
 import mpi4py.MPI as MPI
 import schwimmbad
-import hugs
 from hugs.pipeline import find_lsbgs
+import hugs
 
 
 def ingest_data(args):
+    """
+    Write data to database with the master process.
+    """
     success, sources, meta_data = args
-    run_name, tract, patch, db_fn, patch_meta, circ_aper_radii = meta_data
+    run_name, tract, patch, patch_meta, circ_aper_radii = meta_data
     db_ingest = hugs.database.HugsIngest(session, run_name)
     if success:
         db_ingest.add_all(tract, patch, patch_meta, sources, circ_aper_radii)
@@ -26,6 +26,9 @@ def ingest_data(args):
 
 
 def worker(p):
+    """
+    Workers initialize pipe configuration and run pipeline.
+    """
     rank = MPI.COMM_WORLD.Get_rank()
     if p['seed'] is None:
         tract, p1, p2 = p['tract'], int(p['patch'][0]), int(p['patch'][-1])
@@ -46,27 +49,27 @@ def worker(p):
         config.run_name,
         config.tract,
         config.patch,
-        config.db_fn,
         results.exp.patch_meta,
         config.circ_aper_radii
     ]
 
+    config.logger.info('writing results to database')
     return results.success, results.sources, meta_data
 
 
 if __name__=='__main__':
-    from astropy.table import Table
     from argparse import ArgumentParser
+    from astropy.table import Table
     rank = MPI.COMM_WORLD.Get_rank()
     
     # parse command-line arguments
     parser = ArgumentParser('Run hugs pipeline')
-    parser.add_argument('run_name', type=str, help='run label')
     parser.add_argument('-t', '--tract', type=int, help='HSC tract')
     parser.add_argument('-p', '--patch', type=str, help='HSC patch')
     parser.add_argument('-c', '--config_fn', help='hugs config file',
                         default=hugs.utils.default_config_fn)
     parser.add_argument('--patches_fn', help='patches file')
+    parser.add_argument('-r', '--run_name', type=str, default='hugs-pipe-run')
     parser.add_argument('--seed', help='rng seed', default=None)
     parser.add_argument('--overwrite', type=bool, 
                         help='overwrite database', default=True)
@@ -126,7 +129,7 @@ if __name__=='__main__':
 
     if rank==0:
         # open database session with master process
-        db_fn = os.path.join(outdir, config_params['db_name'])
+        db_fn = os.path.join(outdir, args.run_name+'.db')
         engine = hugs.database.connect(db_fn, args.overwrite)
         session = hugs.database.Session()
 

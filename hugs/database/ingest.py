@@ -8,10 +8,8 @@ from .tables import Run, Tract, Patch
 from .tables import Source, AperturePhotometry, CircularAperture
 from .connect import connect, Session
 
-__all__ = ['HugsIngest', 'add_patch_catalog']
+__all__ = ['HugsIngest']
 
-def _get_current_id(session, table_id):
-    return session.query(func.max(table_id)).first()[0]
 
 class HugsIngest(object):
 
@@ -26,12 +24,15 @@ class HugsIngest(object):
         if num_rows==0:
             self.session.add(Run(name=run_name))
             self.session.commit()
-            self.run_id =  _get_current_id(self.session, Run.id)
+            self.run_id =  self._get_current_id(Run.id)
         elif num_rows==1:
             self.run_id = run_query.first().id
         else:
             print('Warning {} name {}... db needs attention'.format(
                 num_rows, run_name))
+
+    def _get_current_id(self, table_id):
+        return self.session.query(func.max(table_id)).first()[0]
         
     def add_tract(self, tract):
         tract_query = self.session.query(Tract).filter(
@@ -40,7 +41,7 @@ class HugsIngest(object):
         if num_rows==0:
             self.session.add(Tract(hsc_id=tract, run_id=self.run_id))
             self.session.commit()
-            self.current_tract_id =  _get_current_id(self.session, Tract.id)
+            self.current_tract_id = self._get_current_id(Tract.id)
         elif num_rows==1:
             self.current_tract_id = tract_query.first().id
         else:
@@ -48,6 +49,7 @@ class HugsIngest(object):
                 num_rows, tract))
 
     def add_patch(self, patch, patch_meta):
+        assert self.current_tract_id is not None
         patch_row = Patch(
             hsc_id=patch, 
             x0=patch_meta.x0, 
@@ -59,24 +61,25 @@ class HugsIngest(object):
         )
         self.session.add(patch_row) 
         self.session.commit()
-        self.current_patch_id = _get_current_id(self.session, Patch.id)
+        self.current_patch_id = self._get_current_id(Patch.id)
 
     def add_catalog(self, catalog, aper_radii=[]):
         """
         """
-        assert self.current_tract_id is not None
         assert self.current_patch_id is not None
 
         # ingest source catalog
         sources = []
         aper_phot = []
         circ_aper = []
-        aper_phot_id = 0
-        for row, obj in enumerate(catalog):
-            source_id = row + 1
+        source_id = self._get_current_id(Source.id)
+        source_id = source_id if source_id else 0
+        aper_phot_id = self._get_current_id(AperturePhotometry.id)
+        aper_phot_id = aper_phot_id if aper_phot_id else 0
+        for obj in catalog:
             src = Source(
-                x_image=obj['X_IMAGE'], 
-                y_image=obj['Y_IMAGE'], 
+                x=obj['x_img'], 
+                y=obj['y_img'], 
                 ra=obj['ALPHA_J2000'], 
                 dec=obj['DELTA_J2000'], 
                 a_image=obj['A_IMAGE'], 
@@ -84,22 +87,29 @@ class HugsIngest(object):
                 theta_image=obj['THETA_IMAGE'], 
                 ellipticity=obj['ELLIPTICITY'],
                 kron_radius=obj['KRON_RADIUS'], 
+                petro_radius=obj['PETRO_RADIUS'], 
+                flags=obj['FLAGS'], 
                 patch_id=self.current_patch_id
             )
             sources.append(src)
-            aper_phot_id += 1
+            source_id += 1 
             for band in 'gri':
                 phot = AperturePhotometry(
                     bandpass=band, 
                     mag_auto=obj['MAG_AUTO('+band+')'],
+                    mag_auto_err=obj['MAGERR_AUTO('+band+')'],
+                    mag_petro=obj['MAG_PETRO('+band+')'],
+                    mag_petro_err=obj['MAGERR_PETRO('+band+')'],
                     fwhm_image=obj['FWHM_IMAGE('+band+')'], 
                     flux_radius=obj['FLUX_RADIUS('+band+')'], 
                     source_id=source_id
                 )
                 aper_phot.append(phot)
+                aper_phot_id += 1
                 for num, rad in enumerate(aper_radii):
                     circ = CircularAperture(
                         mag=obj['MAG_APER_{}({})'.format(num, band)], 
+                        mag_err=obj['MAGERR_APER_{}({})'.format(num, band)], 
                         radius=rad, 
                         aper_phot_id=aper_phot_id
                     )

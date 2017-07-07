@@ -4,15 +4,12 @@
 
 data_dir: '/tigress/HSC/HSC/rerun/production-20160523'
 hugs_io: '/scratch/network/jgreco/hugs-io'
-db_name: 'hugs-database.db' # will be saved in hugs_io
 
 band_detect: 'i'
 
 band_verify: 'g'
 
 band_meas: 'gr'  # band_detect always included
-
-randoms_db_fn: ~
 
 thresh_low:
     thresh: 3.0
@@ -36,20 +33,17 @@ clean:
 
 sextractor:
     config: 
+        PIXEL_SCALE: 0.168
         DETECT_THRESH: 0.7
+        THRESH_TYPE: RELATIVE
         FILTER_NAME: '/home/jgreco/projects/hugs/hugs/sextractor/config/gauss_6.0_31x31.conv'
         BACK_SIZE: 128
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
-        PHOT_APERTURES: '3,4,5,42,54'
+        PHOT_APERTURES: '3,4,5,42,54' # must be five apertures
         MAG_ZEROPOINT: 27.0
-    params: [
-        'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-        'MAG_AUTO', 'FLUX_RADIUS', 'A_IMAGE', 'B_IMAGE', 
-        'THETA_IMAGE', 'ELLIPTICITY', 'KRON_RADIUS', 
-        'FWHM_IMAGE', 'FLAGS', 'MAG_APER(1)', 'MAG_APER(2)',
-        'MAG_APER(3)', 'MAG_APER(4)', 'MAG_APER(5)'
-    ]
+        SEEING_FWHM: 0.7
+        MEMORY_PIXSTACK: 900000
     delete_created_files: True
     sex_io_dir: '/scratch/network/jgreco/sextractor-io'
     verify_max_sep: 15  # pixels

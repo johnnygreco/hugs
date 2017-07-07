@@ -44,7 +44,7 @@ class HugsExposure(object):
         return self._butler
 
     def get_mask_array(self, band='i', 
-                       planes=['CLEANED', 'BRIGHT_OBJECT', 'BLEND']):
+                       planes=['CLEANED', 'BRIGHT_OBJECT']):
         mask = self[band].getMaskedImage().getMask()
         arr = np.zeros(mask.getArray().shape, dtype=bool)
         for p in planes: 

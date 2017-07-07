@@ -76,7 +76,7 @@ def remove_duplicates(cat, inplace=True, **kwargs):
 
 def xmatch(cat_1, cat_2, xy_cols=['X_IMAGE', 'Y_IMAGE'], max_sep=5):
     """
-    Crossmatch catalogs.
+    Crossmatch catalogs on patch.
     """
     if type(cat_1)==Table:
         coords_1 = cat_1[xy_cols].to_pandas().values

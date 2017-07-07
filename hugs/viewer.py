@@ -1,5 +1,5 @@
 """
-View HSC patches and hugs-pipe sources with ds9 and matplotlib.
+View HSC patches and hugs pipe sources with ds9 and matplotlib.
 """
 
 from __future__ import division, print_function

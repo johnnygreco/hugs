@@ -5,21 +5,17 @@
 #SBATCH -e /scratch/network/jgreco/run-%j.err             
 #SBATCH -N 8
 #SBATCH --ntasks-per-node=16
-#SBATCH -t 23:00:00 
+#SBATCH -t 5:00:00 
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end 
 #SBATCH --mail-user=jgreco@princeton.edu 
 
-cd /home/jgreco/projects/hugs-pipe/scripts
+cd /home/jgreco/projects/hugs/scripts
 
-RUN_LABEL=`date +%Y%m%d-%H%M%S`
-OUTDIR=$HUGS_PIPE_IO/patches-run-$RUN_LABEL
+RUN_NAME=hsc-wide-patches
 PATCHES_FN=$LOCAL_IO/patch-files/hsc-wide-patches-full.csv
 
-mkdir $OUTDIR
-cp $PATCHES_FN $OUTDIR/
-
 mpiexec -n 128 python runner.py --mpi \
+    --run_name $RUN_NAME
     --patches_fn $PATCHES_FN \
-    -o $OUTDIR \
-    -c $LOCAL_IO/pipe-configs/02-28-2017.yml
+    -c /home/jgreco/projects/hugs/pipe-configs/hugs-run-07-07-2017.yml

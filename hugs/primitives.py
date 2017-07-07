@@ -16,10 +16,59 @@ from . import imtools
 from . import sextractor
 
 __all__ = [
-    'clean', 
     'image_threshold', 
-    'detect_sources',
+    'clean', 
+    'detect_sources'
 ]
+
+
+def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
+                    rgrow=None, isogrow=False, plane_name='', mask=None,
+                    clear_mask=True):
+    """
+    Image thresholding. A bit mask will be set with name 'plane_name'.
+
+    Parameters
+    ----------
+    masked_image : lsst.afw.image.imageLib.MaskedImageF
+        A masked image object.
+    thresh : float
+        Threshold value.
+    thresh_type : string, optional
+        Threshold type: stdev, pixel_stdev, bitmask, value,
+        or variance.
+    npix : int, optional
+        Minimum number of touching pixels in an object.
+    rgrow : int, optional
+        Number of pixels to grow footprints.
+    isogrow : bool, optional
+        If True, use (expensive) isotropic grow. 
+    plane_name : string, optional
+        Name of bit plane.
+    mask : lsst.afw.image.imageLib.MaskU, optional
+        Mask to set if not same as in masked_imaged
+    clear_mask : bool, optional
+        If True, clear the bit plane before thresholding
+
+    Returns
+    -------
+    fpset : lsst.afw.detection.detectionLib.FootprintSet
+        Footprints associated with detected objects.
+    """
+
+    mask = masked_image.getMask() if mask is None else mask
+    thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
+    thresh = afwDet.Threshold(thresh, thresh_type)
+    fpset = afwDet.FootprintSet(masked_image, thresh, plane_name, npix)
+    if rgrow is not None:
+        fpset = afwDet.FootprintSet(fpset, rgrow, isogrow)
+    if plane_name:
+        mask.addMaskPlane(plane_name)
+        if clear_mask:
+            mask.clearMaskPlane(mask.getMaskPlane(plane_name))
+        fpset.setMask(mask, plane_name)
+    return fpset
+
 
 def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
           max_frac_high_thresh=0.3, rgrow=None, random_state=None):
@@ -87,55 +136,7 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     return exp_clean
 
 
-def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1, 
-                    rgrow=None, isogrow=False, plane_name='', mask=None,
-                    clear_mask=True):
-    """
-    Image thresholding. A bit mask will be set with name 'plane_name'.
-
-    Parameters
-    ----------
-    masked_image : lsst.afw.image.imageLib.MaskedImageF
-        A masked image object.
-    thresh : float
-        Threshold value.
-    thresh_type : string, optional
-        Threshold type: stdev, pixel_stdev, bitmask, value,
-        or variance.
-    npix : int, optional
-        Minimum number of touching pixels in an object.
-    rgrow : int, optional
-        Number of pixels to grow footprints.
-    isogrow : bool, optional
-        If True, use (expensive) isotropic grow. 
-    plane_name : string, optional
-        Name of bit plane.
-    mask : lsst.afw.image.imageLib.MaskU, optional
-        Mask to set if not same as in masked_imaged
-    clear_mask : bool, optional
-        If True, clear the bit plane before thresholding
-
-    Returns
-    -------
-    fpset : lsst.afw.detection.detectionLib.FootprintSet
-        Footprints associated with detected objects.
-    """
-
-    mask = masked_image.getMask() if mask is None else mask
-    thresh_type = getattr(afwDet.Threshold, thresh_type.upper())
-    thresh = afwDet.Threshold(thresh, thresh_type)
-    fpset = afwDet.FootprintSet(masked_image, thresh, plane_name, npix)
-    if rgrow is not None:
-        fpset = afwDet.FootprintSet(fpset, rgrow, isogrow)
-    if plane_name:
-        mask.addMaskPlane(plane_name)
-        if clear_mask:
-            mask.clearMaskPlane(mask.getMaskPlane(plane_name))
-        fpset.setMask(mask, plane_name)
-    return fpset
-
-
-def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None, 
+def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None, 
                    delete_created_files=True, label='hugs'):
     """
     Source detection using SExtractor.
@@ -153,7 +154,7 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
         Sextractor catalog.
     """
 
-    sw = sextractor.Wrapper(sex_config, sex_params, sex_io_dir)
+    sw = sextractor.Wrapper(sex_config, sex_io_dir)
 
     #########################################################
     # write exposure for sextractor input and run
@@ -194,6 +195,7 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
 
         if 'MAG_APER' in cat.colnames:
             cat.rename_column('MAG_APER', 'MAG_APER_0')
+            cat.rename_column('MAGERR_APER', 'MAGERR_APER_0')
             for i, diam in enumerate(sex_config['PHOT_APERTURES'].split(',')):
                 r = utils.pixscale*float(diam)/2 # arcsec
                 sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
@@ -204,8 +206,10 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
         #########################################################
 
         detect_band_only = [
-            'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 
-            'THETA_IMAGE', 'A_IMAGE', 'B_IMAGE', 'ELLIPTICITY', 'KRON_RADIUS']
+            'X_IMAGE', 'Y_IMAGE', 'ALPHA_J2000', 'DELTA_J2000', 'FLAGS', 
+            'PETRO_RADIUS', 'THETA_IMAGE', 'A_IMAGE', 'B_IMAGE', 
+            'ELLIPTICITY', 'KRON_RADIUS'
+        ]
 
         for name in cat.colnames:
             if name not in detect_band_only: 
@@ -233,6 +237,5 @@ def detect_sources(exp, sex_config, sex_params, sex_io_dir, dual_exp=None,
             os.remove(dual_fn)
         os.remove(exp_fn)
         os.remove(cat_fn)
-        os.remove(sw.config['PARAMETERS_NAME'])
 
     return cat

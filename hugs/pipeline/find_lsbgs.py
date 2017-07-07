@@ -7,12 +7,11 @@ from lsst.pipe.base import Struct
 from .. import utils
 from .. import imtools
 from .. import primitives as prim
-from .. import randoms 
 from ..cattools import xmatch
 
 __all__ = ['run']
 
-def run(cfg, randoms_only=False):
+def run(cfg):
     """
     Run hugs pipeline using SExtractor for the final detection 
     and photometry.
@@ -22,9 +21,6 @@ def run(cfg, randoms_only=False):
     cfg : hugs_pipe.Config 
         Configuration object which stores all params 
         as well as the exposure object. 
-    debug_return : bool, optional
-        If True, return struct with outputs from 
-        every step of pipeline.
 
     Returns
     -------
@@ -72,22 +68,6 @@ def run(cfg, randoms_only=False):
     mask_clean = mi_clean.getMask()
 
     ############################################################
-    # Find randoms in footprint that are not masked
-    ############################################################
-
-    randoms_results = None
-    if cfg.randoms_db_fn is not None:
-        cfg.logger.info('finding detectable randoms in patch')
-        randoms_df, randoms_db = randoms.find_randoms_in_footprint(
-            cfg.randoms_db_fn, exp_clean, return_db=True)
-        randoms_results = lsst.pipe.base.Struct(df=randoms_df, db=randoms_db)
-
-    if randoms_only:
-        cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
-        results = _null_return(cfg, exp_clean, randoms_results)
-        return results
-
-    ############################################################
     # Detect sources and measure props with SExtractor
     ############################################################
 
@@ -108,14 +88,13 @@ def run(cfg, randoms_only=False):
         cfg.logger.info('measuring in {}-band'.format(band))
         dual_exp = None if band==cfg.band_detect else cfg.exp[band]
         sources_band = prim.detect_sources(
-            exp_clean, cfg.sex_config, cfg.sex_params, cfg.sex_io_dir, 
-            label=label, dual_exp=dual_exp, 
-            delete_created_files=cfg.delete_created_files) 
+            exp_clean, cfg.sex_config, cfg.sex_io_dir, label=label, 
+            dual_exp=dual_exp, delete_created_files=cfg.delete_created_files) 
         if len(sources_band)>0:
             sources = hstack([sources, sources_band])
         else:
             cfg.logger.warn('**** no sources found by sextractor ****')
-            results = _null_return(cfg, exp_clean, randoms_results)
+            results = _null_return(cfg, exp_clean)
             return results
 
     ############################################################
@@ -127,7 +106,7 @@ def run(cfg, randoms_only=False):
     for band in cfg.band_verify:
         cfg.logger.info('verifying dection in {}-band'.format(band))
         sources_verify = prim.detect_sources(
-            cfg.exp[band], cfg.sex_config, cfg.sex_params, cfg.sex_io_dir,
+            cfg.exp[band], cfg.sex_config, cfg.sex_io_dir,
             label=label, delete_created_files=cfg.delete_created_files)
         if len(sources_verify)>0:
             match_masks, _ = xmatch(
@@ -137,36 +116,33 @@ def run(cfg, randoms_only=False):
             cfg.logger.info(txt)
             if len(match_masks[0])==0:
                 cfg.logger.warn('**** no matched sources with '+band+' ****')
-                results = _null_return(cfg, exp_clean, randoms_results)
+                results = _null_return(cfg, exp_clean)
                 return results
             sources = sources[match_masks[0]]
         else:
             cfg.logger.warn('**** no sources detected in '+band+' ****')
-            results = _null_return(cfg, exp_clean, randoms_results)
+            results = _null_return(cfg, exp_clean)
             return results
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
     cfg.exp.patch_meta.cleaned_frac = mask_fracs['cleaned_frac']
-    cfg.exp.patch_meta.bright_object_frac = mask_fracs['bright_object_frac']
+    cfg.exp.patch_meta.bright_obj_frac = mask_fracs['bright_object_frac']
 
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
     results = Struct(all_detections=all_detections,
                      sources=sources,
                      exp=cfg.exp,
                      exp_clean=exp_clean,
-                     randoms_results=randoms_results, 
                      success=True)
 
     cfg.reset_mask_planes()
     return results
 
 
-def _null_return(config, exp_clean=None, randoms_results=None):
+def _null_return(config, exp_clean=None):
     config.reset_mask_planes()
-    return Struct(all_detections=Table(),
-                  sources=Table(), 
-                  candy=Table(),
-                  randoms_results=randoms_results,
+    return Struct(all_detections=None,
+                  sources=None,
                   exp=config.exp,
                   exp_clean=exp_clean,
                   success=False)

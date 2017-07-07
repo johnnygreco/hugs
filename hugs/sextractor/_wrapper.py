@@ -5,8 +5,8 @@ import os
 import os.path as op
 import subprocess
 
-from ._settings import DEFAULT_CONFIG  # Default SExtractor configuration
-from ._settings import DEFAULT_PARAMS  # Default parameters 
+from ._settings import PARAMETERS      # parameter file 
+from ._settings import SEX_CONFIG_DIR  # config directory
 
 __all__ = ['Wrapper']
 
@@ -47,23 +47,12 @@ class Wrapper(object):
     ii) This wrapper was written for SExtractor version 2.19.5.
     """
     
-    def __init__(self, config=DEFAULT_CONFIG, params=DEFAULT_PARAMS, 
-                 io_dir=''):
+    def __init__(self, config={}, io_dir=''):
 
         self._config = config
-        self._params = params
+        self._config['PARAMETERS_NAME'] = PARAMETERS
         self._io_dir = io_dir
 
-        if 'PARAMETERS_NAME' not in config.keys():
-            self._config['PARAMETERS_NAME'] = op.join(io_dir, 'sex.param')
-
-    @property
-    def params(self):
-        """
-        Return the current catalog parameters.
-        """
-        return self._params
-    
     @property
     def config(self):
         """
@@ -89,13 +78,6 @@ class Wrapper(object):
         print('\ncurrent config', '\n--------------')
         for k, v in self.config.items():
             print('{:<16} {:<16}'.format(k, v))
-
-    def print_params(self):
-        """
-        Print the current catalog parameters.
-        """
-        print('\ncurrent parameters', '\n------------------')
-        print('\n'.join(self.params))
 
     def set_check_images(self, which='a', prefix=''):
         """
@@ -164,26 +146,6 @@ class Wrapper(object):
             print('{:<16} {:<16}'.format(k, v))
         out.close()
 
-    def write_param_file(self):
-        """
-        Write the current parameters file. By default, the 
-        file is written to the current config directory.
-
-        Paramerers
-        ----------
-        fn : string, optional
-            Parameter file name. If 'from_config', 
-            use the same name as in config. 
-        in_config_dir : bool, optional
-            If True, write the param file in the config 
-            directory. Otherwise, the desired path must 
-            be given in fn. 
-        """
-        fn = op.join(self._io_dir, self._config['PARAMETERS_NAME'])
-        param_file = open(fn, 'w')
-        print('\n'.join(self.params), file=param_file)
-        param_file.close()
-
     def run(self, img_fn, cat_fn=None):
         """
         Run sextractor.
@@ -208,13 +170,13 @@ class Wrapper(object):
         """
 
         cat_fn = cat_fn if cat_fn else self.get_io_dir('sex.cat') 
+        default_config_fn = op.join(SEX_CONFIG_DIR, 'default.sex')
 
-        cmd = 'sex '+img_fn
+        cmd = 'sex -c {} {}'.format(default_config_fn, img_fn)
         cmd += ' -CATALOG_NAME '+cat_fn
 
         for key, val in self.config.items():
             cmd += ' -'+key+' '+str(val)
 
-        self.write_param_file()
         print('\nrunning', '\n-------\n'+cmd+'\n')
         subprocess.call(cmd, shell=True)

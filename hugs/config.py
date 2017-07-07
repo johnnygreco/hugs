@@ -44,14 +44,13 @@ class PipeConfig(object):
         """
 
         # read parameter file & setup param dicts
-        if config_fn is None:
-            file_dir = os.path.dirname(os.path.realpath(__file__))
-            self.config_fn = os.path.join(file_dir, 'default_config.yml')
-        else:
-            self.config_fn = config_fn
+        self.config_fn = config_fn if config_fn else utils.default_config_fn
         with open(self.config_fn, 'r') as f:
             params = yaml.load(f)
+
         self.data_dir = params['data_dir']
+        self.hugs_io = params['hugs_io']
+
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
         self._clean = params['clean']
@@ -66,18 +65,13 @@ class PipeConfig(object):
         self.band_detect = params['band_detect']
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
-        self.randoms_db_fn = params['randoms_db_fn']
 
         # setup for sextractor
         sex_setup = params['sextractor']
         self.sex_config = sex_setup['config']
-        self.sex_params = sex_setup['params']
         self.delete_created_files = sex_setup['delete_created_files']
         self.sex_io_dir = sex_setup['sex_io_dir']
         self.verify_max_sep = sex_setup['verify_max_sep']
-
-        self.hugs_io = params['hugs_io']
-        self.db_fn =  os.path.join(self.hugs_io, params['db_name'])
 
         self.circ_aper_radii = self.sex_config['PHOT_APERTURES'].split(',')
         self.circ_aper_radii = [

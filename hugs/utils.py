@@ -6,19 +6,31 @@ import yaml
 import lsst.afw.image as afwImage
 import lsst.afw.math as afwMath
 from astropy.table import Table
+from collections import namedtuple
 
-io = os.environ.get('HUGS_PIPE_IO')
-local_io = os.environ.get('LOCAL_IO')
 project_dir = os.path.dirname(os.path.dirname(__file__))
-default_config_fn = os.path.join(project_dir, 'hugs/default_config.yml')
+default_config_fn = os.path.join(
+    project_dir, 'pipe-configs/default_config.yml')
 
 pixscale = 0.168
 zpt = 27.0
+
+#Extinction correction factor for HSC
+#A_lambda = Coeff * E(B-V)
+ExtCoeff = namedtuple('ExtCoeff', 'g r i z y')
+ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
+
 
 def read_config(fn):
     with open(fn, 'r') as f:
         config_params = yaml.load(f)
     return config_params
+
+
+def get_dust_map():
+    import sfdmap
+    dustmap = sfdmap.SFDMap()
+    return dustmap
 
 
 def annuli(row_c, col_c, r_in, r_out, shape):
@@ -129,18 +141,6 @@ def get_psf_sigma(exposure):
     return sigma
 
 
-def get_test_exp():
-    """
-    Return a small test exposure for testing.
-    """
-    import os
-    import lsst.afw.image
-    dataDIR = os.environ.get('TEST_DATA_DIR')
-    fn = os.path.join(dataDIR, 'test_exposure.fits')
-    exposure = lsst.afw.image.ExposureF(fn)
-    return exposure
-
-
 def get_exposure(data_id, butler=None, datadir=os.environ.get('HSC_DIR')):
     """
     Return HSC exposure. 
@@ -201,17 +201,6 @@ def remove_mask_planes(mask, planes):
     for plane in planes:
 	if plane in list(mask.getMaskPlaneDict().keys()):
 	    mask.removeAndClearMaskPlane(plane, True)
-
-
-def get_fpset(mask, plane):
-    """
-    Get footprint set associated with mask bit plane.
-    """
-    import lsst.afw.detection as afwDet
-    plane = mask.getPlaneBitMask(plane)
-    fpset = afwDet.FootprintSet(
-        mask, afwDet.Threshold(plane, afwDet.Threshold.BITMASK))
-    return fpset
 
 
 def check_random_state(seed):
