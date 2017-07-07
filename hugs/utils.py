@@ -4,7 +4,6 @@ import os
 import numpy as np
 import yaml
 import lsst.afw.image as afwImage
-import lsst.afw.math as afwMath
 from astropy.table import Table
 from collections import namedtuple
 

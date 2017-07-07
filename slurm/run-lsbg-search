@@ -16,6 +16,6 @@ RUN_NAME=hsc-wide-patches
 PATCHES_FN=$LOCAL_IO/patch-files/hsc-wide-patches-full.csv
 
 mpiexec -n 128 python runner.py --mpi \
-    --run_name $RUN_NAME
+    --run_name $RUN_NAME \
     --patches_fn $PATCHES_FN \
     -c /home/jgreco/projects/hugs/pipe-configs/hugs-run-07-07-2017.yml

@@ -2,17 +2,8 @@ from __future__ import division, print_function
 
 import os
 import numpy as np
-import lsst.afw.image as afwImage
 import lsst.afw.detection as afwDet
-import lsst.afw.geom as afwGeom
-from astropy.io import fits
-from astropy.table import Table, vstack, hstack
-from scipy.spatial.distance import cdist
-from astropy.convolution import Gaussian2DKernel
-from astropy.stats import gaussian_fwhm_to_sigma
-import sep
 from . import utils
-from . import imtools
 from . import sextractor
 
 __all__ = [
