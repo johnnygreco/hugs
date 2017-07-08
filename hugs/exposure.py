@@ -6,9 +6,23 @@ import lsst.daf.persistence
 from lsst.pipe.base import Struct
 
 class HugsExposure(object):
-    
-    def __init__(self, tract, patch, bands='gri', butler=None):
+    """
+    Class to fetch and contain multi-band HSC exposures and some metadata
+    associated with the hugs pipeline. 
 
+    Parameters
+    ----------
+    tract : int 
+        HSC tract
+    patch : str
+        HSC patch
+    bands : str, optional
+        Photometric bands 
+    butler : lsst.daf.persistence.Butler
+        HSC data butler
+    """
+
+    def __init__(self, tract, patch, bands='gri', butler=None):
         self.tract = tract
         self.patch = patch
         self._butler = butler
@@ -18,7 +32,8 @@ class HugsExposure(object):
             data_id = {'tract': tract, 
                        'patch': patch, 
                        'filter': 'HSC-'+band.upper()}
-            exp = self.butler.get('deepCoadd_calexp_hsc', data_id, immediate=True)
+            exp = self.butler.get(
+                'deepCoadd_calexp_hsc', data_id, immediate=True)
             setattr(self, band.lower(), exp)
 
         self.x0, self.y0 = self.i.getXY0()
@@ -43,8 +58,22 @@ class HugsExposure(object):
             self._butler = lsst.daf.persistence.Butler(hsc_dir)
         return self._butler
 
-    def get_mask_array(self, band='i', 
-                       planes=['CLEANED', 'BRIGHT_OBJECT']):
+    def get_mask_array(self, band='i', planes=['CLEANED', 'BRIGHT_OBJECT']):
+        """
+        Get mask from given planes.
+
+        Parameters
+        ----------
+        band : str
+            Photometric band
+        planes : list
+            The mask planes to include
+
+        Returns
+        -------
+        mask : ndarray
+           Mask with masked pixels = 1 and non-masked pixels = 0 
+        """
         mask = self[band].getMaskedImage().getMask()
         arr = np.zeros(mask.getArray().shape, dtype=bool)
         for p in planes: 
@@ -54,8 +83,7 @@ class HugsExposure(object):
 
     def good_data_fraction(self, band='i'):
         """
-        Find the fraction of pixels that are good in 
-        the image.
+        Find the fraction of pixels that contain data.
         """
         mask = self[band].getMask()
         nodata = mask.getArray() & mask.getPlaneBitMask('NO_DATA') != 0

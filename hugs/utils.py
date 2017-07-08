@@ -20,7 +20,7 @@ ExtCoeff = namedtuple('ExtCoeff', 'g r i z y')
 ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
 
 
-def read_config(fn):
+def read_config(fn=default_config_fn):
     with open(fn, 'r') as f:
         config_params = yaml.load(f)
     return config_params
