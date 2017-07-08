@@ -107,7 +107,7 @@ if __name__=='__main__':
         if rank==0:
             time_label = hugs.utils.get_time_label()
             outdir = os.path.join(
-                outdir, '{}-{}-batch'.format(args.run_name, time_label))
+                outdir, '{}-{}'.format(args.run_name, time_label))
             hugs.utils.mkdir_if_needed(outdir)
             log_dir = os.path.join(outdir, 'log')
             hugs.utils.mkdir_if_needed(log_dir)
