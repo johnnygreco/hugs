@@ -6,8 +6,6 @@ from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from .connect import Base
 from astropy.coordinates import SkyCoord
-from ..utils import pixscale, ext_coeff, get_dust_map
-dustmap = get_dust_map()
 
 __all__ = ['Run', 'Tract', 'Patch', 'Source']
 
