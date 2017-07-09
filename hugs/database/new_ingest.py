@@ -72,6 +72,7 @@ class HugsIngest(object):
         # ingest source catalog
         sources = []
         for i, obj in enumerate(catalog):
+            ebv = dustmap.ebv(obj['ALPHA_J2000'], obj['DELTA_J2000'])
             src = dict(
                 x=obj['x_img'], 
                 y=obj['y_img'], 
@@ -83,11 +84,11 @@ class HugsIngest(object):
                 ellipticity=obj['ELLIPTICITY'],
                 kron_radius=obj['KRON_RADIUS'], 
                 petro_radius=obj['PETRO_RADIUS'], 
+                ebv=ebv,
                 flags=obj['FLAGS'],
                 patch_id=self.current_patch_id
             )
             for b in 'gri':
-                ebv = dustmap.ebv(obj['ALPHA_J2000'], obj['DELTA_J2000'])
                 A_lam = ebv*getattr(ext_coeff, b)
                 src.update({
                     'mag_auto_'+b : obj['MAG_AUTO('+b+')'],
@@ -96,8 +97,7 @@ class HugsIngest(object):
                     'mag_petro_'+b+'_err' : obj['MAGERR_PETRO('+b+')'],
                     'fwhm_'+b : obj['FWHM_IMAGE('+b+')']*pixscale, 
                     'flux_radius_'+b : obj['FLUX_RADIUS('+b+')']*pixscale, 
-                    'ebv' : ebv,
-                    'A_'+b : dustmap.ebv(obj['ALPHA_J2000'])
+                    'A_'+b : A_lam
                 })
                 for num in range(num_apertures):
                     mag_ap = 'mag_ap{}_{}'.format(num, b)
@@ -107,7 +107,7 @@ class HugsIngest(object):
                         mag_ap_err : obj['MAGERR_APER_{}({})'.format(num, b)], 
                     })
             sources.append(src)
-            if i % 10 == 0 :
+            if i % 100 == 0 :
                 self.session.execute(Source.__table__.insert(), sources)
                 self.session.commit()
                 sources = []
