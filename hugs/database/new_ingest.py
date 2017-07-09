@@ -4,9 +4,10 @@ from __future__ import division, print_function
 from sqlalchemy import exists
 from sqlalchemy.sql import func, and_
 
-from .tables import Run, Tract, Patch
-from .tables import Source, AperturePhotometry, CircularAperture
+from .new_tables import Run, Tract, Patch, Source, Measurement
 from .connect import connect, Session
+from ..utils import pixscale, ext_coeff, get_dust_map
+dustmap = get_dust_map()
 
 __all__ = ['HugsIngest']
 
@@ -63,73 +64,58 @@ class HugsIngest(object):
         self.session.commit()
         self.current_patch_id = self._get_current_id(Patch.id)
 
-    def add_catalog(self, catalog, aper_radii=[]):
+    def add_catalog(self, catalog, num_apertures=5):
         """
         """
         assert self.current_patch_id is not None
 
         # ingest source catalog
         sources = []
-        aper_phot = []
-        circ_aper = []
-        source_id = self._get_current_id(Source.id)
-        source_id = source_id if source_id else 0
-        aper_phot_id = self._get_current_id(AperturePhotometry.id)
-        aper_phot_id = aper_phot_id if aper_phot_id else 0
-        for obj in catalog:
-            sources.append(dict(
+        for i, obj in enumerate(catalog):
+            src = dict(
                 x=obj['x_img'], 
                 y=obj['y_img'], 
                 ra=obj['ALPHA_J2000'], 
                 dec=obj['DELTA_J2000'], 
+                patch_id=self.current_patch_id
                 a_image=obj['A_IMAGE'], 
                 b_image=obj['B_IMAGE'],
                 theta_image=obj['THETA_IMAGE'], 
                 ellipticity=obj['ELLIPTICITY'],
                 kron_radius=obj['KRON_RADIUS'], 
                 petro_radius=obj['PETRO_RADIUS'], 
-                flags=obj['FLAGS'], 
-                patch_id=self.current_patch_id
-            ))
-            source_id += 1 
-            for band in 'gri':
-                aper_phot.append(dict(
-                    bandpass=band, 
-                    mag_auto=obj['MAG_AUTO('+band+')'],
-                    mag_auto_err=obj['MAGERR_AUTO('+band+')'],
-                    mag_petro=obj['MAG_PETRO('+band+')'],
-                    mag_petro_err=obj['MAGERR_PETRO('+band+')'],
-                    fwhm_image=obj['FWHM_IMAGE('+band+')'], 
-                    flux_radius=obj['FLUX_RADIUS('+band+')'], 
-                    source_id=source_id
-                ))
-                aper_phot_id += 1
-                for num, rad in enumerate(aper_radii):
-                    circ_aper.append(dict(
-                        mag=obj['MAG_APER_{}({})'.format(num, band)], 
-                        mag_err=obj['MAGERR_APER_{}({})'.format(num, band)], 
-                        radius=rad, 
-                        aper_phot_id=aper_phot_id
-                    ))
-            if source_id % 10 == 0 :
+                flags=obj['FLAGS']
+            )
+            for b in 'gri':
+                ebv = dustmap.ebv(obj['ALPHA_J2000'], obj['DELTA_J2000'])
+                A_lam = ebv*getattr(ext_coeff, b)
+                src.update({
+                    'mag_auto_'+b : obj['MAG_AUTO('+b+')'],
+                    'mag_auto_'+b+'_err' : obj['MAGERR_AUTO('+b+')'],
+                    'mag_petro_'+b : obj['MAG_PETRO('+b+')'],
+                    'mag_petro_'+b+'_err' : obj['MAGERR_PETRO('+b+')'],
+                    'fwhm_'+b : obj['FWHM_IMAGE('+b+')']*pixscale, 
+                    'flux_radius_'+b : obj['FLUX_RADIUS('+b+')']*pixscale, 
+                    'ebv' : ebv,
+                    'A_'+b : dustmap.ebv(obj['ALPHA_J2000'])
+                })
+                for num in range(num_apertures):
+                    mag_ap = 'mag_ap{}_{}'.format(num, b)
+                    mag_ap_err = 'mag_ap{}_{}_err'.format(num, b)
+                    src.update({
+                        mag_ap : obj['MAG_APER_{}({})'.format(num, b)], 
+                        mag_ap_err : obj['MAGERR_APER_{}({})'.format(num, b)], 
+                    })
+            sources.append(src)
+            if i % 10 == 0 :
                 self.session.execute(Source.__table__.insert(), sources)
-                self.session.execute(
-                    AperturePhotometry.__table__.insert(), aper_phot)
-                self.session.execute(
-                    CircularAperture.__table__.insert(), circ_aper)
                 self.session.commit()
                 sources = []
-                aper_phot = []
-                circ_aper = []
         if len(sources)>0:
             self.session.execute(Source.__table__.insert(), sources)
-            self.session.execute(
-                AperturePhotometry.__table__.insert(), aper_phot)
-            self.session.execute(
-                CircularAperture.__table__.insert(), circ_aper)
             self.session.commit()
 
-    def add_all(self, tract, patch, patch_meta, catalog, aper_radii=[]):
+    def add_all(self, tract, patch, patch_meta, catalog, num_apertures=5): 
         self.add_tract(tract)
         self.add_patch(patch, patch_meta)
-        self.add_catalog(catalog, aper_radii)
+        self.add_catalog(catalog, num_apertures)

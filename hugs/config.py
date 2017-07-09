@@ -76,6 +76,7 @@ class PipeConfig(object):
         self.circ_aper_radii = self.sex_config['PHOT_APERTURES'].split(',')
         self.circ_aper_radii = [
             utils.pixscale*float(a)/2 for a in self.circ_aper_radii] 
+        self.num_apertures = len(self.circ_aper_radii)
 
         # set patch id if given
         if tract is not None:
