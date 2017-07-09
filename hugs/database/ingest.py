@@ -4,8 +4,7 @@ from __future__ import division, print_function
 from sqlalchemy import exists
 from sqlalchemy.sql import func, and_
 
-from .tables import Run, Tract, Patch
-from .tables import Source, AperturePhotometry, CircularAperture
+from .tables import Run, Tract, Patch, Source
 from .connect import connect, Session
 
 __all__ = ['HugsIngest']
@@ -28,8 +27,7 @@ class HugsIngest(object):
         elif num_rows==1:
             self.run_id = run_query.first().id
         else:
-            print('Warning {} name {}... db needs attention'.format(
-                num_rows, run_name))
+            print('Warning {} rows in run name {}'.format(num_rows, run_name))
 
     def _get_current_id(self, table_id):
         return self.session.query(func.max(table_id)).first()[0]
@@ -45,8 +43,7 @@ class HugsIngest(object):
         elif num_rows==1:
             self.current_tract_id = tract_query.first().id
         else:
-            print('Warning {} rows with tract {}... db needs attention'.format(
-                num_rows, tract))
+            print('Warning {} rows with tract {}'.format(num_rows, tract))
 
     def add_patch(self, patch, patch_meta):
         assert self.current_tract_id is not None
@@ -63,73 +60,15 @@ class HugsIngest(object):
         self.session.commit()
         self.current_patch_id = self._get_current_id(Patch.id)
 
-    def add_catalog(self, catalog, aper_radii=[]):
+    def add_catalog(self, catalog):
         """
         """
         assert self.current_patch_id is not None
+        catalog['patch_id'] = self.current_patch_id
+        catalog.to_sql('source', self.session.bind, 
+                       if_exists='append', index=False)
 
-        # ingest source catalog
-        sources = []
-        aper_phot = []
-        circ_aper = []
-        source_id = self._get_current_id(Source.id)
-        source_id = source_id if source_id else 0
-        aper_phot_id = self._get_current_id(AperturePhotometry.id)
-        aper_phot_id = aper_phot_id if aper_phot_id else 0
-        for obj in catalog:
-            sources.append(dict(
-                x=obj['x_img'], 
-                y=obj['y_img'], 
-                ra=obj['ALPHA_J2000'], 
-                dec=obj['DELTA_J2000'], 
-                a_image=obj['A_IMAGE'], 
-                b_image=obj['B_IMAGE'],
-                theta_image=obj['THETA_IMAGE'], 
-                ellipticity=obj['ELLIPTICITY'],
-                kron_radius=obj['KRON_RADIUS'], 
-                petro_radius=obj['PETRO_RADIUS'], 
-                flags=obj['FLAGS'], 
-                patch_id=self.current_patch_id
-            ))
-            source_id += 1 
-            for band in 'gri':
-                aper_phot.append(dict(
-                    bandpass=band, 
-                    mag_auto=obj['MAG_AUTO('+band+')'],
-                    mag_auto_err=obj['MAGERR_AUTO('+band+')'],
-                    mag_petro=obj['MAG_PETRO('+band+')'],
-                    mag_petro_err=obj['MAGERR_PETRO('+band+')'],
-                    fwhm_image=obj['FWHM_IMAGE('+band+')'], 
-                    flux_radius=obj['FLUX_RADIUS('+band+')'], 
-                    source_id=source_id
-                ))
-                aper_phot_id += 1
-                for num, rad in enumerate(aper_radii):
-                    circ_aper.append(dict(
-                        mag=obj['MAG_APER_{}({})'.format(num, band)], 
-                        mag_err=obj['MAGERR_APER_{}({})'.format(num, band)], 
-                        radius=rad, 
-                        aper_phot_id=aper_phot_id
-                    ))
-            if source_id % 10 == 0 :
-                self.session.execute(Source.__table__.insert(), sources)
-                self.session.execute(
-                    AperturePhotometry.__table__.insert(), aper_phot)
-                self.session.execute(
-                    CircularAperture.__table__.insert(), circ_aper)
-                self.session.commit()
-                sources = []
-                aper_phot = []
-                circ_aper = []
-        if len(sources)>0:
-            self.session.execute(Source.__table__.insert(), sources)
-            self.session.execute(
-                AperturePhotometry.__table__.insert(), aper_phot)
-            self.session.execute(
-                CircularAperture.__table__.insert(), circ_aper)
-            self.session.commit()
-
-    def add_all(self, tract, patch, patch_meta, catalog, aper_radii=[]):
+    def add_all(self, tract, patch, patch_meta, catalog): 
         self.add_tract(tract)
         self.add_patch(patch, patch_meta)
-        self.add_catalog(catalog, aper_radii)
+        self.add_catalog(catalog)

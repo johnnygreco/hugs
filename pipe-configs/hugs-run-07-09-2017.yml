@@ -40,7 +40,7 @@ sextractor:
         BACK_SIZE: 128
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
-        PHOT_APERTURES: '3,4,5,42,54' # must be five apertures
+        PHOT_APERTURES: '3,4,5,6,7,8,16,32,42,54' # must be 10 apertures
         MAG_ZEROPOINT: 27.0
         SEEING_FWHM: 0.7
         MEMORY_PIXSTACK: 900000

@@ -19,6 +19,10 @@ zpt = 27.0
 ExtCoeff = namedtuple('ExtCoeff', 'g r i z y')
 ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
 
+# Patch metadata
+PatchMeta = namedtuple(
+    'PatchMeta', 'x0 y0 cleaned_frac bright_obj_frac good_data_frac')
+
 
 def read_config(fn=default_config_fn):
     with open(fn, 'r') as f:

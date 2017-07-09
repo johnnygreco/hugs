@@ -74,7 +74,7 @@ def remove_duplicates(cat, inplace=True, **kwargs):
     return cat.drop(cat.index[ind[:,1]], inplace=inplace)
 
 
-def xmatch(cat_1, cat_2, xy_cols=['X_IMAGE', 'Y_IMAGE'], max_sep=5):
+def xmatch(cat_1, cat_2, xy_cols=['x_image', 'y_image'], max_sep=5):
     """
     Crossmatch catalogs on patch.
     """
