@@ -4,7 +4,7 @@ from __future__ import division, print_function
 from sqlalchemy import exists
 from sqlalchemy.sql import func, and_
 
-from .new_tables import Run, Tract, Patch, Source, Measurement
+from .new_tables import Run, Tract, Patch, Source
 from .connect import connect, Session
 from ..utils import pixscale, ext_coeff, get_dust_map
 dustmap = get_dust_map()
@@ -77,14 +77,14 @@ class HugsIngest(object):
                 y=obj['y_img'], 
                 ra=obj['ALPHA_J2000'], 
                 dec=obj['DELTA_J2000'], 
-                patch_id=self.current_patch_id
                 a_image=obj['A_IMAGE'], 
                 b_image=obj['B_IMAGE'],
                 theta_image=obj['THETA_IMAGE'], 
                 ellipticity=obj['ELLIPTICITY'],
                 kron_radius=obj['KRON_RADIUS'], 
                 petro_radius=obj['PETRO_RADIUS'], 
-                flags=obj['FLAGS']
+                flags=obj['FLAGS'],
+                patch_id=self.current_patch_id
             )
             for b in 'gri':
                 ebv = dustmap.ebv(obj['ALPHA_J2000'], obj['DELTA_J2000'])
