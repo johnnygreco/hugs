@@ -5,43 +5,39 @@ import logging
 import yaml
 import numpy as np
 import time
-import lsst.afw.image
 from . import utils
 from .exposure import HugsExposure
-try:
-    import coloredlogs
-except ImportError:
-    pass
+try: import coloredlogs
+except ImportError: pass
 
 class PipeConfig(object):
     """
     Class for parsing the hugs configuration.
+
+    Parameters
+    ----------
+    config_fn : string, optional
+        The parameter file name (must be a yaml file).
+        If None, will use default config.
+    tract : int, optional
+        HSC tract.
+    patch : str, optional
+        HSC patch
+    log_level : string, optional
+        Level of python logger.
+    log_fn : string, optional
+        Log file name.
+    random_state : int, list of ints, RandomState instance, or None 
+        If int or list of ints, random_state is the rng seed.
+        If RandomState instance, random_state is the rng.
+        If None, the rng is the RandomState instance used by np.random.
+    run_name : sting, optional
+        Label for this pipeline run.
     """
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
                  log_level='info', log_fn=None, random_state=None, 
                  run_name='hugs'):
-        """
-        Initialization
-
-        Parameters
-        ----------
-        config_fn : string, optional
-            The parameter file name (must be a yaml file).
-            If None, will use default config.
-        tract : int, optional
-            HSC tract.
-        patch : str, optional
-            HSC patch
-        log_level : string, optional
-            Level of python logger.
-        log_fn : string, optional
-            Log file name.
-        random_state : int, list of ints, RandomState instance, or None 
-            If int or list of ints, random_state is the rng seed.
-            If RandomState instance, random_state is the rng.
-            If None, the rng is the RandomState instance used by np.random.
-        """
 
         # read parameter file & setup param dicts
         self.config_fn = config_fn if config_fn else utils.default_config_fn
@@ -90,6 +86,7 @@ class PipeConfig(object):
         """
         Setup the python logger.
         """
+
         name = 'hugs-pipe: {} | {}'.format(tract, patch)
         self.logger = logging.getLogger(name)
         self.logger.setLevel(getattr(logging, self.log_level.upper()))
@@ -118,6 +115,7 @@ class PipeConfig(object):
         """
         Let's only load the butler once.
         """
+
         if self._butler is None:
             import lsst.daf.persistence
             self._butler = lsst.daf.persistence.Butler(self.data_dir)
@@ -128,6 +126,7 @@ class PipeConfig(object):
         """
         Timer for pipeline. 
         """
+
         if self._timer is None:
             self._timer = time.time()
         else:
@@ -139,6 +138,7 @@ class PipeConfig(object):
         """
         Remove mask planes created by hugs-pipe.
         """
+
         for band in self.bands:
             mask = self.exp[band].getMaskedImage().getMask()
             utils.remove_mask_planes(mask, ['CLEANED', 
@@ -147,8 +147,7 @@ class PipeConfig(object):
 
     def set_patch_id(self, tract, patch):
         """
-        Setup the tract/patch. This must be done before passing a 
-        config object to hugs_pipe.run.
+        Setup the tract/patch. This must be done before running the pipeline
 
         Parameters
         ----------
@@ -167,7 +166,7 @@ class PipeConfig(object):
         self.thresh_high = self._thresh_high.copy()
         self.clean = self._clean.copy()
 
-        # get exposure 
+        # get exposures
         bands = self.band_detect + self.band_verify + self.band_meas
         self.bands = ''.join(set(bands))
         self.exp = HugsExposure(tract, patch, self.bands, self.butler)

@@ -1,3 +1,6 @@
+"""
+Random utilities 
+"""
 from __future__ import division, print_function
 
 import os
@@ -21,12 +24,23 @@ ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
 
 
 def read_config(fn=default_config_fn):
+    """
+    Parse hugs pipeline configuration file.
+    """
     with open(fn, 'r') as f:
         config_params = yaml.load(f)
     return config_params
 
 
 def get_dust_map():
+    """
+    Use sdfmap to get E(B-V) values from the Schlegel, Finkbeiner & Davis 
+    (1998) dust map.
+
+    Notes 
+    -----
+    sfdmap can be downloaded here http://github.com/kbarbary/sfdmap.
+    """
     import sfdmap
     dustmap = sfdmap.SFDMap()
     return dustmap
@@ -122,11 +136,11 @@ def embed_slices(center, arr_shape, img_shape):
 
 def get_psf_sigma(exposure):
     """
-    Get sigma of point-spread function.
+    Get sigma of point-spread function of HSC patch.
 
     Parameters
     ----------
-    exposure : lsst.afw.image.imageLib.ExposureF
+    exposure : lsst.afw.image.ExposureF
         Exposure object. 
 
     Returns
@@ -146,13 +160,18 @@ def get_exposure(data_id, butler=None, datadir=os.environ.get('HSC_DIR')):
 
     Parameters
     ----------
-    data_id : str, afwImage.ExposureF, or dict
+    data_id : str, lsst.afw.image.ExposureF, or dict
         Exposure info. Can be file name, an exposure object, 
         or dict of HSC data ID.
     butler : lsst.daf.persistence.Butler
         The Butler.
     datadir : str, optional
         Location of exposure data.
+
+    Returns
+    -------
+    exp : lsst.afw.image.ExposureF  
+        HSC exposure for given data ID.
     """
     if type(data_id)==str:
         exp = afwImage.ExposureF(data_id)
@@ -172,7 +191,6 @@ def mkdir_if_needed(directory):
     """"
     Create directory if it does not exist.
     """
-    import os
     if not os.path.isdir(directory):
         os.mkdir(directory)
 
@@ -192,7 +210,7 @@ def remove_mask_planes(mask, planes):
 
     Parameters
     ----------
-    mask : lsst.afw.MaskU
+    mask : lsst.afw.image.MaskU
 	Bit mask.
     planes : list
         Planes to clear
@@ -242,6 +260,18 @@ def check_random_state(seed):
 
 
 def calc_mask_bit_fracs(exp):
+    """
+    Calculate the fraction of image flagged as 'cleaned' and 'bright_object'. 
+
+    Parameters
+    ----------
+    exp : lsst.afw.image.ExposureF
+
+    Returns
+    -------
+    fracs : dict
+        Fraction of pixels with keys cleaned_frac and bright_object_frac.
+    """
     mask = exp.getMaskedImage().getMask()
     msk_arr = mask.getArray()
     npix = float(msk_arr.size)
@@ -256,12 +286,30 @@ def calc_mask_bit_fracs(exp):
 
 
 def check_astropy_to_pandas(cat):
+    """
+    Change astropy table to pandas dataframe if necessary.
+    """
     if type(cat)==Table:
         cat = cat.to_pandas()
     return cat
 
 
 def check_kwargs_defaults(kwargs, defaults):
+    """
+    Build keyword argument by changing a default set of parameters.
+
+    Parameters
+    ----------
+    kwargs : dict
+        Keyword arguments that are different for default values.
+    defaults : dict
+        The default parameter values.
+
+    Returns
+    -------
+    kw : dict
+        A new keyword argument.
+    """
     kw = defaults.copy()
     for k, v in kwargs.items():
         kw[k] = v
@@ -269,6 +317,23 @@ def check_kwargs_defaults(kwargs, defaults):
 
 
 def make_noise_image(masked_image, random_state=None):
+    """
+    Generate Gaussian noise image with zero mean and std equal to the rms level
+    of the background in the given image. 
+
+    Parameters
+    ----------
+    masked_image : lsst.afw.image.MaskedImageF
+        Masked image for calculating noise image shape and the scale of the 
+        noise fluctuations.
+    random_state : 
+        Input for check_random_state above.
+
+    Returns 
+    -------
+    noise_array : ndarray
+        The noise image. 
+    """
     from .stats import get_clipped_sig_task
     rng = check_random_state(random_state)
     bad_mask_planes = ('EDGE', 'BRIGHT_OBJECT', 'DETECTED', 'SAT', 'CLIPPED')

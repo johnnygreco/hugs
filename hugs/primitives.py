@@ -1,3 +1,6 @@
+"""
+Primitive image processing functions for the hugs pipeline.
+"""
 from __future__ import division, print_function
 
 import os
@@ -21,13 +24,12 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
 
     Parameters
     ----------
-    masked_image : lsst.afw.image.imageLib.MaskedImageF
+    masked_image : lsst.afw.image.MaskedImageF
         A masked image object.
     thresh : float
         Threshold value.
     thresh_type : string, optional
-        Threshold type: stdev, pixel_stdev, bitmask, value,
-        or variance.
+        Threshold type: stdev, pixel_stdev, bitmask, value, or variance.
     npix : int, optional
         Minimum number of touching pixels in an object.
     rgrow : int, optional
@@ -36,14 +38,14 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
         If True, use (expensive) isotropic grow. 
     plane_name : string, optional
         Name of bit plane.
-    mask : lsst.afw.image.imageLib.MaskU, optional
+    mask : lsst.afw.image.MaskU, optional
         Mask to set if not same as in masked_imaged
     clear_mask : bool, optional
         If True, clear the bit plane before thresholding
 
     Returns
     -------
-    fpset : lsst.afw.detection.detectionLib.FootprintSet
+    fpset : lsst.afw.detection.FootprintSet
         Footprints associated with detected objects.
     """
 
@@ -66,7 +68,7 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     """
     Clean image of bright sources and associated diffuse regions by 
     replacing them with sky noise. Also, remove low-threshold regions 
-    that are small. 
+    that are smaller than min_pix_low_thresh.
 
     Parameters
     ----------
@@ -136,13 +138,21 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
     ----------
     exp : lsst.afw.image.ExposureF
         Exposure object to run sextractor on.
+    sex_config : dict
+        SExtractor configuration that is is different for its default.
+    sex_io_dir : str
+        Input/output directory for files needed to run SExtractor.
+    dual_exp : lsst.afw.image.ExposureF, optional
+        Dual exposure for forced photometry. 
+    delete_created_files : bool, optional
+        If True, remove all files created for and by SExtractor.
     label : str
         Label for this run.
 
     Returns
     -------
     cat : astropy.table.Table
-        Sextractor catalog.
+        SExtractor catalog.
     """
 
     sw = sextractor.Wrapper(sex_config, sex_io_dir)
