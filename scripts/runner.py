@@ -8,6 +8,7 @@ from time import time
 import mpi4py.MPI as MPI
 import schwimmbad
 from hugs.pipeline import find_lsbgs
+from hugs.utils import PatchMeta
 import hugs
 
 
@@ -15,14 +16,17 @@ def ingest_data(args):
     """
     Write data to database with the master process.
     """
+    timer = time()
     success, sources, meta_data = args
-    run_name, tract, patch, patch_meta, circ_aper_radii = meta_data
+    run_name, tract, patch, patch_meta = meta_data
     db_ingest = hugs.database.HugsIngest(session, run_name)
     if success:
-        db_ingest.add_all(tract, patch, patch_meta, sources, circ_aper_radii)
+        db_ingest.add_all(tract, patch, patch_meta, sources)
     else:
         db_ingest.add_tract(tract)
         db_ingest.add_patch(patch, patch_meta)
+    delta_time = time() - timer
+    print('time to ingest =', delta_time)
 
 
 def worker(p):
@@ -45,16 +49,30 @@ def worker(p):
     
     results = find_lsbgs.run(config)
 
+    pm = results.exp.patch_meta
+    patch_meta = PatchMeta(
+        x0 = pm.x0,
+        y0 = pm.y0,
+        cleaned_frac = pm.cleaned_frac,
+        bright_obj_frac = pm.bright_obj_frac,
+        good_data_frac = pm.good_data_frac
+    )
+
     meta_data = [
         config.run_name,
         config.tract,
         config.patch,
-        results.exp.patch_meta,
-        config.circ_aper_radii
+        patch_meta,
     ]
 
+    if results.success:
+        df = results.sources.to_pandas()
+        df['flags'] = df['flags'].astype(int)
+    else:
+        df = None
+
     config.logger.info('writing results to database')
-    return results.success, results.sources, meta_data
+    return results.success, df, meta_data
 
 
 if __name__=='__main__':

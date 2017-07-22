@@ -2,8 +2,7 @@
 Data wrangler for the hugs database
 """
 
-from .tables import Run, Tract, Patch
-from .tables import Source, AperturePhotometry, CircularAperture
+from .tables import Run, Tract, Patch, Source
 from .connect import connect, Session
 
 __all__ = ['start_session', 'Wrangler']

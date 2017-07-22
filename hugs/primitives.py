@@ -8,6 +8,7 @@ import numpy as np
 import lsst.afw.detection as afwDet
 from . import utils
 from . import sextractor
+dustmap = utils.get_dust_map()
 
 __all__ = [
     'image_threshold', 
@@ -191,19 +192,7 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
     if len(cat)>0:
 
         #########################################################
-        # change mag param names and add SB within each aperture
-        #########################################################
-
-        if 'MAG_APER' in cat.colnames:
-            cat.rename_column('MAG_APER', 'MAG_APER_0')
-            cat.rename_column('MAGERR_APER', 'MAGERR_APER_0')
-            for i, diam in enumerate(sex_config['PHOT_APERTURES'].split(',')):
-                r = utils.pixscale*float(diam)/2 # arcsec
-                sb = cat['MAG_APER_'+str(i)] + 2.5*np.log10(np.pi*r**2)
-                cat['mu_aper_'+str(i)] = sb
-      
-        #########################################################
-        # add band to non-position and shape parameter names
+        # only save positions from the primary detection band
         #########################################################
 
         detect_band_only = [
@@ -212,22 +201,42 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
             'ELLIPTICITY', 'KRON_RADIUS'
         ]
 
-        for name in cat.colnames:
-            if name not in detect_band_only: 
-                cat.rename_column(name, name+'({})'.format(meas_band))
-
-        #########################################################
-        # only save positions from the primary detection band
-        #########################################################
+        ebv = dustmap.ebv(cat['ALPHA_J2000'], cat['DELTA_J2000'])
 
         if meas_band==detect_band:
             x0, y0 = exp.getXY0()
-            cat['x_img'] = cat['X_IMAGE'] - 1
-            cat['y_img'] = cat['Y_IMAGE'] - 1
-            cat['x_hsc'] = cat['X_IMAGE'] + x0 - 1
-            cat['y_hsc'] = cat['Y_IMAGE'] + y0 - 1
+            cat['X_IMAGE'] -= 1
+            cat['Y_IMAGE'] -= 1
+            cat['X_HSC'] = cat['X_IMAGE'] + x0 
+            cat['Y_HSC'] = cat['Y_IMAGE'] + y0 
+            detect_band_only.append('X_HSC')
+            detect_band_only.append('Y_HSC')
         else:
             cat.remove_columns(detect_band_only)
+
+        #########################################################
+        # rename columns, change units of flux_radius and 
+        # fwhm_image to arcsec, add extinction params
+        #########################################################
+
+        cat.rename_column('MAG_APER', 'MAG_APER_0')
+        cat.rename_column('MAGERR_APER', 'MAGERR_APER_0')
+        for i, diam in enumerate(sex_config['PHOT_APERTURES'].split(',')):
+            cat.rename_column('MAG_APER_'+str(i), 'mag_ap'+str(i))
+            cat.rename_column('MAGERR_APER_'+str(i), 'magerr_ap'+str(i))
+        cat['FLUX_RADIUS'] = cat['FLUX_RADIUS']*utils.pixscale
+        cat['FWHM_IMAGE'] = cat['FWHM_IMAGE']*utils.pixscale
+        cat.rename_column('FWHM_IMAGE', 'FWHM')
+        for name in cat.colnames:
+            if name not in detect_band_only: 
+                cat.rename_column(name, name.lower()+'_'+meas_band)
+            else:
+                cat.rename_column(name, name.lower())
+        if meas_band==detect_band:
+            cat.rename_column('alpha_j2000', 'ra')
+            cat.rename_column('delta_j2000', 'dec')
+            cat['ebv'] = ebv
+        cat['A_'+meas_band] = ebv*getattr(utils.ext_coeff, meas_band)
 
     #########################################################
     # delete files created by and for sextractor
