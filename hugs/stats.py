@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
 
-from lsst.afw.image import MaskU
+from lsst.afw.image import Mask
 import lsst.afw.math as afwMath
 import lsst.pex.config as pexConfig
 import lsst.pipe.base as pipeBase
