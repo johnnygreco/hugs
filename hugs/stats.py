@@ -40,7 +40,7 @@ class SigmaClippedTask(pipeBase.Task):
 
     def __init__(self, *args, **kwargs):
         pipeBase.Task.__init__(self, *args, **kwargs)
-        self._badPixelMask = MaskU.getPlaneBitMask(self.config.badMaskPlanes)
+        self._badPixelMask = Mask.getPlaneBitMask(self.config.badMaskPlanes)
         self._statsControl = afwMath.StatisticsControl()
         self._statsControl.setNumSigmaClip(self.config.numSigmaClip)
         self._statsControl.setNumIter(self.config.numIter)
