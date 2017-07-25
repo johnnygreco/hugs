@@ -12,7 +12,10 @@ DB_FN = '/tigress/jgreco/hugs-dbs/20170709-173431/hsc-wide-patches-safe.db'
 parser = ArgumentParser()
 parser.add_argument('out_fn', type=str)
 parser.add_argument('--db-fn', dest='db_fn', type=str, default=DB_FN)
-parser.add_argument('--size-cut', dest='size_cut', type=float, default=2.5)
+parser.add_argument('--size-cut-low', dest='size_cut_low', 
+                    type=float, default=2.5)
+parser.add_argument('--size-cut-high', dest='size_cut_high', 
+                    type=float, default=20.0)
 parser.add_argument('--do-color-cut', dest='do_color_cut', action='store_true')
 args = parser.parse_args()
 
@@ -30,13 +33,16 @@ if args.do_color_cut:
     gi = Source.mag_ap6_g - Source.mag_ap6_i - Source.A_g + Source.A_i
     gr = Source.mag_ap6_g - Source.mag_ap6_r - Source.A_g + Source.A_r
     query = session.query(Source)\
-        .filter(Source.flux_radius_i > args.size_cut)\
+        .filter(Source.flux_radius_i > args.size_cut_low)\
+        .filter(Source.flux_radius_i < args.size_cut_high)\
         .filter(gi > -0.1)\
         .filter(gi < 1.4)\
         .filter(color_line_lo(gi) < gr)\
         .filter(color_line_hi(gi) > gr)
 else:
-    query = session.query(Source).filter(Source.flux_radius_i > args.size_cut)
+    query = session.query(Source)\
+        .filter(Source.flux_radius_i > args.size_cut_low)\
+        .filter(Source.flux_radius_i < args.size_cut_high)
 
 print('converting query to pandas dataframe')
 df = pd.read_sql(query.statement, engine)
