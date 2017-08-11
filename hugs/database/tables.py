@@ -48,6 +48,9 @@ class Patch(Base):
     cleaned_frac = Column(Float, nullable=True)
     bright_obj_frac = Column(Float, nullable=True)
 
+    # TODO
+    # add number of detected sources column
+
     # Relationships
     tract_id = Column(Integer, ForeignKey('tract.id'), nullable=False)
     tract = relationship('Tract')
