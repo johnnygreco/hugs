@@ -6,7 +6,7 @@ from skyrandoms import SkyRandomsDatabase
 import lsst.afw.geom
 
 __all__ = ['get_mask_array', 'find_randoms_in_footprint']
-DEFAULT_PLANES = ['CLEANED', 'BRIGHT_OBJECT', 'BLEND', 'NO_DATA']
+DEFAULT_PLANES = ['CLEANED', 'BRIGHT_OBJECT', 'NO_DATA']
 
 def get_mask_array(exp, planes=DEFAULT_PLANES):
     mask = exp.getMaskedImage().getMask()

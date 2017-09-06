@@ -16,7 +16,6 @@ from . import pipeline
 from . import database
 from .synths import SynthFactory
 from .stats import get_clipped_sig_task
-from .viewer import Viewer
 from .config import PipeConfig
 from .utils import pixscale
 from .primitives import *

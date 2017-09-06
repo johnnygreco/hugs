@@ -220,8 +220,8 @@ def remove_mask_planes(mask, planes):
         Planes to clear
     """
     for plane in planes:
-	if plane in list(mask.getMaskPlaneDict().keys()):
-	    mask.removeAndClearMaskPlane(plane, True)
+        if plane in list(mask.getMaskPlaneDict().keys()):
+            mask.removeAndClearMaskPlane(plane, True)
 
 
 def check_random_state(seed):

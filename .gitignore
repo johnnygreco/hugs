@@ -100,3 +100,5 @@ easy-install.pth
 *.egg-link
 site.py
 **/.nfs*
+
+randoms

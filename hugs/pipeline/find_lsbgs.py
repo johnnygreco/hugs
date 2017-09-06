@@ -24,8 +24,13 @@ def run(cfg):
 
     Returns
     -------
-    results : astropy.table.Table 
-        Source catalog.
+    results : lsst.pipe.base.Struct
+        Object containing results:
+        results.all_detections : catalog of all detections
+        results.sources : catalog of sources we are keeping
+        results.exp : exposure object for this run
+        results.exp_clean : cleaned exposure object for this run
+        results.success : boolean flag of run status 
     """
 
     assert cfg.tract and cfg.patch, 'No patch id given!'
