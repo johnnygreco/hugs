@@ -1,8 +1,6 @@
 from __future__ import division, print_function
 
 import numpy as np
-import lsstutils
-from skyrandoms import SkyRandomsDatabase
 import lsst.afw.geom
 
 __all__ = ['get_mask_array', 'find_randoms_in_footprint']
@@ -38,6 +36,8 @@ def find_randoms_in_footprint(db_fn, exp, return_db=True):
     db : SkyRandomsDatabase, it return_db=True
         Database manager. 
     """
+    import lsstutils
+    from skyrandoms import SkyRandomsDatabase
 
     # load randoms database
     db = SkyRandomsDatabase(db_fn)

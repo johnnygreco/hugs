@@ -9,7 +9,6 @@ from .. import imtools
 from .. import primitives as prim
 from ..cattools import xmatch
 from ..randoms import get_mask_array
-import lsstutils
 
 __all__ = ['run']
 
@@ -28,7 +27,7 @@ def run(cfg):
     mask_array : ndarray
         The mask array.
     """
-
+    import lsstutils
     assert cfg.tract and cfg.patch, 'No patch id given!'
     cfg.timer # start timer
 

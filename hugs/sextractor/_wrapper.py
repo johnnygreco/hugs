@@ -17,34 +17,13 @@ class Wrapper(object):
     Parameters
     ----------
     config : dict, optional
-        Default config parameters that will remain fixed 
-        within this SexWrapper instance.
-    params : list, optional
-        List of catalog parameters to save. Will be appended to 
-        default params.
-    sexin: string, optional
-        The input sextractor directory. Input images must
-        be within this directory. If 'default', the directory
-        structure is assumed to be SEX_IO_DIR/sexin.
-    sexout: string, optional
-        The input sextractor directory. Output files will
-        be written to this directory, which will be created
-        if it doesn't exist. If 'default', the directory structure 
-        is assumed to be SEX_IO_DIR/sexout.
-    configdir: string, optional
-        Directory containing sextractor's config files. If 
-        'default', set to the SEX_CONFIG_DIR env variable.
-    relpath : string, optional
-        Relative path from within the sexin and sexout directories. 
-        This param is a bit pointless if you provide custom 
-        paths for sexin and sexout. 
+        sextractor config parameters 
+    io_dir : str, optional
+        sextractor input/output directory
 
     Notes
     -----
-     i) DEFAULT_CONFIG is for configuration settings that 
-        are different from sextractor's default but rarely ever change. 
-        These parameters are overridden if given in the config dict. 
-    ii) This wrapper was written for SExtractor version 2.19.5.
+        This wrapper was written for SExtractor version 2.19.5.
     """
     
     def __init__(self, config={}, io_dir=''):
@@ -137,8 +116,6 @@ class Wrapper(object):
         ----------
         fn : string, optional
             Config file name. 
-        use_outdir : bool, optional
-            If True, save file in the current outdir.
         """
         fn = op.join(self._io_dir, fn) 
         out = open(fn, 'w')
@@ -155,18 +132,8 @@ class Wrapper(object):
         img_fn : string, optional
             Image file name. The images must be in sexin/{relpath} directory, which 
             was defined upon instantiation. 
-        configfile : string, optional
-            Sextractor configure file name. Must be in the current config 
-            directory. All config params set in this instance will override 
-            settings in this file. 
-        cat : string, optional
-            Catalog name. Will be written to sexout/{relpath} directory.
-
-        Notes
-        -----
-         i) All the sextractor configuration files must be in the config directory. 
-        ii) Input files are assumed to be in sexin/{relpath}, and output files will
-            be saved to sexout/{relpath}, which wilself._io_dir,l be created if it doesn't exist. 
+        cat_fn : string, optional
+            Catalog name. 
         """
 
         cat_fn = cat_fn if cat_fn else self.get_io_dir('sex.cat') 
