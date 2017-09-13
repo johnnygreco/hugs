@@ -10,6 +10,7 @@ This repository contains a low-surface-brightness galaxy detection pipeline for 
 - [LSST Science Pipelines](https://pipelines.lsst.io/install/conda.html) (for image processing)
 - [SExtractor](https://www.astromatic.net/software/sextractor) version 2.19.5 (for source detection)
 - [sqlalchemy](https://www.sqlalchemy.org) (for pipeline database)
+- [schwimmbad](http://johnnygreco.github.io://github.com/adrn/schwimmbad) (for parallel processing)
 - [sfdmap](http://github.com/kbarbary/sfdmap) (for extinction corrections)
 
 ## Using hugs
@@ -31,7 +32,7 @@ The pipeline parameters are given in a yaml configuration file. The default conf
 
 The pipeline builds a catalog as a sqlite database using [sqlalchemy](https://www.sqlalchemy.org). The database will be created within the `hugs_io` directory, which is specified in the config file. The database model file is [here](https://github.com/johnnygreco/hugs/blob/master/hugs/database/tables.py).
 
-The pipeline can be run in parallel mode using [schwimmbad](https://github.com/adrn/schwimmbad) via the `--mpi` (for mpi) or `--ncores` (for multiprocessing) arguments.
+The pipeline can be run in parallel mode using the `--mpi` (for mpi) or `--ncores` (for multiprocessing) arguments.
 
 ### For everyone
 If you are working with HSC-SSP images, the [LSST stack](https://pipelines.lsst.io/install/conda.html) provides an extremely useful suite of image processing tools. *hugs* uses the LSST codebase to "clean" images (i.e., remove bright sources and their associated diffuse light) and *SExtractor* to extract sources. For an example of how to use *hugs* on public HSC images, check out [this notebook](https://github.com/johnnygreco/hugs/blob/master/notebooks/hugs-demo.ipynb).
