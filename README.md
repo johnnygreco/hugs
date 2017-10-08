@@ -1,4 +1,5 @@
 # Hunt for Ultra-LSB Galaxies (hugs) 
+[![DOI](https://zenodo.org/badge/70418908.svg)](https://zenodo.org/badge/latestdoi/70418908)
 
 This repository contains a low-surface-brightness galaxy detection pipeline for the [Hyper Suprime-Cam Subaru Strategic Program (HSC-SSP)](http://hsc.mtk.nao.ac.jp/ssp/). As described in [this paper](https://arxiv.org/abs/1709.04474), *hugs* was used to discover ~800 low-surface-brightness galaxies within the first ~200 square degrees of the HSC-SSP. 
 
