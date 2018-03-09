@@ -22,7 +22,8 @@ class HugsExposure(object):
         HSC data butler
     """
 
-    def __init__(self, tract, patch, bands='gri', butler=None):
+    def __init__(self, tract, patch, bands='gri', butler=None, 
+                 coadd_label='deepCoadd_calexp'):
         self.tract = tract
         self.patch = patch
         self._butler = butler
@@ -32,8 +33,7 @@ class HugsExposure(object):
             data_id = {'tract': tract, 
                        'patch': patch, 
                        'filter': 'HSC-'+band.upper()}
-            exp = self.butler.get(
-                'deepCoadd_calexp_hsc', data_id, immediate=True)
+            exp = self.butler.get(coadd_label, data_id, immediate=True)
             setattr(self, band.lower(), exp)
 
         self.x0, self.y0 = self.i.getXY0()
