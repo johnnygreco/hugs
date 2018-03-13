@@ -37,14 +37,14 @@ class PipeConfig(object):
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
                  log_level='info', log_fn=None, random_state=None, 
-                 run_name='hugs'):
+                 run_name='hugs', rerun_path=None):
 
         # read parameter file & setup param dicts
         self.config_fn = config_fn if config_fn else utils.default_config_fn
         with open(self.config_fn, 'r') as f:
             params = yaml.load(f)
 
-        self.data_dir = params['data_dir']
+        self.data_dir = rerun_path if rerun_path else params['data_dir'] 
         self.hugs_io = params['hugs_io']
 
         self._thresh_low = params['thresh_low']

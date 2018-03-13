@@ -43,7 +43,8 @@ def worker(p):
     config = hugs.PipeConfig(run_name=p['run_name'], 
                              config_fn=p['config_fn'],
                              log_fn=p['log_fn'],
-                             random_state=seed)
+                             random_state=seed, 
+                             rerun_path=p['rerun_path'])
     config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     
@@ -89,6 +90,7 @@ if __name__=='__main__':
     parser.add_argument('--patches_fn', help='patches file')
     parser.add_argument('-r', '--run_name', type=str, default='hugs-pipe-run')
     parser.add_argument('--seed', help='rng seed', default=None)
+    parser.add_argument('--rerun_path', help='full rerun path', default=None)
     parser.add_argument('--overwrite', type=bool, 
                         help='overwrite database', default=True)
     group = parser.add_mutually_exclusive_group()
@@ -141,6 +143,7 @@ if __name__=='__main__':
         parser.print_help()
         exit()
 
+    patches['rerun_path'] = args.rerun_path
     patches['seed'] = args.seed
     patches['config_fn'] = args.config_fn
     patches['run_name'] = args.run_name
