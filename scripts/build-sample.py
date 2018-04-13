@@ -17,6 +17,7 @@ parser.add_argument('--size-cut-low', dest='size_cut_low',
 parser.add_argument('--size-cut-high', dest='size_cut_high', 
                     type=float, default=20.0)
 parser.add_argument('--do-color-cut', dest='do_color_cut', action='store_true')
+parser.add_argument('--no-extinction', dest='no_ext', action='store_true')
 args = parser.parse_args()
 
 print('connecting to hugs database')
@@ -27,11 +28,14 @@ print('counting total sources')
 num_sources = session.query(Source).count()
 
 if args.do_color_cut:
+    print('applying color and size cuts')
     m, b = 0.7, 0.4
     color_line_lo =  lambda _x: m*_x - b
     color_line_hi =  lambda _x: m*_x + b
-    gi = Source.mag_ap6_g - Source.mag_ap6_i - Source.A_g + Source.A_i
-    gr = Source.mag_ap6_g - Source.mag_ap6_r - Source.A_g + Source.A_r
+    A_gi = 0.0 if args.no_ext else (Source.A_g - Source.A_i)
+    A_gr = 0.0 if args.no_ext else (Source.A_g - Source.A_r)
+    gi = Source.mag_ap6_g - Source.mag_ap6_i - A_gi
+    gr = Source.mag_ap6_g - Source.mag_ap6_r - A_gr
     query = session.query(Source)\
         .filter(Source.flux_radius_i > args.size_cut_low)\
         .filter(Source.flux_radius_i < args.size_cut_high)\
@@ -40,6 +44,7 @@ if args.do_color_cut:
         .filter(color_line_lo(gi) < gr)\
         .filter(color_line_hi(gi) > gr)
 else:
+    print('applying size cut')
     query = session.query(Source)\
         .filter(Source.flux_radius_i > args.size_cut_low)\
         .filter(Source.flux_radius_i < args.size_cut_high)
