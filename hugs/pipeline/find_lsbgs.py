@@ -94,7 +94,8 @@ def run(cfg):
         dual_exp = None if band==cfg.band_detect else cfg.exp[band]
         sources_band = prim.detect_sources(
             exp_clean, cfg.sex_config, cfg.sex_io_dir, label=label, 
-            dual_exp=dual_exp, delete_created_files=cfg.delete_created_files) 
+            dual_exp=dual_exp, delete_created_files=cfg.delete_created_files, 
+            original_fn=cfg.exp.fn[cfg.band_detect]) 
         if len(sources_band)>0:
             sources = hstack([sources, sources_band])
         else:
@@ -112,7 +113,8 @@ def run(cfg):
         cfg.logger.info('verifying dection in {}-band'.format(band))
         sources_verify = prim.detect_sources(
             cfg.exp[band], cfg.sex_config, cfg.sex_io_dir,
-            label=label, delete_created_files=cfg.delete_created_files)
+            label=label, delete_created_files=cfg.delete_created_files, 
+            original_fn=cfg.exp.fn[band])
         if len(sources_verify)>0:
             match_masks, _ = xmatch(
                 sources, sources_verify, max_sep=cfg.verify_max_sep)

@@ -28,6 +28,7 @@ class HugsExposure(object):
         self.patch = patch
         self._butler = butler
         self.bands = bands
+        self.fn = {}
 
         for band in bands:
             data_id = {'tract': tract, 
@@ -35,6 +36,9 @@ class HugsExposure(object):
                        'filter': 'HSC-'+band.upper()}
             exp = self.butler.get(coadd_label, data_id, immediate=True)
             setattr(self, band.lower(), exp)
+            fn = self.butler.get(
+                coadd_label+'_filename', data_id, immediate=True)[0]
+            self.fn[band] = fn
 
         self.x0, self.y0 = self.i.getXY0()
         self.patch_meta = Struct(

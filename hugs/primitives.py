@@ -8,6 +8,7 @@ import numpy as np
 import lsst.afw.detection as afwDet
 from . import utils
 from . import sextractor
+from astropy.io import fits
 dustmap = utils.get_dust_map()
 
 __all__ = [
@@ -131,7 +132,8 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
 
 
 def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None, 
-                   delete_created_files=True, label='hugs'):
+                   delete_created_files=True, label='hugs',
+                   original_fn=None):
     """
     Source detection using SExtractor.
 
@@ -166,13 +168,27 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
     # some bands have numbers --> get the relevant letter
     detect_band = [b for b in detect_band if b in 'gri'][0] 
     exp_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, detect_band))
-    exp.writeFits(exp_fn)
+
+    # HACK: work around strange new bug related to SEXtractor
+    if original_fn is None:
+        exp.writeFits(exp_fn)
+    else:
+        header = fits.getheader(original_fn, ext=1)
+        fits.writeto(exp_fn, exp.getImage().getArray(), header, overwrite=True)
 
     if dual_exp is not None:
         meas_band = dual_exp.getFilter().getName().lower()
         meas_band = [b for b in meas_band if b in 'gri'][0]
         dual_fn = sw.get_io_dir('exp-{}-{}.fits'.format(label, meas_band))
-        dual_exp.writeFits(dual_fn)
+
+        # HACK: work around strange new bug related to SEXtractor
+        if original_fn is None:
+            dual_exp.writeFits(dual_fn)
+        else:
+            fn = original_fn.replace('HSC-'+detect_band.upper(), 'HSC-'+meas_band.upper())
+            header = fits.getheader(fn, ext=1)
+            fits.writeto(dual_fn, dual_exp.getImage().getArray(), header, overwrite=True)
+
         run_fn = exp_fn+'[1],'+dual_fn+'[1]'
         cat_label = 'sex-{}-{}-{}'.format(label, detect_band, meas_band)
     else:
