@@ -26,7 +26,7 @@ def ingest_data(args):
         db_ingest.add_tract(tract)
         db_ingest.add_patch(patch, patch_meta)
     delta_time = time() - timer
-    print('time to ingest =', delta_time)
+    #print('time to ingest =', delta_time)
 
 
 def worker(p):
