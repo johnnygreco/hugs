@@ -7,11 +7,10 @@ from argparse import ArgumentParser
 import pandas as pd
 import hugs
 from hugs.database.tables import Source
-DB_FN = '/tigress/jgreco/hugs-dbs/20170709-173431/hsc-wide-patches-safe.db'
 
 parser = ArgumentParser()
 parser.add_argument('out_fn', type=str)
-parser.add_argument('--db-fn', dest='db_fn', type=str, default=DB_FN)
+parser.add_argument('--db-fn', dest='db_fn', type=str, required=True)
 parser.add_argument('--size-cut-low', dest='size_cut_low', 
                     type=float, default=2.5)
 parser.add_argument('--size-cut-high', dest='size_cut_high', 
