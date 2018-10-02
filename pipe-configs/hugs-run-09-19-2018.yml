@@ -4,6 +4,8 @@
 
 data_dir: '/tigress/HSC/DR/s18a_wide'
 hugs_io: '/scratch/gpfs/jgreco/hugs-io'
+ 
+min_good_data_frac: 0.5
 
 band_detect: 'i'
 

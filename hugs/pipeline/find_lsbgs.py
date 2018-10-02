@@ -43,7 +43,7 @@ def run(cfg):
     mi = cfg.exp[cfg.band_detect].getMaskedImage()
     mask = mi.getMask()
 
-    if cfg.exp.patch_meta.good_data_frac < 0.2:
+    if cfg.exp.patch_meta.good_data_frac < cfg.min_good_data_frac:
         cfg.logger.warning('***** not enough data!!! ****')
         results = _null_return(cfg)
         return results

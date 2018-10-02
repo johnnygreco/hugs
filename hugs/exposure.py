@@ -85,12 +85,14 @@ class HugsExposure(object):
                 arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
         return arr
 
-    def good_data_fraction(self, band='i'):
+    def good_data_fraction(self, band='i', bad_masks=['NO_DATA', 'SUSPECT']):
         """
         Find the fraction of pixels that contain data.
         """
         mask = self[band].getMask()
-        nodata = mask.getArray() & mask.getPlaneBitMask('NO_DATA') != 0
+        nodata = np.zeros_like(mask.getArray(), dtype=bool)
+        for m in bad_masks:
+            nodata |= mask.getArray() & mask.getPlaneBitMask(m) != 0
         nodata = nodata.astype(float)
         no_data_frac = nodata.sum()/nodata.size
         return 1.0 - no_data_frac

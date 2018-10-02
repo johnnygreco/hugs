@@ -46,6 +46,7 @@ class PipeConfig(object):
 
         self.data_dir = rerun_path if rerun_path else params['data_dir'] 
         self.hugs_io = params['hugs_io']
+        self.min_good_data_frac = params['min_good_data_frac']
 
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
