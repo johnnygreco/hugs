@@ -118,8 +118,12 @@ class PipeConfig(object):
         """
 
         if self._butler is None:
-            import lsst.daf.persistence
-            self._butler = lsst.daf.persistence.Butler(self.data_dir)
+            if '/Users/jgreco' in self.data_dir:
+                from .mybutler import PersonalButler
+                self._butler = PersonalButler(self.data_dir)
+            else:
+                import lsst.daf.persistence
+                self._butler = lsst.daf.persistence.Butler(self.data_dir)
         return self._butler
 
     @property
