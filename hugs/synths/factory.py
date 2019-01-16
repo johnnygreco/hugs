@@ -2,6 +2,7 @@ from __future__ import division, print_function
 
 import numpy as np
 import pandas as pd
+from scipy.signal import fftconvolve
 from scipy.special import gammaincinv
 from .sersic import Sersic
 from ..utils import pixscale, zpt, check_random_state
@@ -209,13 +210,13 @@ class SynthFactory(object):
             self.write_cat(cat_fn)
         return image
 
-    def inject(self, exp, set_mask=True, **kwargs):
+    def inject(self, exp, set_mask=True, psf_convolve=True, **kwargs):
         """
         Inject synths into exposure. 
 
         Parameters
         ----------
-        exp : lsst.afw.image.ExposureF or ndarray
+        exp : lsst.afw.image.ExposureF 
             Exposure object.
         set_mask : bool, optional
             If True, set SYNTH bit mask plane.
@@ -227,25 +228,28 @@ class SynthFactory(object):
         import lsst.afw.geom
 
         assert self._psets is not None, 'must set galaxy param sets'
+        assert type(exp)==lsst.afw.image.ExposureF
 
-        if type(exp)==lsst.afw.image.imageLib.ExposureF:
-            mi = exp.getMaskedImage()
-            img = mi.getImage()
-            mask = mi.getMask()
-            img_arr = img.getArray()
-            if set_mask:
-                mask.addMaskPlane('SYNTH')
-                for index, pset in self._psets.iterrows():
-                    center = lsst.afw.geom.Point2I(int(pset['X0']), 
-                                                   int(pset['Y0']))
-                    bbox = lsst.afw.geom.Box2I(center, center)
-                    bbox.grow(20)
-                    bbox.clip(exp.getBBox(lsst.afw.image.LOCAL))
-                    cutout = mask.Factory(mask, bbox, lsst.afw.image.LOCAL)
-                    cutout.getArray()[:] += mask.getPlaneBitMask('SYNTH')
-        else:
-            img_arr = exp
+        mi = exp.getMaskedImage()
+        img = mi.getImage()
+        mask = mi.getMask()
+        img_arr = img.getArray()
+        if set_mask:
+            mask.addMaskPlane('SYNTH')
+            for index, pset in self._psets.iterrows():
+                center = lsst.afw.geom.Point2I(int(pset['X0']), 
+                                               int(pset['Y0']))
+                bbox = lsst.afw.geom.Box2I(center, center)
+                bbox.grow(20)
+                bbox.clip(exp.getBBox(lsst.afw.image.LOCAL))
+                cutout = mask.Factory(mask, bbox, lsst.afw.image.LOCAL)
+                cutout.getArray()[:] += mask.getPlaneBitMask('SYNTH')
 
         # embed synthetics
         synths =  self.create_image(img_arr.shape, **kwargs)
+
+        if psf_convolve:
+            psf = exp.getPsf().computeKernelImage().getArray()
+            synths = fftconvolve(synths, psf, 'same')
+
         img_arr[:] += synths
