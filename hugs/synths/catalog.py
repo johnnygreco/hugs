@@ -200,7 +200,7 @@ def build_catalog_survey(density, ra_lim_list, dec_lim_list, mu_range,
 
 class SynthCat(object):
     """
-    A class to for the synthetic catalog with a KDTree attribute to allow 
+    A class for synthetic catalogs with a KDTree attribute to allow 
     for super fast queries. 
     """
     
