@@ -15,7 +15,6 @@ from . import sextractor
 from . import pipeline
 from . import database
 from .mybutler import PersonalButler
-from .synths import SynthFactory
 from .stats import get_clipped_sig_task
 from .config import PipeConfig
 from .utils import pixscale

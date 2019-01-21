@@ -114,13 +114,18 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
         cat['mu_e_ave_r'] = mu_e_ave + g_i - g_r
     else:
         raise Exception('master_band must be g or i')
+
+    cat = Table(cat)
    
     cat['theta'] = theta
-    cat['r_eff'] = r_eff
+    cat['PA'] = theta - 90
+    cat['r_e'] = r_eff
     cat['ell'] = 1 - b_a 
     cat['n'] = sersic_n
+    cat['g-i'] = g_i
+    cat['g-r'] = g_r
 
-    return Table(cat)
+    return cat
 
 
 def build_catalog_field(min_sep=None, **kwargs):
@@ -229,6 +234,37 @@ class SynthCat(object):
             count_only=False, return_distance=False)[0]
         return self.cat[idx]
 
-    def set_injected(synth_ids):
+    def get_exp_synths(self, exp, search_radius=720):
+        """
+        Get synths in that fall within the given exposure.
+        """
+
+        wcs = exp.getWcs()
+        xc, yc =  exp.getDimensions()//2 +  exp.getXY0()
+        coord = wcs.pixelToSky(lsst.afw.geom.Point2D(xc, yc))
+        ra_c, dec_c = coord.getRa().asDegrees(), coord.getDec().asDegrees()
+        cat = self.query_radius(ra_c, dec_c, search_radius).copy()
+        
+        mask = np.zeros(len(cat), dtype=bool)
+        cat['X0'] = -1
+        cat['Y0'] = -1
+        
+        for i, src in enumerate(cat):
+            sky_coord = lsst.afw.geom.SpherePoint(
+                src['ra'] * lsst.afw.geom.degrees, 
+                src['dec'] * lsst.afw.geom.degrees)
+            xy_coord = wcs.skyToPixel(sky_coord)
+            if exp.getBBox().contains(lsst.afw.geom.Point2I(xy_coord)):
+                mask[i] = True
+                x0, y0 = xy_coord - exp.getXY0()
+                cat[i]['X0'] = x0
+                cat[i]['Y0'] = y0
+
+        cat = cat[mask]
+        self.set_injected(cat['synth_id'])
+        
+        return cat
+
+    def set_injected(self, synth_ids):
         idx = np.asarray(synth_ids) - 1
         self.cat['injected'][idx] = True
