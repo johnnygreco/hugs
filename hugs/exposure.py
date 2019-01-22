@@ -4,6 +4,7 @@ import os
 import numpy as np
 import lsst.daf.persistence
 from lsst.pipe.base import Struct
+from .synths import inject_synths
 
 class HugsExposure(object):
     """
@@ -29,6 +30,7 @@ class HugsExposure(object):
         self._butler = butler
         self.bands = bands
         self.fn = {}
+        self.stat = {}
 
         for band in bands:
             data_id = {'tract': tract, 
@@ -96,3 +98,24 @@ class HugsExposure(object):
         nodata = nodata.astype(float)
         no_data_frac = nodata.sum()/nodata.size
         return 1.0 - no_data_frac
+
+    def make_rgb(self, rgb_bands='irg', stretch=0.4, Q=8):
+        from astropy.visualization import make_lupton_rgb
+        rgb = make_lupton_rgb(self[rgb_bands[0]].getImage().getArray(), 
+                              self[rgb_bands[1]].getImage().getArray(), 
+                              self[rgb_bands[2]].getImage().getArray(), 
+                              stretch=stretch, Q=Q)
+        return rgb
+
+
+class SynthHugsExposure(HugsExposure):
+
+    def __init__(self, synth_cat, tract, patch, bands='gri', butler=None, 
+                 coadd_label='deepCoadd_calexp'):
+
+        super(SynthHugsExposure, self).__init__(
+            tract, patch, bands, butler, coadd_label)
+        self.synths = synth_cat.get_exp_synths(self[bands[0]])
+
+        for b in bands:
+            inject_synths(self.synths, exp=self[b], band=b)

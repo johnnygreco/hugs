@@ -59,6 +59,21 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
                       g_i=0.6, g_r=0.4, **kwargs):
     """
     Generate catalog of Sersic galaxies.
+    
+
+    Notes
+    -----
+    full sample:
+    median g-i = 0.64
+    median g-r = 0.43
+
+    reds:
+    median g-i = 0.82
+    median g-r = 0.56
+
+    blues:
+    median g-i = 0.47
+    median g-r = 0.32
     """
 
     size = int(nsynths)
@@ -209,10 +224,12 @@ class SynthCat(object):
     for super fast queries. 
     """
     
-    def __init__(self, catalog=None, cat_params={'nsynths':100}):
+    def __init__(self, cat_fn=None, catalog=None, cat_params={'nsynths':100}):
         from sklearn.neighbors import KDTree
 
-        if catalog is not None:
+        if cat_fn is not None:
+            self.cat = Table.read(cat_fn)
+        elif catalog is not None:
             self.cat = catalog
         else:
             self.cat = build_synthetic_galaxy_catalog(**cat_params)
@@ -268,3 +285,6 @@ class SynthCat(object):
     def set_injected(self, synth_ids):
         idx = np.asarray(synth_ids) - 1
         self.cat['injected'][idx] = True
+
+    def write(self, fn):
+        self.cat.write(fn, overwrite=True)

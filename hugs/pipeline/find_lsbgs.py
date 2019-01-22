@@ -4,6 +4,8 @@ import os
 import numpy as np
 from astropy.table import Table, hstack
 from lsst.pipe.base import Struct
+from ..stats import get_clipped_sig_task
+from ..utils import pixscale, zpt
 from .. import utils
 from .. import imtools
 from .. import primitives as prim
@@ -11,7 +13,7 @@ from ..cattools import xmatch
 
 __all__ = ['run']
 
-def run(cfg):
+def run(cfg, reset_mask_planes=True):
     """
     Run hugs pipeline using SExtractor for the final detection 
     and photometry.
@@ -42,6 +44,7 @@ def run(cfg):
 
     mi = cfg.exp[cfg.band_detect].getMaskedImage()
     mask = mi.getMask()
+    stat_task = get_clipped_sig_task()
 
     if cfg.exp.patch_meta.good_data_frac < cfg.min_good_data_frac:
         cfg.logger.warning('***** not enough data!!! ****')
@@ -53,15 +56,20 @@ def run(cfg):
     # cases, the image is smoothed at the psf scale.
     ############################################################
         
-    mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
+    #mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
+    stats = stat_task.run(mi)
+    flux_th = 10**(0.4 * (zpt - cfg.thresh_low['thresh'])) * pixscale**2
+    cfg.thresh_low['thresh'] = flux_th / stats.stdev    
     cfg.logger.info('performing low threshold at '
-                    '{} sigma'.format(cfg.thresh_low['thresh']))
+                    '{:.2f} sigma'.format(cfg.thresh_low['thresh']))
     fpset_low = prim.image_threshold(
-        mi_smooth, mask=mask, plane_name='THRESH_LOW', **cfg.thresh_low)
+        mi, mask=mask, plane_name='THRESH_LOW', **cfg.thresh_low)
+    flux_th = 10**(0.4 * (zpt - cfg.thresh_high['thresh'])) * pixscale**2
+    cfg.thresh_high['thresh'] = flux_th / stats.stdev    
     cfg.logger.info('performing high threshold at '
-                    '{} sigma'.format(cfg.thresh_high['thresh']))
+                    '{:.2f} sigma'.format(cfg.thresh_high['thresh']))
     fpset_high = prim.image_threshold(
-        mi_smooth, mask=mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
+        mi, mask=mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
 
     ############################################################
     # Get "cleaned" image, with noise replacement
@@ -142,7 +150,9 @@ def run(cfg):
                      exp_clean=exp_clean,
                      success=True)
 
-    cfg.reset_mask_planes()
+    if reset_mask_planes:
+        cfg.reset_mask_planes()
+
     return results
 
 

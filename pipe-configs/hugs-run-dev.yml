@@ -14,15 +14,15 @@ band_verify: 'g'
 band_meas: 'gr'  # band_detect always included
 
 thresh_low:
-    thresh: 3.0
+    thresh: 25 # mag/arcsec^2 
     npix: 20
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
 
 thresh_high:
-    thresh: 28.0
-    npix: 1
+    thresh: 22 # mag/arcsec^2
+    npix: 4
     n_sig_grow: 2.4
     isogrow: False
     thresh_type: stdev
@@ -49,3 +49,10 @@ sextractor:
     delete_created_files: True
     sex_io_dir: '/Users/jgreco/local-io/sextractor-io'
     verify_max_sep: 15  # pixels
+
+####################################################
+# Synths
+####################################################
+
+inject_synths: True
+synth_cat_fn: '/Users/jgreco/local-io/hugs-io/synth-cat.fits'

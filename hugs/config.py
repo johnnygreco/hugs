@@ -6,7 +6,8 @@ import yaml
 import numpy as np
 import time
 from . import utils
-from .exposure import HugsExposure
+from .exposure import HugsExposure, SynthHugsExposure
+from .synths.catalog import SynthCat
 try: import coloredlogs
 except ImportError: pass
 
@@ -47,6 +48,9 @@ class PipeConfig(object):
         self.data_dir = rerun_path if rerun_path else params['data_dir'] 
         self.hugs_io = params['hugs_io']
         self.min_good_data_frac = params['min_good_data_frac']
+        self.inject_synths = params['inject_synths']
+        if self.inject_synths:
+            self.synth_cat_fn = params['synth_cat_fn']
 
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
@@ -174,7 +178,14 @@ class PipeConfig(object):
         # get exposures
         bands = self.band_detect + self.band_verify + self.band_meas
         self.bands = ''.join(set(bands))
-        self.exp = HugsExposure(tract, patch, self.bands, self.butler)
+
+        if self.inject_synths:
+            self.logger.warn('injecting synthetic galaxies')
+            synth_cat = SynthCat(cat_fn=self.synth_cat_fn)
+            self.exp = SynthHugsExposure(synth_cat, tract, patch, 
+                                         self.bands, self.butler)
+        else:
+            self.exp = HugsExposure(tract, patch, self.bands, self.butler)
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:
@@ -184,7 +195,9 @@ class PipeConfig(object):
                                             'DETECTED_NEGATIVE', 
                                             'NOT_DEBLENDED', 
                                             'SUSPECT', 
-                                            'UNMASKEDNAN']) 
+                                            'UNMASKEDNAN', 
+                                            'INEXACT_PSF', 
+                                            'REJECTED']) 
 
         try:
             self.psf_sigma = utils.get_psf_sigma(self.exp[self.band_detect])

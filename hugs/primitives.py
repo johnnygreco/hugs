@@ -66,7 +66,8 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
 
 
 def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
-          max_frac_high_thresh=0.15, rgrow=None, random_state=None):
+          max_frac_high_thresh=0.15, rgrow=None, random_state=None, 
+          bright_object_mask=True):
     """
     Clean image of bright sources and associated diffuse regions by 
     replacing them with sky noise. Also, remove low-threshold regions 
@@ -125,8 +126,9 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     # create new exposure and replace footprints with noise
     exp_clean = exposure.clone()
     mi_clean = exp_clean.getMaskedImage()
-    replace = mask.getArray() & mask.getPlaneBitMask('BRIGHT_OBJECT') != 0
-    replace |= mask.getArray() & mask.getPlaneBitMask('CLEANED') != 0
+    replace = mask.getArray() & mask.getPlaneBitMask('CLEANED') != 0
+    if bright_object_mask:
+        replace |= mask.getArray() & mask.getPlaneBitMask('BRIGHT_OBJECT') != 0
     mi_clean.getImage().getArray()[replace] = noise_array[replace]
     return exp_clean
 
