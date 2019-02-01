@@ -10,6 +10,7 @@ from ..utils import embed_slices
 
 __all__ = ['inject_synths']
 
+
 def _make_galaxy(pset, bbox_num_reff=10, band='i'):
     """
     Make synthetic Sersic galaxy.
@@ -69,7 +70,7 @@ def inject_synths(cat, exp, bbox_num_reff=10, band='i', psf_convolve=True,
     for src in cat:
         galaxy = _make_galaxy(
             src, band=band.lower(), bbox_num_reff=bbox_num_reff)
-        gal_pos = np.array([int(src['Y0']), int(src['X0'])])
+        gal_pos = np.array([int(src['y']), int(src['x'])])
         img_slice, gal_slice = embed_slices(gal_pos, 
                                             galaxy.shape, 
                                             synth_image.shape)
@@ -83,8 +84,8 @@ def inject_synths(cat, exp, bbox_num_reff=10, band='i', psf_convolve=True,
         mask = exp.getMask()
         mask.addMaskPlane('SYNTH')
         for src in cat:
-            center = lsst.afw.geom.Point2I(int(src['X0']), 
-                                           int(src['Y0']))
+            center = lsst.afw.geom.Point2I(int(src['x']), 
+                                           int(src['y']))
             bbox = lsst.afw.geom.Box2I(center, center)
             bbox.grow(20)
             bbox.clip(exp.getBBox(lsst.afw.image.LOCAL))

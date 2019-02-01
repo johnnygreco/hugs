@@ -8,12 +8,21 @@ import numpy as np
 import lsst.afw.detection as afwDet
 from . import utils
 from . import sextractor
+
+import sep
+from scipy import ndimage
 from astropy.io import fits
+from astropy.table import Table
+from astropy.convolution import Gaussian2DKernel
+from astropy.stats import gaussian_sigma_to_fwhm, gaussian_fwhm_to_sigma
+
 dustmap = utils.get_dust_map()
 
 __all__ = [
     'image_threshold', 
     'clean', 
+    'clean_use_hsc_mask',
+    'remove_small_sources_thresholding', 
     'detect_sources'
 ]
 
@@ -65,7 +74,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
     return fpset
 
 
-def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH', 
+def clean(exposure, fpset_low, name_high='THRESH_HIGH', 
           max_frac_high_thresh=0.15, rgrow=None, random_state=None, 
           bright_object_mask=True):
     """
@@ -79,8 +88,6 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
         Exposure object with masks from hugsPipe.run.
     fpset_low : lsst.afw.detection.FootprintSet 
         Low threshold footprints.
-    min_pix_low_thresh : int, optional
-        Minimum number of pixels for a low-thresh footprint. 
     name_high : string, optional
         The name of the high-threshold bit plane.
     max_frac_high_thresh : float, optional
@@ -114,9 +121,6 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
             ratio = bits_hi/float(fp.getArea())
             if ratio > max_frac_high_thresh:
                 fp_list.append(fp)
-        else:
-            if fp.getArea() < min_pix_low_thresh:
-                fp_list.append(fp)
     fpset_replace.setFootprints(fp_list)
     if rgrow:
         fpset_replace = afwDet.FootprintSet(fpset_replace, rgrow, True)
@@ -130,6 +134,71 @@ def clean(exposure, fpset_low, min_pix_low_thresh=100, name_high='THRESH_HIGH',
     if bright_object_mask:
         replace |= mask.getArray() & mask.getPlaneBitMask('BRIGHT_OBJECT') != 0
     mi_clean.getImage().getArray()[replace] = noise_array[replace]
+
+    return exp_clean
+
+
+def clean_use_hsc_mask(exposure, ref_plane='THRESH_HIGH', rgrow=None, 
+                       random_state=None, bright_object_mask=True):
+
+    # generate array of gaussian noise
+    mi = exposure.getMaskedImage()
+    mask = mi.getMask()
+    noise_array = utils.make_noise_image(mi, random_state)
+    
+    threshold = afwDet.Threshold(mask.getPlaneBitMask(['DETECTED']))
+    fp_det = afwDet.FootprintSet(mask, threshold, afwDet.Threshold.BITMASK)
+
+    fp_list = []
+    for fp in fp_det.getFootprints():
+        hfp = afwDet.HeavyFootprintF(fp, mi)
+        pix = hfp.getMaskArray()
+        check = (pix & mask.getPlaneBitMask(ref_plane)!=0).sum()
+        if check > 0:
+            fp_list.append(fp)     
+    fpset_replace = afwDet.FootprintSet(mi.getBBox())
+    fpset_replace.setFootprints(fp_list)
+    if rgrow:
+        fpset_replace = afwDet.FootprintSet(fpset_replace, rgrow, True)
+    mask.addMaskPlane('CLEANED')
+    fpset_replace.setMask(mask, 'CLEANED')
+
+    exp_clean = exposure.clone()
+    mi_clean = exp_clean.getMaskedImage()
+    replace = mask.getArray() & mask.getPlaneBitMask('CLEANED') != 0
+    if bright_object_mask:
+        replace |= mask.getArray() & mask.getPlaneBitMask('BRIGHT_OBJECT') != 0
+    mi_clean.getImage().getArray()[replace] = noise_array[replace]
+
+    return exp_clean
+
+
+def remove_small_sources_thresholding(exposure, min_radius_arcsec, 
+                                      random_state=None):
+
+    mi = exposure.getMaskedImage()
+    mask = mi.getMask()
+    noise_array = utils.make_noise_image(mi, random_state)
+
+    threshold = afwDet.Threshold(mask.getPlaneBitMask(['DETECTED']))
+    fp_det = afwDet.FootprintSet(mask, threshold, afwDet.Threshold.BITMASK)
+    area_min = np.pi * (min_radius_arcsec / utils.pixscale)**2 
+
+    fp_list = []
+    for fp in fp_det.getFootprints():
+        if fp.getArea() < area_min:
+            fp_list.append(fp)     
+    fp_small = afwDet.FootprintSet(mi.getBBox())
+    fp_small.setFootprints(fp_list)
+    mask.addMaskPlane('SMALL')
+    fp_small.setMask(mask, 'SMALL')
+
+    exp_clean = exposure.clone()
+    mi_clean = exp_clean.getMaskedImage()
+    replace = mask.getArray() & mask.getPlaneBitMask('SMALL') != 0
+    mi_clean = exp_clean.getMaskedImage()
+    mi_clean.getImage().getArray()[replace] = noise_array[replace]
+
     return exp_clean
 
 
@@ -187,9 +256,11 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
         if original_fn is None:
             dual_exp.writeFits(dual_fn)
         else:
-            fn = original_fn.replace('HSC-'+detect_band.upper(), 'HSC-'+meas_band.upper())
+            fn = original_fn.replace('HSC-'+detect_band.upper(), 
+                                     'HSC-'+meas_band.upper())
             header = fits.getheader(fn, ext=1)
-            fits.writeto(dual_fn, dual_exp.getImage().getArray(), header, overwrite=True)
+            fits.writeto(dual_fn, dual_exp.getImage().getArray(), header, 
+                         overwrite=True)
 
         run_fn = exp_fn+'[1],'+dual_fn+'[1]'
         cat_label = 'sex-{}-{}-{}'.format(label, detect_band, meas_band)

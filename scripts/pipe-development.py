@@ -8,21 +8,26 @@ import warnings
 warnings.filterwarnings(action='ignore', category=UserWarning)
 
 import hugs
-from hugs.synths.catalog import SynthCat
+from hugs.synths.catalog import GlobalSynthCat as SynthCat
 from hugs.utils import project_dir
-from hugs.pipeline import find_lsbgs
+from hugs.pipeline import next_gen_search
 import tigerview
 
 
-def _compare_param(param_in, param_out, param_name, type='against'):
+def _compare_param(param_in, param_out, param_name, type='against', 
+                   limits=None):
     fig, ax = plt.subplots()
 
     if type == 'against':
         ax.plot(param_in, param_out, 'o')
         ax.plot([param_in.min(), param_in.max()], 
-                [param_in.min(), param_out.max()], 'k-', lw=2)
+                [param_in.min(), param_in.max()], 'k-', lw=2)
         ax.set_xlabel(param_name + ' (injected)', fontsize=22)
         ax.set_ylabel(param_name + ' (recovered)', fontsize=22)
+        if limits is not None:
+            ax.set_xlim(*limits)
+            ax.set_ylim(*limits)
+
     elif type == 'diff':
         pass
     elif type == 'hist':
@@ -53,13 +58,13 @@ def run(args):
     config = hugs.PipeConfig(tract=args.tract, patch=args.patch, 
                              config_fn=args.config_fn)
 
-    results = find_lsbgs.run(config, reset_mask_planes=False)
+    results = next_gen_search.run(config, reset_mask_planes=False)
 
     synth_cat_fn = hugs.utils.read_config(args.config_fn)['synth_cat_fn']
-    synth_cat = SynthCat(cat_fn=synth_cat_fn).get_exp_synths(results.exp.i)
+    synth_cat = config.synth_cat
 
-    synth_cat.rename_column('X0', 'x_image')
-    synth_cat.rename_column('Y0', 'y_image')
+    synth_cat.rename_column('x', 'x_image')
+    synth_cat.rename_column('y', 'y_image')
     
     (match, match_synth), _  = hugs.cattools.xmatch(results.sources, 
                                                     synth_cat, 
@@ -74,23 +79,33 @@ def run(args):
         view = tigerview.ds9.Viewer()
         view.display_patch(exp=results.exp.i, frame=1, mask_trans=70)
         view.display_patch(exp=results.exp_clean, frame=2, mask_trans=70)
+        exp = results.exp
 
         if not args.no_ds9_sources:
             for src in source_match:
-                view.display_source(src['ra'], src['dec'], 
-                                    src['flux_radius_i']/0.168, 
-                                    src['theta_image'], 
-                                    src['ellipticity'])
+                view.display_source(x=src['x_image'] + exp.x0, 
+                                    y=src['y_image'] + exp.y0, 
+                                    radius=src['flux_radius_i']/0.168, 
+                                    theta=src['theta_image'], 
+                                    ellip=src['ellipticity'])
             for src in synth_cat:
-                view.display_source(src['ra'], src['dec'], src['r_e']/0.168, 
-                                    src['theta'], src['ell'], color='red')
+                view.display_source(x=src['x_image'] + exp.x0,
+                                    y=src['y_image'] + exp.y0, 
+                                    radius=src['r_e']/0.168, 
+                                    theta=src['theta'], 
+                                    ellip=src['ell'], 
+                                    color='red')
 
 
-    _compare_param(source_match['mag_auto_i'], synth_match['m_i'], r'$m_i$')
-    _compare_param(source_match['flux_radius_i'], synth_match['r_e'], 
+    _compare_param(synth_match['m_i'],
+                   source_match['mag_auto_i'], 
+                   r'$m_i$')
+    _compare_param(synth_match['r_e'],
+                   source_match['flux_radius_i'], 
                    r'$r_\mathrm{eff}$')
-    _compare_param(source_match['mag_ap4_g'] - source_match['mag_ap4_i'], 
-                   synth_match['g-i'], r'$\Delta(g-i)$', type='hist')
+    _compare_param(synth_match['g-i'],
+                   source_match['mag_ap4_g'] - source_match['mag_ap4_i'], 
+                   r'$\Delta(g-i)$', type='hist')
     _plot_synths(synth_match, synth_cat[~match_synth])
 
 
@@ -113,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-ds9', dest='no_ds9', action='store_true')
     parser.add_argument('--no-ds9-sources', dest='no_ds9_sources', 
                         action='store_true')
-    parser.add_argument('--min-match-sep', dest='max_match_sep', type=int,
+    parser.add_argument('--max-match-sep', dest='max_match_sep', type=int,
                         help='maximum match separation in pixels', default=4)
     parser.add_argument(
         '-c', '--config-fn', dest='config_fn', 

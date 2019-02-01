@@ -341,7 +341,7 @@ def make_noise_image(masked_image, random_state=None):
     """
     from .stats import get_clipped_sig_task
     rng = check_random_state(random_state)
-    bad_mask_planes = ('EDGE', 'BRIGHT_OBJECT', 'DETECTED', 'SAT', 'CLIPPED')
+    bad_mask_planes = ('EDGE', 'BRIGHT_OBJECT', 'DETECTED', 'SAT')
     task = get_clipped_sig_task(bad_mask_planes=bad_mask_planes)
     stats = task.run(masked_image)
     back_rms = stats.stdev

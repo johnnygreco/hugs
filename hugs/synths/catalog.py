@@ -10,7 +10,8 @@ from ..utils import euclidean_dist_to_angular_dist, read_config, solid_angle
 
 
 __all__ = ['random_radec', 'synthetic_sersics', 'build_catalog_field',
-           'build_catalog_survey', 'SynthCat']
+           'build_catalog_survey', 'random_positions', 'generate_patch_cat', 
+           'GlobalSynthCat']
 
 
 def random_radec(nsynths, ra_lim=[0, 360], dec_lim=[-90, 90],
@@ -50,6 +51,17 @@ def random_radec(nsynths, ra_lim=[0, 360], dec_lim=[-90, 90],
     points = np.array([ra, dec]).T
 
     return points
+
+
+def random_positions(image_shape=(501, 501), nsynths=10, edge_buffer=20,
+                     random_state=None, **kwargs):
+
+     rng = check_random_state(random_state)
+     ydim, xdim = image_shape[0] - edge_buffer, image_shape[1] - edge_buffer
+     x = rng.randint(edge_buffer, image_shape[1] - edge_buffer, nsynths)
+     y = rng.randint(edge_buffer, image_shape[0] - edge_buffer, nsynths)
+
+     return x, y
 
 
 def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15], 
@@ -218,7 +230,7 @@ def build_catalog_survey(density, ra_lim_list, dec_lim_list, mu_range,
     return cat
 
 
-class SynthCat(object):
+class GlobalSynthCat(object):
     """
     A class for synthetic catalogs with a KDTree attribute to allow 
     for super fast queries. 
@@ -288,3 +300,25 @@ class SynthCat(object):
 
     def write(self, fn):
         self.cat.write(fn, overwrite=True)
+
+
+def generate_patch_cat(nsynths, image_shape, edge_buffer, sersic_params={}, 
+                       random_state=None, min_pixel_sep=150, wcs=None):
+
+    x, y = random_positions(image_shape, 1, edge_buffer, random_state)
+
+    cat_size = 1
+    while cat_size < nsynths:
+        _x, _y = random_positions(image_shape, 1, edge_buffer, random_state)
+        seps = np.sqrt((_x - x)**2 + (_y - y)**2)
+        if (seps < min_pixel_sep).sum() == 0:
+            x = np.concatenate([x, _x])
+            y = np.concatenate([y, _y])
+            cat_size += 1
+
+    sersic_params['nsynths'] = nsynths
+    catalog = synthetic_sersics(**sersic_params)
+    catalog['x'] = x
+    catalog['y'] = y
+
+    return catalog

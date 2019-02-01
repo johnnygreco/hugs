@@ -16,7 +16,7 @@ dec_lim_list: [[-8, -1],
  
 min_sep: 30
 
-mu_range: [23, 28]
+mu_range: [24, 27]
 r_eff_range: [4, 10]
 n_range: [0.3, 1.2]
 theta_range: [0, 180]

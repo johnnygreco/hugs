@@ -7,9 +7,11 @@ import numpy as np
 import time
 from . import utils
 from .exposure import HugsExposure, SynthHugsExposure
-from .synths.catalog import SynthCat
-try: import coloredlogs
-except ImportError: pass
+from .synths.catalog import GlobalSynthCat, generate_patch_cat
+
+import logging
+from .log import HugsLogger
+logging.setLoggerClass(HugsLogger)
 
 class PipeConfig(object):
     """
@@ -26,8 +28,6 @@ class PipeConfig(object):
         HSC patch
     log_level : string, optional
         Level of python logger.
-    log_fn : string, optional
-        Log file name.
     random_state : int, list of ints, RandomState instance, or None 
         If int or list of ints, random_state is the rng seed.
         If RandomState instance, random_state is the rng.
@@ -37,7 +37,7 @@ class PipeConfig(object):
     """
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
-                 log_level='info', log_fn=None, random_state=None, 
+                 log_level='info', random_state=None, 
                  run_name='hugs', rerun_path=None):
 
         # read parameter file & setup param dicts
@@ -50,14 +50,16 @@ class PipeConfig(object):
         self.min_good_data_frac = params['min_good_data_frac']
         self.inject_synths = params['inject_synths']
         if self.inject_synths:
-            self.synth_cat_fn = params['synth_cat_fn']
+            self.synth_cat_type = params['synth_cat_type']
+            self.synth_cat_fn = params.pop('synth_cat_fn', None)
+            self.synth_sersic_params = params.pop('synth_params', {})
+            self.synth_image_params = params.pop('synth_image_params', {})
 
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
         self._clean = params['clean']
         self.rng = utils.check_random_state(random_state)
         self._clean['random_state'] = self.rng
-        self.log_fn = log_fn
         self.log_level = log_level
         self.run_name = run_name
         self._butler = None
@@ -79,6 +81,12 @@ class PipeConfig(object):
             utils.pixscale*float(a)/2 for a in self.circ_aper_radii] 
         self.num_apertures = len(self.circ_aper_radii)
 
+        # setup for sep
+        self.sep_steps = params['sep_steps']
+        sep_point_sources = params['sep_steps']['sep_point_sources']
+        self.sep_min_radius = sep_point_sources.pop('min_radius', 2.0)
+        self.sep_mask_grow = sep_point_sources.pop('mask_grow', 5)
+
         # set patch id if given
         if tract is not None:
             assert patch is not None
@@ -91,29 +99,10 @@ class PipeConfig(object):
         """
         Setup the python logger.
         """
-
         name = 'hugs-pipe: {} | {}'.format(tract, patch)
         self.logger = logging.getLogger(name)
+        self.logger._set_defaults()
         self.logger.setLevel(getattr(logging, self.log_level.upper()))
-        fmt = '%(name)s: %(asctime)s %(levelname)s: %(message)s'
-        try: 
-            formatter = coloredlogs.ColoredFormatter(fmt=fmt, 
-                                                     datefmt='%m/%d %H:%M:%S')
-        except: 
-            formatter = logging.Formatter(fmt=fmt, datefmt='%m/%d %H:%M:%S')
-
-        if not self.logger.handlers:
-            sh = logging.StreamHandler(sys.stdout)
-            sh.setFormatter(formatter)
-            self.logger.addHandler(sh)
-
-            if self.log_fn:
-                fh = logging.FileHandler(self.log_fn)
-                fh.setFormatter(formatter)
-                self.logger.addHandler(fh)
-
-            msg = 'starting hugs-pipe with config file '+self.config_fn
-            self.logger.info(msg)
 
     @property
     def butler(self):
@@ -180,9 +169,14 @@ class PipeConfig(object):
         self.bands = ''.join(set(bands))
 
         if self.inject_synths:
-            self.logger.warn('injecting synthetic galaxies')
-            synth_cat = SynthCat(cat_fn=self.synth_cat_fn)
-            self.exp = SynthHugsExposure(synth_cat, tract, patch, 
+            if self.synth_cat_type == 'global':
+                assert self.synth_cat_fn is not None
+                synth_cat = GlobalSynthCat(cat_fn=self.synth_cat_fn)
+            elif self.synth_cat_type == 'on-the-fly':
+                self.synth_cat = generate_patch_cat(
+                    sersic_params=self.synth_sersic_params, 
+                    **self.synth_image_params)
+            self.exp = SynthHugsExposure(self.synth_cat, tract, patch, 
                                          self.bands, self.butler)
         else:
             self.exp = HugsExposure(tract, patch, self.bands, self.butler)
@@ -197,7 +191,8 @@ class PipeConfig(object):
                                             'SUSPECT', 
                                             'UNMASKEDNAN', 
                                             'INEXACT_PSF', 
-                                            'REJECTED']) 
+                                            'REJECTED', 
+                                            'CLIPPED']) 
 
         try:
             self.psf_sigma = utils.get_psf_sigma(self.exp[self.band_detect])
@@ -211,11 +206,6 @@ class PipeConfig(object):
 
         ngrow = self.thresh_high.pop('n_sig_grow')
         self.thresh_high['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
-
-        # convert clean min_pix to psf units 
-        if 'psf sigma' in str(self.clean['min_pix_low_thresh']):
-            nsig = int(self.clean['min_pix_low_thresh'].split()[0])
-            self.clean['min_pix_low_thresh'] = np.pi*(nsig*self.psf_sigma)**2
 
         # clean n_sig_grow --> rgrow
         ngrow = self.clean.pop('n_sig_grow')

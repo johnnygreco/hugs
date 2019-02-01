@@ -4,7 +4,9 @@ import os
 import numpy as np
 import lsst.daf.persistence
 from lsst.pipe.base import Struct
+from .stats import get_clipped_sig_task
 from .synths import inject_synths
+from .log import logger
 
 class HugsExposure(object):
     """
@@ -30,17 +32,20 @@ class HugsExposure(object):
         self._butler = butler
         self.bands = bands
         self.fn = {}
+
         self.stat = {}
 
         for band in bands:
             data_id = {'tract': tract, 
                        'patch': patch, 
-                       'filter': 'HSC-'+band.upper()}
+                       'filter': 'HSC-' + band.upper()}
             exp = self.butler.get(coadd_label, data_id, immediate=True)
             setattr(self, band.lower(), exp)
             fn = self.butler.get(
                 coadd_label+'_filename', data_id, immediate=True)[0]
             self.fn[band] = fn
+            stat_task = get_clipped_sig_task()
+            self.stat[band] = stat_task.run(exp.getMaskedImage())
 
         self.x0, self.y0 = self.i.getXY0()
         self.patch_meta = Struct(
@@ -115,7 +120,12 @@ class SynthHugsExposure(HugsExposure):
 
         super(SynthHugsExposure, self).__init__(
             tract, patch, bands, butler, coadd_label)
-        self.synths = synth_cat.get_exp_synths(self[bands[0]])
 
+        if 'ra' in synth_cat.colnames:
+            self.synths = synth_cat.get_exp_synths(self[bands[0]])
+        else:
+            self.synths = synth_cat
+
+        logger.warn('injecting synthetic galaxies into exposure')
         for b in bands:
             inject_synths(self.synths, exp=self[b], band=b)

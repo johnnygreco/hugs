@@ -1,0 +1,70 @@
+####################################################
+# hugs-pipe params
+####################################################
+system:  'local'
+data_dir: '/Users/jgreco/local-io/hsc-test-data'
+hugs_io: '/Users/jgreco/local-io/hugs-io'
+ 
+min_good_data_frac: 0.5
+
+band_detect: 'i'
+
+band_verify: 'g'
+
+band_meas: 'gr'  # band_detect always included
+
+###########################################
+# start steps for pipeline stepper
+# all steps must have "step" in their name
+###########################################
+
+bright_object_step:
+    do_measure: True
+    sep_extract_kws: 
+        thresh: 30
+        minarea: 200
+        deblend_cont: 0.01
+        filter_num_fwhm: 1.0
+    sep_back_kws:
+        bw: 128
+        bh: 128
+        fw: 3
+        fh: 3
+        fthresh: 0.0
+
+small_source_step:
+    do_measure: True
+    sep_extract_kws: 
+        thresh: 1
+        minarea: 10
+        deblend_cont: 0.001
+        filter_num_fwhm: 1.0
+    sep_back_kws:
+        bw: 64
+        bh: 64
+        fw: 3
+        fh: 3
+        fthresh: 0.0
+
+lsb_detection_step:
+    do_measure: True
+    sep_extract_kws: 
+        thresh: 0.7
+        minarea: 30
+        deblend_cont: 0.01
+        filter_num_fwhm: 1.5
+    sep_back_kws:
+        bw: 128
+        bh: 128
+        fw: 3
+        fh: 3
+        fthresh: 0.0
+
+
+synth_params:
+    mu_range: [24, 26.5]
+    r_eff_range: [4, 8]
+    n_range: [0.8, 1.2]
+    theta_range: [0, 180]
+    ell_range: [0., 0.6]
+    mu_type: 'central'
