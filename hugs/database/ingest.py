@@ -51,6 +51,7 @@ class HugsIngest(object):
             hsc_id=patch, 
             x0=patch_meta.x0, 
             y0=patch_meta.y0, 
+            small_frac=patch_meta.small_frac, 
             cleaned_frac=patch_meta.cleaned_frac, 
             bright_obj_frac=patch_meta.bright_obj_frac,
             good_data_frac=patch_meta.good_data_frac,
@@ -67,6 +68,12 @@ class HugsIngest(object):
         catalog['patch_id'] = self.current_patch_id
         catalog.to_sql('source', self.session.bind, 
                        if_exists='append', index=False)
+        
+    def add_injected_synths(self, synth_ids):
+        assert self.current_patch_id is not None
+        synth_ids['patch_id'] = self.current_patch_id
+        synth_ids.to_sql('synth', self.session.bind, 
+                         if_exists='append', index=False)
 
     def add_all(self, tract, patch, patch_meta, catalog): 
         self.add_tract(tract)

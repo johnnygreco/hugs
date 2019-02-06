@@ -5,7 +5,7 @@ from astropy.logger import AstropyLogger
 
 class HugsLogger(AstropyLogger):
 
-    def _set_defaults(self):
+    def _set_defaults(self, level='INFO'):
         """
         Reset logger to its initial state
         """
@@ -14,7 +14,7 @@ class HugsLogger(AstropyLogger):
             self.removeHandler(handler)
 
         # Set levels
-        self.setLevel(logging.INFO)
+        self.setLevel(level)
 
         # Set up the stdout handler
         sh = StreamHandler()

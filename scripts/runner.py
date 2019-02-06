@@ -7,7 +7,7 @@ import os
 from time import time
 import mpi4py.MPI as MPI
 import schwimmbad
-from hugs.pipeline import find_lsbgs
+from hugs.pipeline import next_gen_search
 from hugs.utils import PatchMeta
 import hugs
 
@@ -17,11 +17,13 @@ def ingest_data(args):
     Write data to database with the master process.
     """
     timer = time()
-    success, sources, meta_data = args
+    success, sources, meta_data, synth_ids = args
     run_name, tract, patch, patch_meta = meta_data
     db_ingest = hugs.database.HugsIngest(session, run_name)
     if success:
         db_ingest.add_all(tract, patch, patch_meta, sources)
+        if synth_ids is not None:
+            db_ingest.add_injected_synths(synth_ids)
     else:
         db_ingest.add_tract(tract)
         db_ingest.add_patch(patch, patch_meta)
@@ -42,18 +44,24 @@ def worker(p):
 
     config = hugs.PipeConfig(run_name=p['run_name'], 
                              config_fn=p['config_fn'],
-                             log_fn=p['log_fn'],
                              random_state=seed, 
                              rerun_path=p['rerun_path'])
     config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     
-    results = find_lsbgs.run(config)
+    results = next_gen_search.run(config)
 
-    pm = results.exp.patch_meta
+    pm = results.hugs_exp.patch_meta
+
+    if results.synths is not None:
+        synth_ids = results.synths.to_pandas().loc[:, ['synth_id']]
+    else:
+        synth_ids = None
+
     patch_meta = PatchMeta(
         x0 = pm.x0,
         y0 = pm.y0,
+        small_frac = pm.small_frac,
         cleaned_frac = pm.cleaned_frac,
         bright_obj_frac = pm.bright_obj_frac,
         good_data_frac = pm.good_data_frac
@@ -73,7 +81,7 @@ def worker(p):
         df = None
 
     config.logger.info('writing results to database')
-    return results.success, df, meta_data
+    return results.success, df, meta_data, synth_ids
 
 
 if __name__=='__main__':

@@ -12,8 +12,8 @@ if args.config_fn is not None:
 else: 
     # default parameters
     kwargs = dict(density=200,
-                  ra_lim_list=[[0, 360]], 
-                  dec_lim_list=[-15, 15], 
+                  ra_lim_list=[[180, 200]], 
+                  dec_lim_list=[[-5, 5]], 
                   mu_range=[23, 28], 
                   r_eff_range=[3, 10], 
                   n_range=[0.3, 1.5], 
@@ -22,5 +22,5 @@ else:
                   mu_type='average')
 
 cat = hugs.synths.catalog.build_catalog_survey(**kwargs)
-syncat = hugs.synths.catalog.SynthCat(catalog=cat)
+syncat = hugs.synths.catalog.GlobalSynthCat(catalog=cat)
 syncat.write(args.out_fn)

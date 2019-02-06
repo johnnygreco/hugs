@@ -4,6 +4,7 @@ import os
 import numpy as np
 import lsst.daf.persistence
 from lsst.pipe.base import Struct
+from astropy.table import Table
 from .stats import get_clipped_sig_task
 from .synths import inject_synths
 from .log import logger
@@ -31,6 +32,7 @@ class HugsExposure(object):
         self.patch = patch
         self._butler = butler
         self.bands = bands
+        self.synths = None
         self.fn = {}
 
         self.stat = {}
@@ -52,6 +54,7 @@ class HugsExposure(object):
             x0 = float(self.x0),
             y0 = float(self.y0),
             good_data_frac = self.good_data_fraction(),
+            small_frac = None,
             cleaned_frac = None,
             bright_obj_frac = None
         )
@@ -92,7 +95,8 @@ class HugsExposure(object):
                 arr |= mask.getArray() & mask.getPlaneBitMask(p) != 0
         return arr
 
-    def good_data_fraction(self, band='i', bad_masks=['NO_DATA', 'SUSPECT']):
+    def good_data_fraction(self, band='i', 
+            bad_masks=['NO_DATA', 'SUSPECT', 'SAT']):
         """
         Find the fraction of pixels that contain data.
         """
@@ -121,11 +125,13 @@ class SynthHugsExposure(HugsExposure):
         super(SynthHugsExposure, self).__init__(
             tract, patch, bands, butler, coadd_label)
 
-        if 'ra' in synth_cat.colnames:
-            self.synths = synth_cat.get_exp_synths(self[bands[0]])
-        else:
+        if  type(synth_cat)==Table:
             self.synths = synth_cat
+        else:
+            self.synths = synth_cat.get_exp_synths(self[bands[0]])
 
-        logger.warn('injecting synthetic galaxies into exposure')
-        for b in bands:
-            inject_synths(self.synths, exp=self[b], band=b)
+        msg = 'injecting {} synthetic galaxies into tract={} patch={} exposure'
+        logger.warn(msg.format(len(self.synths), tract, patch))
+        if len(self.synths) > 0:
+            for b in bands:
+                inject_synths(self.synths, exp=self[b], band=b)

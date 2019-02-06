@@ -14,6 +14,7 @@ from . import utils
 from .utils import check_kwargs_defaults, check_random_state
 from .log import logger
 
+
 __all__ = ['SepStepperBase', 'SepLsstStepper', 'sep_ellipse_mask']
           
 
@@ -35,7 +36,7 @@ def sep_ellipse_mask(sources, image_shape, scale=5.0):
     sep.mask_ellipse(mask, sources['x'], sources['y'], sources['a'], 
                      sources['b'], sources['theta'], scale)
 
-    logger.debug('{:.2f}% of patch masked'.format(100 * mask.sum()/mask.size))
+    logger.info('{:.2f}% of patch masked'.format(100 * mask.sum()/mask.size))
 
     return mask
 
@@ -55,6 +56,8 @@ class SepStepperBase(object):
         if config_fn is not None:
             config = utils.read_config(config_fn)
 
+        self.extract_pixstack = config.pop('extract_pixstack', 300000)
+        sep.set_extract_pixstack(self.extract_pixstack)
         self.step_kws = config
         self.sources = {}
          
@@ -71,15 +74,28 @@ class SepStepperBase(object):
 
         logger.info('measuring source parameters')
 
+        # HACK: issues with numerical precision
+        # must have pi/2 <= theta <= npi/2
+        sources[np.abs(np.abs(sources['theta']) - np.pi/2) < 1e-6] = np.pi/2
+
+        for p in ['x', 'y', 'a', 'b', 'theta']:
+            sources = sources[~np.isnan(sources[p])]
+
         # calculate "AUTO" parameters
         kronrad, krflag = sep.kron_radius(
             img, sources['x'], sources['y'], sources['a'], sources['b'],
             sources['theta'], 6.0, mask=mask)
+    
         flux, fluxerr, flag = sep.sum_ellipse(
             img, sources['x'], sources['y'], sources['a'], sources['b'],
-            sources['theta'], 2.5*kronrad, subpix=1, mask=mask)
+            sources['theta'], 2.5*kronrad, subpix=5, mask=mask)
         flag |= krflag  # combine flags into 'flag'
-        flux[flux<=0] = np.nan
+
+        sources = sources[~np.isnan(flux)]
+        flux = flux[~np.isnan(flux)]
+        sources = sources[flux > 0]
+        flux = flux[flux > 0]
+
         mag_auto = utils.zpt - 2.5*np.log10(flux)
         r, flag = sep.flux_radius(
             img, sources['x'], sources['y'], 6.*sources['a'], 0.5,
@@ -163,6 +179,7 @@ class SepStepperBase(object):
             img_sub, err=bkg.rms(), segmentation_map=True, **sep_extract_kws)
 
         sources = Table(sources)
+        sources = sources[sources['flux'] > 0]
 
         logger.info('found {} sources'.format(len(sources)))
 

@@ -1,4 +1,4 @@
-density: 400 # per square degree
+density: 360 # per square degree
 
 ra_lim_list: [[28, 42], 
               [126, 143], 
@@ -16,9 +16,10 @@ dec_lim_list: [[-8, -1],
  
 min_sep: 30
 
-mu_range: [24, 27]
-r_eff_range: [4, 10]
-n_range: [0.3, 1.2]
+mu_range: [22, 27.5]
+r_eff_range: [3, 10]
+n_range: [0.8, 1.2]
 theta_range: [0, 180]
+ell_range: [0., 0.6]
 
-mu_type: average
+mu_type: central

@@ -12,10 +12,10 @@
 
 cd /home/jgreco/projects/hugs/scripts
 
-RUN_NAME=hsc-s18a-wide
+RUN_NAME=hsc-s18a-wide-synths
 PATCHES_FN=$LOCAL_IO/gri-patches-s18a-wide.csv
 
 mpiexec -n 200 python runner.py --mpi \
     --run_name $RUN_NAME \
     --patches_fn $PATCHES_FN \
-    -c /home/jgreco/projects/hugs/pipe-configs/hugs-run-09-19-2018.yml
+    -c /home/jgreco/projects/hugs/pipe-configs/hugs-global-synths.yml

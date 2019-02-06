@@ -25,7 +25,7 @@ ext_coeff = ExtCoeff(g=3.233, r=2.291, i=1.635, z=1.261, y=1.076)
 
 # Patch metadata
 PatchMeta = namedtuple(
-    'PatchMeta', 'x0 y0 cleaned_frac bright_obj_frac good_data_frac')
+    'PatchMeta', 'x0 y0 cleaned_frac small_frac bright_obj_frac good_data_frac')
 
 
 def read_config(fn=default_config_fn):
@@ -264,7 +264,7 @@ def check_random_state(seed):
                      ' instance'.format(seed))
 
 
-def calc_mask_bit_fracs(exp):
+def calc_mask_bit_fracs(exp, planes=['SMALL', 'CLEANED', 'BRIGHT_OBJECT']):
     """
     Calculate the fraction of image flagged as 'cleaned' and 'bright_object'. 
 
@@ -282,7 +282,6 @@ def calc_mask_bit_fracs(exp):
     npix = float(msk_arr.size)
     getBitVal = mask.getPlaneBitMask
     fracs = {}
-    planes = ['CLEANED', 'BRIGHT_OBJECT']
     for p in planes:
         if p in mask.getMaskPlaneDict().keys():
             npix_p = (msk_arr & getBitVal(p) != 0).sum()

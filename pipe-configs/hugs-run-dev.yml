@@ -2,10 +2,10 @@
 # hugs-pipe params
 ####################################################
 
-data_dir: '/Users/jgreco/local-io/hsc-test-data'
-hugs_io: '/Users/jgreco/local-io/hugs-io'
+data_dir: '/tigress/HSC/DR/s18a_wide' 
+hugs_io: '/scratch/gpfs/jgreco/hugs-io'
  
-min_good_data_frac: 0.5
+min_good_data_frac: 0.75
 
 band_detect: 'i'
 
@@ -33,6 +33,7 @@ clean:
     n_sig_grow: 2.4
 
 sep_steps:
+    extract_pixstack: 600000
     sep_point_sources:
         min_radius: 1.5 # arcsec
         mask_grow: 3
@@ -55,7 +56,7 @@ sextractor:
         DETECT_THRESH: 0.6
         PHOT_FLUXFRAC: 0.65
         THRESH_TYPE: RELATIVE
-        FILTER_NAME: '/Users/jgreco/projects/hugs/hugs/sextractor/config/gauss_6.0_31x31.conv'
+        FILTER_NAME: '/home/jgreco/projects/hugs/hugs/sextractor/config/gauss_6.0_31x31.conv'
         BACK_SIZE: 256
         VERBOSE_TYPE: 'QUIET'
         DETECT_MINAREA: 100
@@ -64,7 +65,7 @@ sextractor:
         SEEING_FWHM: 0.7
         MEMORY_PIXSTACK: 900000
     delete_created_files: True
-    sex_io_dir: '/Users/jgreco/local-io/sextractor-io'
+    sex_io_dir: '/scratch/gpfs/jgreco/sextractor-io'
     verify_max_sep: 15  # pixels
 
 ####################################################
@@ -74,6 +75,7 @@ sextractor:
 inject_synths: True
 synth_cat_type: 'on-the-fly' 
 synth_cat_fn: ~
+synth_max_match_sep: 5
 
 synth_image_params:
     nsynths: 20
@@ -83,8 +85,8 @@ synth_image_params:
 
 synth_params:
     master_band: 'g'
-    mu_range: [22, 26.5]
-    r_eff_range: [3, 8]
+    mu_range: [22, 27.5]
+    r_eff_range: [3, 10]
     n_range: [0.8, 1.2]
     theta_range: [0, 180]
     ell_range: [0., 0.6]

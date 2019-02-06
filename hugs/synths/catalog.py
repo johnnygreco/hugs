@@ -273,24 +273,25 @@ class GlobalSynthCat(object):
         coord = wcs.pixelToSky(lsst.afw.geom.Point2D(xc, yc))
         ra_c, dec_c = coord.getRa().asDegrees(), coord.getDec().asDegrees()
         cat = self.query_radius(ra_c, dec_c, search_radius).copy()
-        
-        mask = np.zeros(len(cat), dtype=bool)
-        cat['X0'] = -1
-        cat['Y0'] = -1
-        
-        for i, src in enumerate(cat):
-            sky_coord = lsst.afw.geom.SpherePoint(
-                src['ra'] * lsst.afw.geom.degrees, 
-                src['dec'] * lsst.afw.geom.degrees)
-            xy_coord = wcs.skyToPixel(sky_coord)
-            if exp.getBBox().contains(lsst.afw.geom.Point2I(xy_coord)):
-                mask[i] = True
-                x0, y0 = xy_coord - exp.getXY0()
-                cat[i]['X0'] = x0
-                cat[i]['Y0'] = y0
 
-        cat = cat[mask]
-        self.set_injected(cat['synth_id'])
+        if len(cat) > 0:
+            mask = np.zeros(len(cat), dtype=bool)
+            cat['x'] = -1
+            cat['y'] = -1
+            
+            for i, src in enumerate(cat):
+                sky_coord = lsst.afw.geom.SpherePoint(
+                    src['ra'] * lsst.afw.geom.degrees, 
+                    src['dec'] * lsst.afw.geom.degrees)
+                xy_coord = wcs.skyToPixel(sky_coord)
+                if exp.getBBox().contains(lsst.afw.geom.Point2I(xy_coord)):
+                    mask[i] = True
+                    x0, y0 = xy_coord - exp.getXY0()
+                    cat[i]['x'] = x0
+                    cat[i]['y'] = y0
+
+            cat = cat[mask]
+            self.set_injected(cat['synth_id'])
         
         return cat
 

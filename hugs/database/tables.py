@@ -45,6 +45,7 @@ class Patch(Base):
     y0 = Column(Float, nullable=False)
 
     good_data_frac = Column(Float, nullable=True)
+    small_frac = Column(Float, nullable=True)
     cleaned_frac = Column(Float, nullable=True)
     bright_obj_frac = Column(Float, nullable=True)
 
@@ -177,3 +178,15 @@ class Source(Base):
     @property
     def hr_angle_string(self):
         return self.skycoord.to_string('hmsdms')
+
+    
+class Synth(Base):
+    __tablename__ = 'synth'
+    
+    # Table columns
+    id = Column(Integer, primary_key=True)
+    synth_id = Column(Integer, nullable=False)
+
+    # Relationships
+    patch_id = Column(Integer, ForeignKey('patch.id'), nullable=False)
+    patch = relationship('Patch')

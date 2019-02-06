@@ -47,8 +47,12 @@ def run(cfg, reset_mask_planes=True):
     mask = mi.getMask()
     stat_task = get_clipped_sig_task()
 
+    cfg.logger.info('good data fraction = {:.2f}'.\
+        format(cfg.exp.patch_meta.good_data_frac))
+
     if cfg.exp.patch_meta.good_data_frac < cfg.min_good_data_frac:
-        cfg.logger.warning('***** not enough data!!! ****')
+        msg = '***** not enough data in {} {}!!! ****'
+        cfg.logger.warning(msg.format(cfg.tract, cfg.patch))
         results = _null_return(cfg)
         return results
 
@@ -85,9 +89,13 @@ def run(cfg, reset_mask_planes=True):
     # use sep to find and mask point-like sources
     ############################################################
 
+   
     sep_stepper = SepLsstStepper(config=cfg.sep_steps)
     sep_stepper.setup_image(exp_clean, cfg.rng)
-    sep_sources, _ = sep_stepper.run('sep_point_sources')
+
+    step_mask = cfg.exp.get_mask_array(
+        planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
+    sep_sources, _ = sep_stepper.run('sep_point_sources', mask=step_mask)
 
     cfg.logger.info('generating and applying sep ellipse mask')
     sep_sources = sep_sources[sep_sources['flux_radius'] < cfg.sep_min_radius]
@@ -157,15 +165,18 @@ def run(cfg, reset_mask_planes=True):
             return results
 
     mask_fracs = utils.calc_mask_bit_fracs(exp_clean)
+    cfg.exp.patch_meta.small_frac = mask_fracs['small_frac']
     cfg.exp.patch_meta.cleaned_frac = mask_fracs['cleaned_frac']
     cfg.exp.patch_meta.bright_obj_frac = mask_fracs['bright_object_frac']
 
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
+
     results = Struct(all_detections=all_detections,
                      sources=sources,
-                     exp=cfg.exp,
+                     hugs_exp=cfg.exp,
                      exp_clean=exp_clean,
-                     success=True)
+                     success=True, 
+                     synths=cfg.exp.synths)
 
     if reset_mask_planes:
         cfg.reset_mask_planes()
@@ -177,6 +188,7 @@ def _null_return(config, exp_clean=None):
     config.reset_mask_planes()
     return Struct(all_detections=None,
                   sources=None,
-                  exp=config.exp,
+                  hugs_exp=config.exp,
                   exp_clean=exp_clean,
-                  success=False)
+                  success=False, 
+                  synths=None)

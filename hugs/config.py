@@ -9,9 +9,9 @@ from . import utils
 from .exposure import HugsExposure, SynthHugsExposure
 from .synths.catalog import GlobalSynthCat, generate_patch_cat
 
-import logging
 from .log import HugsLogger
 logging.setLoggerClass(HugsLogger)
+
 
 class PipeConfig(object):
     """
@@ -54,6 +54,7 @@ class PipeConfig(object):
             self.synth_cat_fn = params.pop('synth_cat_fn', None)
             self.synth_sersic_params = params.pop('synth_params', {})
             self.synth_image_params = params.pop('synth_image_params', {})
+            self.synth_max_match_sep = params.pop('synth_max_match_sep', 5)
 
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
@@ -99,10 +100,10 @@ class PipeConfig(object):
         """
         Setup the python logger.
         """
-        name = 'hugs-pipe: {} | {}'.format(tract, patch)
+        name = 'hugs: {} | {}'.format(tract, patch)
         self.logger = logging.getLogger(name)
-        self.logger._set_defaults()
-        self.logger.setLevel(getattr(logging, self.log_level.upper()))
+        self.logger._set_defaults(self.log_level.upper())
+        self.logger.info('starting ' + name)
 
     @property
     def butler(self):
@@ -171,11 +172,12 @@ class PipeConfig(object):
         if self.inject_synths:
             if self.synth_cat_type == 'global':
                 assert self.synth_cat_fn is not None
-                synth_cat = GlobalSynthCat(cat_fn=self.synth_cat_fn)
+                self.synth_cat = GlobalSynthCat(cat_fn=self.synth_cat_fn)
             elif self.synth_cat_type == 'on-the-fly':
                 self.synth_cat = generate_patch_cat(
                     sersic_params=self.synth_sersic_params, 
                     **self.synth_image_params)
+
             self.exp = SynthHugsExposure(self.synth_cat, tract, patch, 
                                          self.bands, self.butler)
         else:
@@ -188,7 +190,7 @@ class PipeConfig(object):
                                             'CROSSTALK',
                                             'DETECTED_NEGATIVE', 
                                             'NOT_DEBLENDED', 
-                                            'SUSPECT', 
+                                            #'SUSPECT', 
                                             'UNMASKEDNAN', 
                                             'INEXACT_PSF', 
                                             'REJECTED', 

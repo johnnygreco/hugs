@@ -74,12 +74,12 @@ def run(args):
 
     print('{} injected, {} recovered'.format(len(synth_cat), len(synth_match)))
 
-    if not args.no_ds9:
+    if args.ds9:
 
+        exp = results.hugs_exp
         view = tigerview.ds9.Viewer()
-        view.display_patch(exp=results.exp.i, frame=1, mask_trans=70)
+        view.display_patch(exp=exp.i, frame=1, mask_trans=70)
         view.display_patch(exp=results.exp_clean, frame=2, mask_trans=70)
-        exp = results.exp
 
         if not args.no_ds9_sources:
             for src in source_match:
@@ -96,17 +96,17 @@ def run(args):
                                     ellip=src['ell'], 
                                     color='red')
 
-
-    _compare_param(synth_match['m_i'],
-                   source_match['mag_auto_i'], 
-                   r'$m_i$')
-    _compare_param(synth_match['r_e'],
-                   source_match['flux_radius_i'], 
-                   r'$r_\mathrm{eff}$')
-    _compare_param(synth_match['g-i'],
-                   source_match['mag_ap4_g'] - source_match['mag_ap4_i'], 
-                   r'$\Delta(g-i)$', type='hist')
-    _plot_synths(synth_match, synth_cat[~match_synth])
+    if args.plots:
+        _compare_param(synth_match['m_i'],
+                       source_match['mag_auto_i'], 
+                       r'$m_i$')
+        _compare_param(synth_match['r_e'],
+                       source_match['flux_radius_i'], 
+                       r'$r_\mathrm{eff}$')
+        _compare_param(synth_match['g-i'],
+                       source_match['mag_ap4_g'] - source_match['mag_ap4_i'], 
+                       r'$\Delta(g-i)$', type='hist')
+        _plot_synths(synth_match, synth_cat[~match_synth])
 
 
     # HACK: matplotlib crashing when scrolling or moving plot
@@ -125,9 +125,10 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-t', '--tract', type=int, required=True)
     parser.add_argument('-p', '--patch', required=True)
-    parser.add_argument('--no-ds9', dest='no_ds9', action='store_true')
+    parser.add_argument('--ds9', action='store_true')
     parser.add_argument('--no-ds9-sources', dest='no_ds9_sources', 
                         action='store_true')
+    parser.add_argument('--plots', action='store_true')
     parser.add_argument('--max-match-sep', dest='max_match_sep', type=int,
                         help='maximum match separation in pixels', default=4)
     parser.add_argument(
