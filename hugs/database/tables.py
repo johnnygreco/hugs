@@ -186,6 +186,7 @@ class Synth(Base):
     # Table columns
     id = Column(Integer, primary_key=True)
     synth_id = Column(Integer, nullable=False)
+    masked = Column(Integer, nullable=False)
 
     # Relationships
     patch_id = Column(Integer, ForeignKey('patch.id'), nullable=False)

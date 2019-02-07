@@ -55,6 +55,9 @@ def worker(p):
 
     if results.synths is not None:
         synth_ids = results.synths.to_pandas().loc[:, ['synth_id']]
+        masked = hugs.synths.find_masked_synths(results.synths, 
+                                                results.clean_exp)
+        synth_ids['masked'] = masked
     else:
         synth_ids = None
 
