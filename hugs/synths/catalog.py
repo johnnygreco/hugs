@@ -4,6 +4,7 @@ from scipy.special import gammaincinv, gamma
 from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord, concatenate
 import lsst.afw.geom
+from ..log import logger
 from ..utils import check_random_state, angsep
 from ..utils import ra_dec_to_xyz, angular_dist_to_euclidean_dist 
 from ..utils import euclidean_dist_to_angular_dist, read_config, solid_angle
@@ -218,7 +219,10 @@ def build_catalog_survey(density, ra_lim_list, dec_lim_list, mu_range,
     """
     cat = []
     for ra_lim, dec_lim in zip(ra_lim_list, dec_lim_list):
-        nsynths = int(np.ceil(density * solid_angle(ra_lim, dec_lim)))
+        area = solid_angle(ra_lim, dec_lim)
+        logger.info('generating catalog over {:.2f} deg^2'.format(area))
+        nsynths = int(np.ceil(density * area))
+        logger.info('nsynths = {}'.format(nsynths))
         kws = dict(
             nsynths=nsynths, ra_lim=ra_lim, dec_lim=dec_lim, mu_range=mu_range,
             r_eff_range=r_eff_range, n_range=n_range, theta_range=theta_range, 

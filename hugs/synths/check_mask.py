@@ -36,9 +36,10 @@ def find_masked_synths(synth_cat, exp):
         else:
             logger.warn('synth not in exposure')
             masked.append(0)
-    synth_cat['masked'] = masked
+
+    masked = np.array(masked)
 
     msg = '{} out of {} synths were masked'
     logger.info(msg.format(np.sum(masked), len(synth_cat)))
 
-    return synth_cat
+    return masked
