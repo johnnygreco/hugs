@@ -28,7 +28,7 @@ def ingest_data(args):
         db_ingest.add_tract(tract)
         db_ingest.add_patch(patch, patch_meta)
     delta_time = time() - timer
-    #print('time to ingest =', delta_time)
+    hugs.log.logger.info('time to ingest = {:.2f} seconds'.format(delta_time))
 
 
 def worker(p):
@@ -45,20 +45,23 @@ def worker(p):
     config = hugs.PipeConfig(run_name=p['run_name'], 
                              config_fn=p['config_fn'],
                              random_state=seed, 
+                             log_fn=p['log_fn'],
                              rerun_path=p['rerun_path'])
     config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     
-    results = next_gen_search.run(config)
+    results = next_gen_search.run(config, False)
 
     pm = results.hugs_exp.patch_meta
 
     if (results.synths is not None) and results.success:
         if len(results.synths) > 0:
             synth_ids = results.synths.to_pandas().loc[:, ['synth_id']]
-            masked = hugs.synths.find_masked_synths(results.synths, 
-                                                    results.exp_clean)
-            synth_ids['masked'] = masked
+            for plane in config.synth_check_masks:
+                masked = hugs.synths.find_masked_synths(results.synths, 
+                                                        results.exp_clean, 
+                                                        planes=plane)
+                synth_ids['mask_' + plane.lower()] = masked
         else:
             synth_ids = None
     else:
@@ -86,6 +89,7 @@ def worker(p):
     else:
         df = None
 
+    config.reset_mask_planes()
     config.logger.info('writing results to database')
     return results.success, df, meta_data, synth_ids
 

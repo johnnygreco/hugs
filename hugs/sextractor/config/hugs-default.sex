@@ -49,13 +49,13 @@ FLAG_TYPE        OR             # flag pixel combination: OR, AND, MIN, MAX
 
 #------------------------------ Photometry -----------------------------------
  
-PHOT_APERTURES   5              # MAG_APER aperture diameter(s) in pixels
+PHOT_APERTURES   3,4,5,6,7,8,16,32,42,54   # MAG_APER aperture diameter(s) in pixels
 PHOT_AUTOPARAMS  2.5, 3.5       # MAG_AUTO parameters: <Kron_fact>,<min_radius>
 PHOT_PETROPARAMS 2.0, 3.5       # MAG_PETRO parameters: <Petrosian_fact>,
                                 # <min_radius>
 PHOT_AUTOAPERS   0.0,0.0        # <estimation>,<measurement> minimum apertures
                                 # for MAG_AUTO and MAG_PETRO
-PHOT_FLUXFRAC    0.5            # flux fraction[s] used for FLUX_RADIUS
+PHOT_FLUXFRAC    0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9  # flux fraction[s] used for FLUX_RADIUS
  
 SATUR_LEVEL      50000.0        # level (in ADUs) at which arises saturation
 SATUR_KEY        SATURATE       # keyword for saturation level (in ADUs)

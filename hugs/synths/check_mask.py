@@ -18,7 +18,10 @@ def get_mask_array(exp, planes=DEFAULT_PLANES):
     return arr
 
 
-def find_masked_synths(synth_cat, exp):
+def find_masked_synths(synth_cat, exp, planes=['BRIGHT_OBJECT']):
+
+    if type(planes) == str:
+        planes = [planes]
 
     afwcoords = lsstutils.make_afw_coords(synth_cat['ra', 'dec'])
 
@@ -26,7 +29,7 @@ def find_masked_synths(synth_cat, exp):
     xy0 = exp.getXY0()
     wcs = exp.getWcs()
     bbox = exp.getBBox()
-    mask_arr = get_mask_array(exp)
+    mask_arr = get_mask_array(exp, planes)
     masked= []
     for coord in afwcoords:
         pixel = wcs.skyToPixel(coord)
@@ -39,7 +42,8 @@ def find_masked_synths(synth_cat, exp):
 
     masked = np.array(masked)
 
-    msg = '{} out of {} synths were masked'
-    logger.info(msg.format(np.sum(masked), len(synth_cat)))
+    planes  = ', '.join(planes)
+    msg = '{} out of {} synths were masked as {}'
+    logger.info(msg.format(np.sum(masked), len(synth_cat), planes))
 
     return masked

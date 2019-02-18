@@ -61,7 +61,7 @@ def run(args):
     results = next_gen_search.run(config, reset_mask_planes=False)
 
     synth_cat_fn = hugs.utils.read_config(args.config_fn)['synth_cat_fn']
-    synth_cat = config.synth_cat
+    synth_cat = config.synth_cat.get_exp_synths(results.hugs_exp.i)
 
     synth_cat.rename_column('x', 'x_image')
     synth_cat.rename_column('y', 'y_image')
@@ -85,7 +85,7 @@ def run(args):
             for src in source_match:
                 view.display_source(x=src['x_image'] + exp.x0, 
                                     y=src['y_image'] + exp.y0, 
-                                    radius=src['flux_radius_i']/0.168, 
+                                    radius=src['flux_radius_50_i']/0.168, 
                                     theta=src['theta_image'], 
                                     ellip=src['ellipticity'])
             for src in synth_cat:
@@ -101,7 +101,7 @@ def run(args):
                        source_match['mag_auto_i'], 
                        r'$m_i$')
         _compare_param(synth_match['r_e'],
-                       source_match['flux_radius_i'], 
+                       source_match['flux_radius_50_i'], 
                        r'$r_\mathrm{eff}$')
         _compare_param(synth_match['g-i'],
                        source_match['mag_ap4_g'] - source_match['mag_ap4_i'], 

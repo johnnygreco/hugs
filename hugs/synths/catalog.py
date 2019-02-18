@@ -250,7 +250,6 @@ class GlobalSynthCat(object):
         else:
             self.cat = build_synthetic_galaxy_catalog(**cat_params)
 
-        self.cat['injected'] = False
         self.cat['synth_id'] = np.arange(1, len(self.cat) + 1)
 
         xyz = ra_dec_to_xyz(self.cat['ra'], self.cat['dec'])

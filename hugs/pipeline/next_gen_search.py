@@ -14,7 +14,7 @@ from ..cattools import xmatch
 
 __all__ = ['run']
 
-def run(cfg, reset_mask_planes=True):
+def run(cfg, reset_mask_planes=False):
     """
     Run hugs pipeline using SExtractor for the final detection 
     and photometry.
@@ -63,14 +63,22 @@ def run(cfg, reset_mask_planes=True):
         
     #mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
     stats = stat_task.run(mi)
-    flux_th = 10**(0.4 * (zpt - cfg.thresh_low['thresh'])) * pixscale**2
-    cfg.thresh_low['thresh'] = flux_th / stats.stdev    
+
+    if cfg.thresh_type.lower() == 'sb':
+        cfg.logger.info('thresh type set to ' + cfg.thresh_type)
+        flux_th = 10**(0.4 * (zpt - cfg.thresh_low['thresh'])) * pixscale**2
+        cfg.thresh_low['thresh'] = flux_th / stats.stdev    
+        flux_th = 10**(0.4 * (zpt - cfg.thresh_high['thresh'])) * pixscale**2
+        cfg.thresh_high['thresh'] = flux_th / stats.stdev    
+    elif cfg.thresh_type.lower() == 'stddev':
+        cfg.logger.info('thresh type set to ' + cfg.thresh_type)
+    else:
+        raise Exception('invalid threshold type')
+
     cfg.logger.info('performing low threshold at '
                     '{:.2f} sigma'.format(cfg.thresh_low['thresh']))
     fpset_low = prim.image_threshold(
         mi, mask=mask, plane_name='THRESH_LOW', **cfg.thresh_low)
-    flux_th = 10**(0.4 * (zpt - cfg.thresh_high['thresh'])) * pixscale**2
-    cfg.thresh_high['thresh'] = flux_th / stats.stdev    
     cfg.logger.info('performing high threshold at '
                     '{:.2f} sigma'.format(cfg.thresh_high['thresh']))
     fpset_high = prim.image_threshold(
@@ -88,7 +96,6 @@ def run(cfg, reset_mask_planes=True):
     ############################################################
     # use sep to find and mask point-like sources
     ############################################################
-
    
     sep_stepper = SepLsstStepper(config=cfg.sep_steps)
     sep_stepper.setup_image(exp_clean, cfg.rng)

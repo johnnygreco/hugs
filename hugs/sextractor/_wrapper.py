@@ -137,7 +137,7 @@ class Wrapper(object):
         """
 
         cat_fn = cat_fn if cat_fn else self.get_io_dir('sex.cat') 
-        default_config_fn = op.join(SEX_CONFIG_DIR, 'default.sex')
+        default_config_fn = op.join(SEX_CONFIG_DIR, 'hugs-default.sex')
 
         cmd = 'sex -c {} {}'.format(default_config_fn, img_fn)
         cmd += ' -CATALOG_NAME '+cat_fn

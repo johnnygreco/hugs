@@ -2,7 +2,9 @@ try:
     import lsst.log
     Log = lsst.log.Log()
     Log.setLevel(lsst.log.ERROR)
+    LSST_INSTALLED = True
 except ImportError:
+    LSST_INSTALLED = False
     pass
 
 from . import imtools

@@ -37,7 +37,7 @@ class PipeConfig(object):
     """
 
     def __init__(self, config_fn=None, tract=None, patch=None, 
-                 log_level='info', random_state=None, 
+                 log_level='info', random_state=None, log_fn=None,
                  run_name='hugs', rerun_path=None):
 
         # read parameter file & setup param dicts
@@ -47,15 +47,19 @@ class PipeConfig(object):
 
         self.data_dir = rerun_path if rerun_path else params['data_dir'] 
         self.hugs_io = params['hugs_io']
+        self.log_fn = log_fn
         self.min_good_data_frac = params['min_good_data_frac']
         self.inject_synths = params['inject_synths']
         if self.inject_synths:
             self.synth_cat_type = params['synth_cat_type']
             self.synth_cat_fn = params.pop('synth_cat_fn', None)
+            self.synth_check_masks = params.pop('synth_check_masks', 
+                                                ['BRIGHT_OBJECT'])
             self.synth_sersic_params = params.pop('synth_params', {})
             self.synth_image_params = params.pop('synth_image_params', {})
             self.synth_max_match_sep = params.pop('synth_max_match_sep', 5)
 
+        self.thresh_type = params['thresh_type']
         self._thresh_low = params['thresh_low']
         self._thresh_high = params['thresh_high']
         self._clean = params['clean']
@@ -73,6 +77,8 @@ class PipeConfig(object):
         # setup for sextractor
         sex_setup = params['sextractor']
         self.sex_config = sex_setup['config']
+        self.sex_config['PHOT_APERTURES'] = '3,4,5,6,7,8,16,32,42,54' # in default
+        self.sex_config['PHOT_FLUXFRAC'] = '0.1,0.2,0.3,0.4,0.5,0.6,0.65,0.7,0.8,0.9'
         self.delete_created_files = sex_setup['delete_created_files']
         self.sex_io_dir = sex_setup['sex_io_dir']
         self.verify_max_sep = sex_setup['verify_max_sep']
@@ -104,6 +110,10 @@ class PipeConfig(object):
         self.logger = logging.getLogger(name)
         self.logger._set_defaults(self.log_level.upper())
         self.logger.info('starting ' + name)
+
+        if self.log_fn is not None:
+            fh = logging.FileHandler(self.log_fn)
+            self.logger.addHandler(fh)
 
     @property
     def butler(self):
@@ -140,7 +150,8 @@ class PipeConfig(object):
 
         for band in self.bands:
             mask = self.exp[band].getMaskedImage().getMask()
-            utils.remove_mask_planes(mask, ['CLEANED', 
+            utils.remove_mask_planes(mask, ['SMALL',
+                                            'CLEANED', 
                                             'THRESH_HIGH', 
                                             'THRESH_LOW'])
 

@@ -310,12 +310,20 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
 
         cat.rename_column('MAG_APER', 'MAG_APER_0')
         cat.rename_column('MAGERR_APER', 'MAGERR_APER_0')
+        cat.rename_column('FLUX_RADIUS', 'FLUX_RADIUS_0')
+
         for i, diam in enumerate(sex_config['PHOT_APERTURES'].split(',')):
             cat.rename_column('MAG_APER_'+str(i), 'mag_ap'+str(i))
             cat.rename_column('MAGERR_APER_'+str(i), 'magerr_ap'+str(i))
-        cat['FLUX_RADIUS'] = cat['FLUX_RADIUS']*utils.pixscale
+        
+        for i, frac in enumerate(sex_config['PHOT_FLUXFRAC'].split(',')):
+            frac = str(int(100 * float(frac)))
+            cat.rename_column('FLUX_RADIUS_'+str(i), 'flux_radius_'+frac)
+            cat['flux_radius_'+frac] *= utils.pixscale
+
         cat['FWHM_IMAGE'] = cat['FWHM_IMAGE']*utils.pixscale
         cat.rename_column('FWHM_IMAGE', 'FWHM')
+
         for name in cat.colnames:
             if name not in detect_band_only: 
                 cat.rename_column(name, name.lower()+'_'+meas_band)

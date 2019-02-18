@@ -7,16 +7,16 @@ hugs_io: '/scratch/gpfs/jgreco/hugs-io'
  
 min_good_data_frac: 0.75
 
-band_detect: 'i'
+band_detect: 'g'
 
-band_verify: 'g'
+band_verify: 'r'
 
-band_meas: 'gr'  # band_detect always included
+band_meas: 'ri'  # band_detect always included
 
 thresh_type: SB  # SB or stddev
 
 thresh_low:
-    thresh: 24.5 # mag/arcsec^2 
+    thresh: 25.5 # mag/arcsec^2 
     npix: 20
     n_sig_grow: 4.8
     isogrow: False
@@ -30,7 +30,7 @@ thresh_high:
     thresh_type: stdev
 
 clean:
-    max_frac_high_thresh: 0.15  # per footprint
+    max_frac_high_thresh: 0.1  # per footprint
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
 
