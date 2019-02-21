@@ -70,6 +70,7 @@ class PipeConfig(object):
         self._butler = None
         self._timer = None
 
+        self.band_mask = params['band_mask']
         self.band_detect = params['band_detect']
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
@@ -190,9 +191,11 @@ class PipeConfig(object):
                     **self.synth_image_params)
 
             self.exp = SynthHugsExposure(self.synth_cat, tract, patch, 
-                                         self.bands, self.butler)
+                                         self.bands, self.butler, 
+                                         band_detect=self.band_detect)
         else:
-            self.exp = HugsExposure(tract, patch, self.bands, self.butler)
+            self.exp = HugsExposure(tract, patch, self.bands, self.butler,
+                                    band_detect=self.band_detect)
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:

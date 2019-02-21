@@ -9,6 +9,8 @@ min_good_data_frac: 0.75
 
 band_detect: 'g'
 
+band_mask: 'i'
+
 band_verify: 'r'
 
 band_meas: 'ri'  # band_detect always included
@@ -16,7 +18,7 @@ band_meas: 'ri'  # band_detect always included
 thresh_type: SB  # SB or stddev
 
 thresh_low:
-    thresh: 25.5 # mag/arcsec^2 
+    thresh: 24.5 # mag/arcsec^2 
     npix: 20
     n_sig_grow: 4.8
     isogrow: False

@@ -45,16 +45,28 @@ def run(cfg, reset_mask_planes=False):
 
     mi = cfg.exp[cfg.band_detect].getMaskedImage()
     mask = mi.getMask()
+    if cfg.band_mask != cfg.band_detect:
+        cfg.logger.info('making mask using {}-band'.format(cfg.band_mask))
+        mi_band_mask = cfg.exp[cfg.band_mask].getMaskedImage().clone()
+    else:
+        mi_band_mask = mi
     stat_task = get_clipped_sig_task()
 
     cfg.logger.info('good data fraction = {:.2f}'.\
         format(cfg.exp.patch_meta.good_data_frac))
 
     if cfg.exp.patch_meta.good_data_frac < cfg.min_good_data_frac:
-        msg = '***** not enough data in {} {}!!! ****'
-        cfg.logger.warning(msg.format(cfg.tract, cfg.patch))
+        msg = '***** not enough data in {} {} {}-band!!! ****'
+        cfg.logger.warning(msg.format(cfg.tract, cfg.patch, cfg.band_mask))
         results = _null_return(cfg)
         return results
+
+    if cfg.band_mask != cfg.band_detect :
+        if cfg.exp.good_data_fraction(cfg.band_mask) < cfg.min_good_data_frac:
+            msg = '***** not enough data in {} {} {}-band!!! ****'
+            cfg.logger.warning(msg.format(cfg.tract, cfg.patch, cfg.band_mask))
+            results = _null_return(cfg)
+            return results
 
     ############################################################
     # Image thesholding at low and high thresholds. In both 
@@ -62,7 +74,13 @@ def run(cfg, reset_mask_planes=False):
     ############################################################
         
     #mi_smooth = imtools.smooth_gauss(mi, cfg.psf_sigma)
-    stats = stat_task.run(mi)
+    stats = stat_task.run(mi_band_mask)
+
+    if stats.stdev <= 0.0 or np.isnan(stats.stdev):
+        msg = '***** {} | {} -- stddev = {} !!! ****'
+        cfg.logger.warning(msg.format(cfg.tract, cfg.patch, stats.stdev))
+        results = _null_return(cfg)
+        return results
 
     if cfg.thresh_type.lower() == 'sb':
         cfg.logger.info('thresh type set to ' + cfg.thresh_type)
@@ -78,11 +96,11 @@ def run(cfg, reset_mask_planes=False):
     cfg.logger.info('performing low threshold at '
                     '{:.2f} sigma'.format(cfg.thresh_low['thresh']))
     fpset_low = prim.image_threshold(
-        mi, mask=mask, plane_name='THRESH_LOW', **cfg.thresh_low)
+        mi_band_mask, mask=mask, plane_name='THRESH_LOW', **cfg.thresh_low)
     cfg.logger.info('performing high threshold at '
                     '{:.2f} sigma'.format(cfg.thresh_high['thresh']))
     fpset_high = prim.image_threshold(
-        mi, mask=mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
+        mi_band_mask, mask=mask, plane_name='THRESH_HIGH', **cfg.thresh_high)
 
     ############################################################
     # Get "cleaned" image, with noise replacement

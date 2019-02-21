@@ -27,7 +27,7 @@ class HugsExposure(object):
     """
 
     def __init__(self, tract, patch, bands='gri', butler=None, 
-                 coadd_label='deepCoadd_calexp'):
+                 coadd_label='deepCoadd_calexp', band_detect='i'):
         self.tract = tract
         self.patch = patch
         self._butler = butler
@@ -53,7 +53,7 @@ class HugsExposure(object):
         self.patch_meta = Struct(
             x0 = float(self.x0),
             y0 = float(self.y0),
-            good_data_frac = self.good_data_fraction(),
+            good_data_frac = self.good_data_fraction(band_detect),
             small_frac = None,
             cleaned_frac = None,
             bright_obj_frac = None
@@ -120,10 +120,10 @@ class HugsExposure(object):
 class SynthHugsExposure(HugsExposure):
 
     def __init__(self, synth_cat, tract, patch, bands='gri', butler=None, 
-                 coadd_label='deepCoadd_calexp'):
+                 coadd_label='deepCoadd_calexp', band_detect='i'):
 
         super(SynthHugsExposure, self).__init__(
-            tract, patch, bands, butler, coadd_label)
+            tract, patch, bands, butler, coadd_label, band_detect)
 
         if  type(synth_cat)==Table:
             self.synths = synth_cat
