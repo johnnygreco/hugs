@@ -294,13 +294,8 @@ class GlobalSynthCat(object):
                     cat[i]['y'] = y0
 
             cat = cat[mask]
-            self.set_injected(cat['synth_id'])
         
         return cat
-
-    def set_injected(self, synth_ids):
-        idx = np.asarray(synth_ids) - 1
-        self.cat['injected'][idx] = True
 
     def write(self, fn):
         self.cat.write(fn, overwrite=True)

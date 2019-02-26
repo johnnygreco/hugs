@@ -36,7 +36,7 @@ clean:
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
         
-hsc_small_sources_r_max: 1.5 # arcsec
+hsc_small_sources_r_max: ~ # arcsec
 
 sep_steps:
     extract_pixstack: 600000
@@ -78,7 +78,7 @@ sextractor:
 
 inject_synths: True
 synth_cat_type: 'global' 
-synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/global-synth-cat.fits'
+synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/global-synths-reds.fits'
 
 synth_check_masks: [BRIGHT_OBJECT, 
                     NO_DATA, 

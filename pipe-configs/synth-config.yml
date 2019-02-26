@@ -29,3 +29,6 @@ ell_range: [0., 0.6]
 
 master_band: 'g'
 mu_type: central
+
+g_i: 0.82
+g_r: 0.56

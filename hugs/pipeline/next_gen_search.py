@@ -108,6 +108,18 @@ def run(cfg, reset_mask_planes=False):
 
     cfg.logger.info('generating cleaned exposure')
     exp_clean = prim.clean(cfg.exp[cfg.band_detect], fpset_low, **cfg.clean)
+
+
+    ############################################################
+    # Remove small sources using HSC pipeline detection map
+    ############################################################
+
+    if cfg.hsc_small_sources_r_max is not None:
+        if cfg.hsc_small_sources_r_max > 0:
+            cfg.logger.info('removing small sources with HSC detection map')
+            exp_clean = prim.remove_small_sources_thresholding(
+                exp_clean, cfg.hsc_small_sources_r_max, cfg.rng)
+    
     mi_clean = exp_clean.getMaskedImage()
     mask_clean = mi_clean.getMask()
 

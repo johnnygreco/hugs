@@ -1,6 +1,6 @@
 #! /bin/bash 
 # 
-#SBATCH -J hugs-detect-g # job name
+#SBATCH -J hugs-run # job name
 #SBATCH -o /scratch/gpfs/jgreco/run-%j.out
 #SBATCH -e /scratch/gpfs/jgreco/run-%j.err             
 #SBATCH -N 5
@@ -12,11 +12,11 @@
 
 cd /home/jgreco/projects/hugs/scripts
 
-RUN_NAME=s18a-synths-detect-g
+RUN_NAME=hugs-run
 
 PATCHES_FN=$LOCAL_IO/gri-patches-s18a-wide.csv
 
 mpiexec -n 200 python runner.py --mpi \
     --run_name $RUN_NAME \
     --patches_fn $PATCHES_FN \
-    -c /home/jgreco/projects/hugs/pipe-configs/hugs-detect-g.yml
+    -c /home/jgreco/projects/hugs/pipe-configs/hugs-config.yml

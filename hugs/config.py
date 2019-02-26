@@ -75,6 +75,8 @@ class PipeConfig(object):
         self.band_verify = params['band_verify']
         self.band_meas = params['band_meas']
 
+        self.hsc_small_sources_r_max = params.pop('hsc_small_sources_r_max', None)
+
         # setup for sextractor
         sex_setup = params['sextractor']
         self.sex_config = sex_setup['config']

@@ -78,7 +78,7 @@ def run(args):
 
         exp = results.hugs_exp
         view = tigerview.ds9.Viewer()
-        view.display_patch(exp=exp.i, frame=1, mask_trans=70)
+        view.display_patch(exp=exp.g, frame=1, mask_trans=70)
         view.display_patch(exp=results.exp_clean, frame=2, mask_trans=70)
 
         if not args.no_ds9_sources:
