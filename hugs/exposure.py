@@ -7,6 +7,7 @@ from lsst.pipe.base import Struct
 from astropy.table import Table
 from .stats import get_clipped_sig_task
 from .synths import inject_synths
+from .utils import fetch_andy_mask
 from .log import logger
 
 class HugsExposure(object):
@@ -27,11 +28,13 @@ class HugsExposure(object):
     """
 
     def __init__(self, tract, patch, bands='gri', butler=None, 
-                 coadd_label='deepCoadd_calexp', band_detect='i'):
+                 coadd_label='deepCoadd_calexp', band_detect='i', 
+                 rerun='/tigress/HSC/DR/s18a_wide', use_andy_mask=True):
         self.tract = tract
         self.patch = patch
         self._butler = butler
         self.bands = bands
+        self.rerun = rerun
         self.synths = None
         self.fn = {}
 
@@ -42,12 +45,22 @@ class HugsExposure(object):
                        'patch': patch, 
                        'filter': 'HSC-' + band.upper()}
             exp = self.butler.get(coadd_label, data_id, immediate=True)
-            setattr(self, band.lower(), exp)
             fn = self.butler.get(
                 coadd_label+'_filename', data_id, immediate=True)[0]
             self.fn[band] = fn
             stat_task = get_clipped_sig_task()
             self.stat[band] = stat_task.run(exp.getMaskedImage())
+
+            if use_andy_mask:
+                if band == bands[0]:
+                    logger.warn("using andy's bright object masks")
+                mask = exp.getMask()
+                mask.clearMaskPlane(mask.getMaskPlane('BRIGHT_OBJECT'))
+                andy_mask = fetch_andy_mask(tract, patch, band)
+                val = mask.getPlaneBitMask('BRIGHT_OBJECT')
+                mask.getArray()[andy_mask.astype(bool)] += val
+
+            setattr(self, band.lower(), exp)
 
         self.x0, self.y0 = self.i.getXY0()
         self.patch_meta = Struct(
@@ -68,8 +81,7 @@ class HugsExposure(object):
         Let's only load the butler once.
         """
         if self._butler is None:
-            hsc_dir = os.environ.get('HSC_DIR')
-            self._butler = lsst.daf.persistence.Butler(hsc_dir)
+            self._butler = lsst.daf.persistence.Butler(self.rerun)
         return self._butler
 
     def get_mask_array(self, band='i', planes=['CLEANED', 'BRIGHT_OBJECT']):

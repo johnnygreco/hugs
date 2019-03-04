@@ -8,11 +8,13 @@ import numpy as np
 import yaml
 import lsst.afw.image as afwImage
 from astropy.table import Table
+from astropy.io import fits
 from collections import namedtuple
 
 project_dir = os.path.dirname(os.path.dirname(__file__))
 default_config_fn = os.path.join(
     project_dir, 'pipe-configs/default_config.yml')
+andy_mask_path = '/tigress/HSC/HSC/rerun/goulding/S18A_STARMASK/IMAGE_MASKS'
 
 pixscale = 0.168
 zpt = 27.0
@@ -431,6 +433,17 @@ def angsep(ra1, dec1, ra2, dec2, sepunits='arcsec'):
     sep *= conversion[sepunits]
 
     return sep
+
+
+def fetch_andy_mask(tract, patch, band):
+    """
+    Get Andy's new bright object mask.
+    """
+    path = os.path.join(andy_mask_path, 'HSC-' + band.upper())
+    fn = os.path.join(path, '{}/{}/mask.fits'.format(tract, patch))
+    mask = fits.getdata(fn)
+    return mask
+
 
 # the following functinos were modified from astroML
 # https://github.com/astroML/astroML
