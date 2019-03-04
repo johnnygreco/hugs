@@ -3,7 +3,7 @@ Run hugs pipeline.
 """
 from __future__ import division, print_function
 
-import os
+import os, shutil
 from time import time
 import mpi4py.MPI as MPI
 import schwimmbad
@@ -171,6 +171,7 @@ if __name__=='__main__':
         db_fn = os.path.join(outdir, args.run_name+'.db')
         engine = hugs.database.connect(db_fn, args.overwrite)
         session = hugs.database.Session()
+        shutil.copyfile(args.config_fn, os.path.join(outdir, 'config.yml'))
 
     pool = schwimmbad.choose_pool(mpi=args.mpi, processes=args.ncores)
     list(pool.map(worker, patches, callback=ingest_data))

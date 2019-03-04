@@ -36,7 +36,7 @@ clean:
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
         
-hsc_small_sources_r_max: 1.5 # arcsec
+hsc_small_sources_r_max: ~
 
 sep_steps:
     extract_pixstack: 600000

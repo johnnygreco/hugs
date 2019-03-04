@@ -1,0 +1,6 @@
+cd /home/jgreco/projects/hugs/scripts
+
+mpiexec -n {0} python runner.py --mpi \
+    --run_name {1} \
+    --patches_fn {2} \
+    --config_fn {3}
