@@ -206,6 +206,9 @@ def run(cfg, reset_mask_planes=False):
     cfg.exp.patch_meta.cleaned_frac = mask_fracs['cleaned_frac']
     cfg.exp.patch_meta.bright_obj_frac = mask_fracs['bright_object_frac']
 
+    cfg.logger.info('measuring mophology metrics')
+    prim.measure_morphology_metrics(exp_clean.getImage().getArray(), sources)
+
     cfg.logger.info('task completed in {:.2f} min'.format(cfg.timer))
 
     results = Struct(all_detections=all_detections,

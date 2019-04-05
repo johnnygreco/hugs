@@ -43,7 +43,7 @@ class PipeConfig(object):
         # read parameter file & setup param dicts
         self.config_fn = config_fn if config_fn else utils.default_config_fn
         with open(self.config_fn, 'r') as f:
-            params = yaml.load(f)
+            params = yaml.load(f, Loader=yaml.FullLoader)
 
         self.data_dir = rerun_path if rerun_path else params['data_dir'] 
         self.hugs_io = params['hugs_io']

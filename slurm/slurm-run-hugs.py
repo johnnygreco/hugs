@@ -21,7 +21,7 @@ parser.add_argument('--time', default='05:00:00')
 parser.add_argument('--test', action='store_true')
 args = parser.parse_args()
 
-assert args.ncores <= 40, 'there are 40 cores per node!'
+assert args.ncores <= 40, 'there are 40 cores **per** node!'
 total_cores = int(args.ncores * args.nodes)
 
 logger.info('submitting slurm job with {} cores across {} nodes'.\

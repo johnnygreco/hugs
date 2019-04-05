@@ -6,13 +6,16 @@ from __future__ import division, print_function
 import os
 import numpy as np
 import lsst.afw.detection as afwDet
+from .utils import pixscale
 from . import utils
 from . import sextractor
+from .morphology import Morphology
 
 import sep
 from scipy import ndimage
 from astropy.io import fits
 from astropy.table import Table
+from astropy.nddata import Cutout2D
 from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_sigma_to_fwhm, gaussian_fwhm_to_sigma
 
@@ -23,7 +26,8 @@ __all__ = [
     'clean', 
     'clean_use_hsc_mask',
     'remove_small_sources_thresholding', 
-    'detect_sources'
+    'detect_sources',
+    'measure_morphology_metrics'
 ]
 
 
@@ -346,3 +350,66 @@ def detect_sources(exp, sex_config, sex_io_dir, dual_exp=None,
         os.remove(cat_fn)
 
     return cat
+
+
+def measure_morphology_metrics(image, sources, scale_size=3):
+    gini_full = []
+    gini_1 = []
+    gini_1p5 = []
+    gini_2 = []
+    gini_1p5_circ = []
+    gini_2_circ = []
+
+    acorr_peak = []
+    acorr_bkgd = []
+
+    for src in sources:
+        try:
+            centroid = [src['x_image'], src['y_image']]
+            cutout = Cutout2D(image, 
+                              centroid, 
+                              src['flux_radius_65_g'] * scale_size / pixscale) 
+            x_shift = cutout.center_original[0] - cutout.center_cutout[0]
+            y_shift = cutout.center_original[1] - cutout.center_cutout[1]
+            centroid = [src['x_image'] - x_shift, src['y_image'] - y_shift]
+
+            morph = Morphology(cutout.data, 
+                               centroid, 
+                               src['a_image'], 
+                               src['b_image'], 
+                               src['ellipticity'], 
+                               src['theta_image'])
+
+            _, circ_mean, ann_mean = morph.autocorr(1.5)
+            acorr_peak.append(circ_mean)
+            acorr_bkgd.append(ann_mean)
+
+            gini_full.append(morph.gini(0))
+            gini_1.append(morph.gini(1))
+            gini_1p5.append(morph.gini(1.5))
+            gini_2.append(morph.gini(2))
+            gini_1p5_circ.append(morph.gini(1.5, 3))
+            gini_2_circ.append(morph.gini(2, 3))
+
+        except:
+            acorr_peak.append(np.nan)
+            acorr_bkgd.append(np.nan)
+            gini_full.append(np.nan)
+            gini_1.append(np.nan)
+            gini_1p5.append(np.nan)
+            gini_2.append(np.nan)
+            gini_1p5_circ.append(np.nan)
+            gini_2_circ.append(np.nan)
+
+    sources['gini_full'] = gini_full
+    sources['gini_1'] = gini_1
+    sources['gini_1p5'] = gini_1p5
+    sources['gini_2'] = gini_2
+    sources['gini_1p5_circ'] = gini_1p5_circ
+    sources['gini_2_circ'] = gini_2_circ
+
+    sources['acorr_peak'] = acorr_peak
+    sources['acorr_bkgd'] = acorr_bkgd
+    acorr_bkgd =  np.array(acorr_bkgd)
+    acorr_bkgd[acorr_bkgd==0] = np.nan
+    sources['acorr_ratio'] = np.array(acorr_peak) / acorr_bkgd

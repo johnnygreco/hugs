@@ -20,7 +20,7 @@ thresh_type: SB  # SB or stddev
 thresh_low:
     thresh: 24.5 # mag/arcsec^2 
     npix: 20
-    n_sig_grow: 4.8
+    n_sig_grow: 7.2
     isogrow: False
     thresh_type: stdev
 
@@ -36,12 +36,12 @@ clean:
     name_high: 'THRESH_HIGH'
     n_sig_grow: 2.4
         
-hsc_small_sources_r_max: 1.5 # arcsec
+hsc_small_sources_r_max: 2.0
 
 sep_steps:
     extract_pixstack: 600000
     sep_point_sources:
-        min_radius: 1.5 # arcsec
+        min_radius: 2.0 # arcsec
         mask_grow: 3
         do_measure: True
         sep_extract_kws:

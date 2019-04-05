@@ -19,6 +19,7 @@ from . import database
 from . import plot
 from . import log
 from . import slurm
+from .morphology import Morphology
 from .mybutler import PersonalButler
 from .stats import get_clipped_sig_task
 from .config import PipeConfig

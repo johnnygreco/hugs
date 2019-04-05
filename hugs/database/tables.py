@@ -192,6 +192,17 @@ class Source(Base):
     flux_radius_80_i = Column(Float, nullable=True)
     flux_radius_90_i = Column(Float, nullable=True)
 
+    gini_full = Column(Float, nullable=True)
+    gini_1 = Column(Float, nullable=True)
+    gini_1p5 = Column(Float, nullable=True)
+    gini_2 = Column(Float, nullable=True)
+    gini_1p5_circ = Column(Float, nullable=True)
+    gini_2_circ = Column(Float, nullable=True)
+    
+    acorr_peak = Column(Float, nullable=True)
+    acorr_bkgd = Column(Float, nullable=True)
+    acorr_ratio = Column(Float, nullable=True)
+
     ebv = Column(Float, nullable=True)
     A_g = Column(Float, nullable=True)
     A_r = Column(Float, nullable=True)
