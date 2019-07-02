@@ -5,7 +5,7 @@
 data_dir: '/tigress/HSC/DR/s18a_wide' 
 hugs_io: '/scratch/gpfs/jgreco/hugs-io'
  
-min_good_data_frac: 0.75
+min_good_data_frac: 0.5
 
 band_detect: 'g'
 
@@ -34,7 +34,7 @@ thresh_high:
 clean:
     max_frac_high_thresh: 0.15  # per footprint
     name_high: 'THRESH_HIGH'
-    n_sig_grow: 2.4
+    n_sig_grow: 40.0
         
 hsc_small_sources_r_max: 2.0
 
@@ -78,7 +78,7 @@ sextractor:
 
 inject_synths: True
 synth_cat_type: 'global' 
-synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/global-synth-cat.fits'
+synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/global-synths-median.fits'
 
 synth_check_masks: [BRIGHT_OBJECT, 
                     NO_DATA, 

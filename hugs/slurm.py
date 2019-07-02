@@ -13,8 +13,9 @@ slurm_options = OrderedDict([
     ('nodes', '1'),
     ('ntasks-per-node', '16'),
     ('time', '01:00:00'),
-    ('mail-type', 'end'),
-    ('mail-user', 'jgreco@princeton.edu')
+    ('mail-type-1', 'begin'),
+    ('mail-type-2', 'end'),
+    ('mail-user', 'greco.40@osu.edu')
 ])
 
 
@@ -30,6 +31,8 @@ def _write_slurm_script(cmd, filename=None, test=False, **batch_options):
         with open(filename, 'w') as fout:
             fout.write('#!/bin/bash\n')
             for opts in batch_options.items():
+                if 'mail-type' in opts[0]:
+                    opts = ['mail-type', opts[1]]
                 fout.write('#SBATCH --{0}={1}\n'.format(*opts))
             
             fout.write('\n')
@@ -37,6 +40,8 @@ def _write_slurm_script(cmd, filename=None, test=False, **batch_options):
     else:
         print('#!/bin/bash')
         for opts in batch_options.items():
+            if 'mail-type' in opts[0]:
+                opts = ['mail-type', opts[1]]
             print('#SBATCH --{0}={1}'.format(*opts))
         print()
         print('{0}\n'.format(cmd))

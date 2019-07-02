@@ -71,6 +71,7 @@ def run(args):
                                                     max_sep=args.max_match_sep)
     source_match = results.sources[match]
     synth_match = synth_cat[match_synth]
+    print(np.nanmedian(results.sources['ebv']))
 
     print('{} injected, {} recovered'.format(len(synth_cat), len(synth_match)))
 
@@ -95,6 +96,13 @@ def run(args):
                                     theta=src['theta'], 
                                     ellip=src['ell'], 
                                     color='red')
+            for src in results.sources:
+                view.display_source(x=src['x_image'] + exp.x0, 
+                                    y=src['y_image'] + exp.y0, 
+                                    radius=src['flux_radius_50_i']/0.168, 
+                                    theta=src['theta_image'], 
+                                    ellip=src['ellipticity'], 
+                                    color='blue')
 
     if args.plots:
         _compare_param(synth_match['m_i'],

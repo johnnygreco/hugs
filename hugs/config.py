@@ -231,6 +231,8 @@ class PipeConfig(object):
             self.clean['rgrow'] = None
         else:
             self.clean['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
+            self.logger.info('growing clean footprints with rgrow = {:.1f}'.\
+                             format(self.clean['rgrow']))
 
         # sextractor parameter file
         fn = '{}-{}-{}-{}.params'.format(
