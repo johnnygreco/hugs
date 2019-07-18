@@ -34,7 +34,7 @@ thresh_high:
 clean:
     max_frac_high_thresh: 0.15  # per footprint
     name_high: 'THRESH_HIGH'
-    n_sig_grow: 40.0
+    n_sig_grow: 10.0
         
 hsc_small_sources_r_max: 2.0
 
@@ -69,7 +69,7 @@ sextractor:
         SEEING_FWHM: 0.7
         MEMORY_PIXSTACK: 900000
     delete_created_files: True
-    sex_io_dir: '/scratch/gpfs/jgreco/sextractor-io'
+    sex_io_dir: '/scratch/gpfs/jgreco/sex-io-synth-reds'
     verify_max_sep: 15  # pixels
 
 ####################################################
@@ -78,7 +78,7 @@ sextractor:
 
 inject_synths: True
 synth_cat_type: 'global' 
-synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/global-synths-median.fits'
+synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/catalogs/reds-01.fits'
 
 synth_check_masks: [BRIGHT_OBJECT, 
                     NO_DATA, 

@@ -34,7 +34,7 @@ thresh_high:
 clean:
     max_frac_high_thresh: 0.15  # per footprint
     name_high: 'THRESH_HIGH'
-    n_sig_grow: 2.4
+    n_sig_grow: 10.0
         
 hsc_small_sources_r_max: 2.0
 
