@@ -1,0 +1,3 @@
+python slurm-run-hugs.py -r synth-blues-02 -n 40 -p /home/jgreco/io/gri-patches-s18a-wide.csv -c /home/jgreco/projects/hugs/pipe-configs/synth-blues.yml --nodes 3 --time 08:00:00
+
+

@@ -78,7 +78,7 @@ sextractor:
 
 inject_synths: True
 synth_cat_type: 'global' 
-synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/catalogs/reds-01.fits'
+synth_cat_fn: '/tigress/jgreco/hsc-s18a/synths/global/catalogs/reds-04.fits'
 
 synth_check_masks: [BRIGHT_OBJECT, 
                     NO_DATA, 
