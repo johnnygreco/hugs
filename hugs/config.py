@@ -225,6 +225,11 @@ class PipeConfig(object):
         ngrow = self.thresh_high.pop('n_sig_grow')
         self.thresh_high['rgrow'] = int(ngrow*self.psf_sigma + 0.5)
 
+        # convert clean min_pix to psf units 
+        if 'psf sigma' in str(self.clean['min_pix_low_thresh']):
+            nsig = int(self.clean['min_pix_low_thresh'].split()[0])
+            self.clean['min_pix_low_thresh'] = np.pi*(nsig*self.psf_sigma)**2
+
         # clean n_sig_grow --> rgrow
         ngrow = self.clean.pop('n_sig_grow')
         if ngrow is None:
