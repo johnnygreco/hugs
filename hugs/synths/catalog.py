@@ -3,6 +3,7 @@ import numpy as np
 from scipy.special import gammaincinv, gamma
 from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord, concatenate
+import lsst.geom
 import lsst.afw.geom
 from ..log import logger
 from ..utils import check_random_state, angsep
@@ -273,7 +274,7 @@ class GlobalSynthCat(object):
 
         wcs = exp.getWcs()
         xc, yc =  exp.getDimensions()//2 +  exp.getXY0()
-        coord = wcs.pixelToSky(lsst.afw.geom.Point2D(xc, yc))
+        coord = wcs.pixelToSky(lsst.geom.Point2D(xc, yc))
         ra_c, dec_c = coord.getRa().asDegrees(), coord.getDec().asDegrees()
         cat = self.query_radius(ra_c, dec_c, search_radius).copy()
 
@@ -283,11 +284,11 @@ class GlobalSynthCat(object):
             cat['y'] = -1
             
             for i, src in enumerate(cat):
-                sky_coord = lsst.afw.geom.SpherePoint(
+                sky_coord = lsst.geom.SpherePoint(
                     src['ra'] * lsst.afw.geom.degrees, 
                     src['dec'] * lsst.afw.geom.degrees)
                 xy_coord = wcs.skyToPixel(sky_coord)
-                if exp.getBBox().contains(lsst.afw.geom.Point2I(xy_coord)):
+                if exp.getBBox().contains(lsst.geom.Point2I(xy_coord)):
                     mask[i] = True
                     x0, y0 = xy_coord - exp.getXY0()
                     cat[i]['x'] = x0

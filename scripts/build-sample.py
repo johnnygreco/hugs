@@ -36,8 +36,8 @@ if args.do_color_cut:
     gi = Source.mag_ap6_g - Source.mag_ap6_i - A_gi
     gr = Source.mag_ap6_g - Source.mag_ap6_r - A_gr
     query = session.query(Source)\
-        .filter(Source.flux_radius_i > args.size_cut_low)\
-        .filter(Source.flux_radius_i < args.size_cut_high)\
+        .filter(Source.flux_radius_50_i > args.size_cut_low)\
+        .filter(Source.flux_radius_50_i < args.size_cut_high)\
         .filter(gi > -0.1)\
         .filter(gi < 1.4)\
         .filter(color_line_lo(gi) < gr)\

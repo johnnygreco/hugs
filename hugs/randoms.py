@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
-import lsst.afw.geom
+import lsst.geom
 
 __all__ = ['get_mask_array', 'find_randoms_in_footprint']
 DEFAULT_PLANES = ['CLEANED', 'BRIGHT_OBJECT', 'NO_DATA']
@@ -57,7 +57,7 @@ def find_randoms_in_footprint(db_fn, exp, return_db=True):
     detected = []
     for coord in afwcoords:
         pixel = wcs.skyToPixel(coord)
-        if bbox.contains(lsst.afw.geom.Point2I(pixel)):
+        if bbox.contains(lsst.geom.Point2I(pixel)):
             j, i = pixel - xy0
             detected.append(int(not mask_arr[int(i), int(j)]))
         else:

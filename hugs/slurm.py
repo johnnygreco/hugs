@@ -122,7 +122,7 @@ def _wait_for_jobs(job_ids, test=False):
     return len(job_ids)==0
 
 
-def drive(templates, configs, test=False, wait=True):
+def drive(templates, configs, test=False, wait=True, use_old_pipeline=False):
     """
     Submit slurm jobs using template files, each with an associated config 
     dictionary. The jobs will run in order, waiting for the previous job 
@@ -150,6 +150,9 @@ def drive(templates, configs, test=False, wait=True):
 
         with open(template, 'r') as slurm_file:
             slurm_txt = slurm_file.read()
+
+        if use_old_pipeline:
+            slurm_txt = slurm_txt.strip() + ' \\\n    --use-old-pipeline\n'
 
         if 'task-options' in config.keys():
             slurm_txt = slurm_txt.format(*config.pop('task-options'))

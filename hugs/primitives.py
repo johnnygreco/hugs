@@ -80,7 +80,7 @@ def image_threshold(masked_image, thresh=3.0, thresh_type='stdev', npix=1,
 
 def clean(exposure, fpset_low, name_high='THRESH_HIGH', 
           max_frac_high_thresh=0.15, rgrow=None, random_state=None, 
-          bright_object_mask=True):
+          bright_object_mask=True, min_pix_low_thresh=0):
     """
     Clean image of bright sources and associated diffuse regions by 
     replacing them with sky noise. Also, remove low-threshold regions 
@@ -124,6 +124,9 @@ def clean(exposure, fpset_low, name_high='THRESH_HIGH',
         if bits_hi>0:
             ratio = bits_hi/float(fp.getArea())
             if ratio > max_frac_high_thresh:
+                fp_list.append(fp)
+        else:
+            if fp.getArea() < min_pix_low_thresh:
                 fp_list.append(fp)
     fpset_replace.setFootprints(fp_list)
     if rgrow:

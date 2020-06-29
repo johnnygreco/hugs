@@ -134,23 +134,25 @@ def run(cfg, reset_mask_planes=False):
         ############################################################
         # use sep to find and mask point-like sources
         ############################################################
-       
-        sep_stepper = SepLsstStepper(config=cfg.sep_steps)
-        sep_stepper.setup_image(exp_clean, cfg.rng)
+        
+        if cfg.sep_steps is not None:
+            sep_stepper = SepLsstStepper(config=cfg.sep_steps)
+            sep_stepper.setup_image(exp_clean, cfg.rng)
 
-        step_mask = cfg.exp.get_mask_array(
-            planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
-        sep_sources, _ = sep_stepper.run('sep_point_sources', mask=step_mask)
+            step_mask = cfg.exp.get_mask_array(
+                planes=['BRIGHT_OBJECT', 'NO_DATA', 'SAT'])
+            sep_sources, _ = sep_stepper.run('sep_point_sources', 
+                                             mask=step_mask)
 
-        cfg.logger.info('generating and applying sep ellipse mask')
-        r_min = cfg.sep_min_radius
-        sep_sources = sep_sources[sep_sources['flux_radius'] < r_min]
-        ell_msk = sep_ellipse_mask(
-            sep_sources, sep_stepper.image.shape, cfg.sep_mask_grow)
-        nimage_replace = sep_stepper.noise_image[ell_msk]
-        mi_clean.getImage().getArray()[ell_msk] = nimage_replace
-        mask_clean.addMaskPlane('SMALL')
-        mask_clean.getArray()[ell_msk] += mask_clean.getPlaneBitMask('SMALL')
+            cfg.logger.info('generating and applying sep ellipse mask')
+            r_min = cfg.sep_min_radius
+            sep_sources = sep_sources[sep_sources['flux_radius'] < r_min]
+            ell_msk = sep_ellipse_mask(
+                sep_sources, sep_stepper.image.shape, cfg.sep_mask_grow)
+            nimage_replace = sep_stepper.noise_image[ell_msk]
+            mi_clean.getImage().getArray()[ell_msk] = nimage_replace
+            mask_clean.addMaskPlane('SMALL')
+            mask_clean.getArray()[ell_msk] += mask_clean.getPlaneBitMask('SMALL')
 
         ############################################################
         # Detect sources and measure props with SExtractor

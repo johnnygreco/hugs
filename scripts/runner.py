@@ -7,7 +7,7 @@ import os, shutil
 from time import time
 import mpi4py.MPI as MPI
 import schwimmbad
-from hugs.pipeline import next_gen_search
+from hugs.pipeline import next_gen_search, find_lsbgs
 from hugs.utils import PatchMeta
 import hugs
 
@@ -50,7 +50,10 @@ def worker(p):
     config.set_patch_id(p['tract'], p['patch'])
     config.logger.info('random seed set to {}'.format(seed))
     
-    results = next_gen_search.run(config, False)
+    if p['use_old_pipeline']:
+        results = find_lsbgs.run(config)
+    else:
+        results = next_gen_search.run(config, False)
 
     pm = results.hugs_exp.patch_meta
 
@@ -106,6 +109,7 @@ if __name__=='__main__':
     parser.add_argument('-c', '--config_fn', help='hugs config file',
                         default=hugs.utils.default_config_fn)
     parser.add_argument('--patches_fn', help='patches file')
+    parser.add_argument('--use-old-pipeline', action="store_true")
     parser.add_argument('-r', '--run_name', type=str, default='hugs-pipe-run')
     parser.add_argument('--seed', help='rng seed', default=None)
     parser.add_argument('--rerun_path', help='full rerun path', default=None)
@@ -165,6 +169,7 @@ if __name__=='__main__':
     patches['seed'] = args.seed
     patches['config_fn'] = args.config_fn
     patches['run_name'] = args.run_name
+    patches['use_old_pipeline'] = args.use_old_pipeline
 
     if rank==0:
         # open database session with master process

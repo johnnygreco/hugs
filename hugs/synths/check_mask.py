@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
-import lsst.afw.geom
+import lsst.geom
 import lsstutils
 from ..log import logger
 
@@ -33,7 +33,7 @@ def find_masked_synths(synth_cat, exp, planes=['BRIGHT_OBJECT']):
     masked= []
     for coord in afwcoords:
         pixel = wcs.skyToPixel(coord)
-        if bbox.contains(lsst.afw.geom.Point2I(pixel)):
+        if bbox.contains(lsst.geom.Point2I(pixel)):
             j, i = pixel - xy0
             masked.append(int(mask_arr[int(i), int(j)]))
         else:

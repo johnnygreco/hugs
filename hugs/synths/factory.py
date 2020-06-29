@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from scipy.signal import fftconvolve
 from scipy.special import gammaincinv
+import lsst.afw.image
+import lsst.geom
 from .sersic import Sersic
 from ..utils import pixscale, zpt, check_random_state
 from ..utils import embed_slices
@@ -60,8 +62,6 @@ def _make_galaxy(pset, bbox_num_reff=10, band='i'):
 def inject_synths(cat, exp, bbox_num_reff=10, band='i', psf_convolve=True, 
                   set_mask=True, return_synths=False):
 
-    import lsst.afw.image
-    import lsst.afw.geom
 
     image_shape = exp.getDimensions().getY(), exp.getDimensions().getX()
     synth_image = np.zeros(image_shape)
@@ -84,9 +84,9 @@ def inject_synths(cat, exp, bbox_num_reff=10, band='i', psf_convolve=True,
         mask = exp.getMask()
         mask.addMaskPlane('SYNTH')
         for src in cat:
-            center = lsst.afw.geom.Point2I(int(src['x']), 
+            center = lsst.geom.Point2I(int(src['x']), 
                                            int(src['y']))
-            bbox = lsst.afw.geom.Box2I(center, center)
+            bbox = lsst.geom.Box2I(center, center)
             bbox.grow(20)
             bbox.clip(exp.getBBox(lsst.afw.image.LOCAL))
             cutout = mask.Factory(mask, bbox, lsst.afw.image.LOCAL)

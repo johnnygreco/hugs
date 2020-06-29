@@ -50,6 +50,8 @@ class PipeConfig(object):
         self.log_fn = log_fn
         self.min_good_data_frac = params['min_good_data_frac']
         self.inject_synths = params['inject_synths']
+        self.coadd_label  = params.pop('coadd_label', 'deepCoadd_calexp')
+        self.use_andy_mask = params.pop('use_andy_mask', True)
         if self.inject_synths:
             self.synth_cat_type = params['synth_cat_type']
             self.synth_cat_fn = params.pop('synth_cat_fn', None)
@@ -92,10 +94,11 @@ class PipeConfig(object):
         self.num_apertures = len(self.circ_aper_radii)
 
         # setup for sep
-        self.sep_steps = params['sep_steps']
-        sep_point_sources = params['sep_steps']['sep_point_sources']
-        self.sep_min_radius = sep_point_sources.pop('min_radius', 2.0)
-        self.sep_mask_grow = sep_point_sources.pop('mask_grow', 5)
+        self.sep_steps = params.pop('sep_steps', None)
+        if self.sep_steps is not None:
+            sep_point_sources = params['sep_steps']['sep_point_sources']
+            self.sep_min_radius = sep_point_sources.pop('min_radius', 2.0)
+            self.sep_mask_grow = sep_point_sources.pop('mask_grow', 5)
 
         # set patch id if given
         if tract is not None:
@@ -194,10 +197,16 @@ class PipeConfig(object):
 
             self.exp = SynthHugsExposure(self.synth_cat, tract, patch, 
                                          self.bands, self.butler, 
-                                         band_detect=self.band_detect)
+                                         rerun=self.data_dir, 
+                                         coadd_label=self.coadd_label,
+                                         band_detect=self.band_detect, 
+                                         use_andy_mask=self.use_andy_mask)
         else:
             self.exp = HugsExposure(tract, patch, self.bands, self.butler,
-                                    band_detect=self.band_detect)
+                                    band_detect=self.band_detect, 
+                                    rerun=self.data_dir, 
+                                    coadd_label=self.coadd_label, 
+                                    use_andy_mask=self.use_andy_mask)
 
         # clear detected mask and remove unnecessary plane
         for band in self.bands:
