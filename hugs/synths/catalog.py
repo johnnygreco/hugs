@@ -13,7 +13,7 @@ from ..utils import euclidean_dist_to_angular_dist, read_config, solid_angle
 
 __all__ = ['random_radec', 'synthetic_sersics', 'build_catalog_field',
            'build_catalog_survey', 'random_positions', 'generate_patch_cat', 
-           'GlobalSynthCat']
+           'GlobalSynthCat', 'random_colors']
 
 
 def random_radec(nsynths, ra_lim=[0, 360], dec_lim=[-90, 90],
@@ -64,6 +64,25 @@ def random_positions(image_shape=(501, 501), nsynths=10, edge_buffer=20,
      y = rng.randint(edge_buffer, image_shape[0] - edge_buffer, nsynths)
 
      return x, y
+
+
+def random_colors(nsynths, sample_pad=15, random_state=None, 
+                  m=0.68, b=0.15, x_lim=[0, 1.31], y_lim=[-0.2, 1.1]):
+    rng = check_random_state(random_state)
+    color_line_lo =  lambda _x: m*_x - b
+    color_line_hi =  lambda _x: m*_x + b
+
+    n_samples = sample_pad * nsynths
+    x_samples = rng.uniform(*x_lim, size=int(n_samples))
+    y_samples = rng.uniform(*y_lim, size=int(n_samples))
+    keep = y_samples > color_line_lo(x_samples)
+    keep &= y_samples < color_line_hi(x_samples)
+
+    rand_idx = rng.choice(keep.sum(), int(nsynths), replace=False)
+    g_i_synths = x_samples[keep][rand_idx]
+    g_r_synths = y_samples[keep][rand_idx]
+
+    return g_i_synths, g_r_synths
 
 
 def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15], 
@@ -122,6 +141,12 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
     cat = {'m_' + master_band: m_tot, 
             'mu_0_' + master_band: mu_0, 
             'mu_e_ave_' + master_band: mu_e_ave}
+
+    if type(g_i) == str or type(g_r) == str:
+        if g_i == 'random' or g_r == 'random':
+            g_i, g_r = random_colors(nsynths, random_state=random_state)
+        else:
+            raise Exception('invalid g_i or g_r option given')
 
     if master_band == 'g':
         # write i band
