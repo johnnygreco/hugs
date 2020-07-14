@@ -64,7 +64,7 @@ hsc_small_sources_r_max: 0 # This option did not exist
 
 inject_synths: True
 synth_cat_type: 'global'
-synth_cat_fn: '/tigress/jgreco/hsc/synths-2018-paper/synth-cats/blues-01.fits'
+synth_cat_fn: '/tigress/jgreco/hsc/synths-2018-paper/synth-cats/random-02.fits'
 
 synth_check_masks: [BRIGHT_OBJECT,
                     NO_DATA,

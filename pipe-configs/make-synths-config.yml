@@ -33,7 +33,7 @@ mu_range: [23, 28.5]
 r_eff_range: [2, 21]
 n_range: [0.8, 1.2]
 theta_range: [0, 180]
-ell_range: [0., 0.6]
+ell_range: [0.1, 0.5]
 
 master_band: 'g'
 mu_type: average
