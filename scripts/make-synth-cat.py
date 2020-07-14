@@ -5,6 +5,7 @@ color_dict = dict(
     blues={'g_i': 0.47, 'g_r': 0.32},
     reds={'g_i': 0.82, 'g_r': 0.56},
     med={'g_i': 0.64, 'g_r': 0.43},
+    random={'g_i': 'random', 'g_r': 'random'},
 )
 
 parser = ArgumentParser()
