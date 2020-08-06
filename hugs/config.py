@@ -60,6 +60,7 @@ class PipeConfig(object):
             self.synth_sersic_params = params.pop('synth_params', {})
             self.synth_image_params = params.pop('synth_image_params', {})
             self.synth_max_match_sep = params.pop('synth_max_match_sep', 5)
+            self.synth_model = params.pop('model', 'sersic')
 
         self.thresh_type = params['thresh_type']
         self._thresh_low = params['thresh_low']
@@ -200,7 +201,8 @@ class PipeConfig(object):
                                          rerun=self.data_dir, 
                                          coadd_label=self.coadd_label,
                                          band_detect=self.band_detect, 
-                                         use_andy_mask=self.use_andy_mask)
+                                         use_andy_mask=self.use_andy_mask, 
+                                         synth_model=self.synth_model)
         else:
             self.exp = HugsExposure(tract, patch, self.bands, self.butler,
                                     band_detect=self.band_detect, 

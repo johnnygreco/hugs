@@ -132,7 +132,8 @@ class SynthHugsExposure(HugsExposure):
 
     def __init__(self, synth_cat, tract, patch, bands='gri', butler=None, 
                  coadd_label='deepCoadd_calexp', band_detect='i', 
-                 rerun='/tigress/HSC/DR/s18a_wide', use_andy_mask=True):
+                 rerun='/tigress/HSC/DR/s18a_wide', use_andy_mask=True, 
+                 synth_model='sersic'):
 
         super(SynthHugsExposure, self).__init__(
             tract, patch, bands, butler, coadd_label, band_detect, rerun, 
@@ -147,4 +148,5 @@ class SynthHugsExposure(HugsExposure):
         logger.warn(msg.format(len(self.synths), tract, patch))
         if len(self.synths) > 0:
             for b in bands:
-                inject_synths(self.synths, exp=self[b], band=b)
+                inject_synths(self.synths, exp=self[b], band=b, 
+                              synth_model=synth_model)

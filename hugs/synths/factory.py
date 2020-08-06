@@ -10,6 +10,13 @@ from .sersic import Sersic
 from ..utils import pixscale, zpt, check_random_state
 from ..utils import embed_slices
 
+try:
+    import galsim
+    HAS_GALSIM = True
+except:
+    print('galsim not installed --> no inclined disk synths')
+    HAS_GALSIM = False
+
 __all__ = ['inject_synths']
 
 
@@ -59,8 +66,22 @@ def _make_galaxy(pset, bbox_num_reff=10, band='i'):
     return galaxy 
 
 
+def _make_inclined_disk(src, bbox_num_reff=10, band='i'):
+    assert HAS_GALSIM, 'you need galsim to make inclined disks'
+    r_pix = src['r_e'] / pixscale
+    side = 2*int(bbox_num_reff * r_pix) + 1
+    nx, ny = (side, side)
+    incl = src['incl'] * galsim.degrees
+    model = galsim.InclinedExponential(incl, half_light_radius=src['r_e'], 
+                                       scale_h_over_r=src['q0'])
+    model = model.rotate(src['PA'] * galsim.degrees)
+    flux = 10**(0.4 * (zpt - src[f'm_{band}']))
+    galaxy = model.drawImage(nx=nx, ny=ny, scale=pixscale).array * flux
+    return galaxy
+
+
 def inject_synths(cat, exp, bbox_num_reff=10, band='i', psf_convolve=True, 
-                  set_mask=True, return_synths=False):
+                  set_mask=True, return_synths=False, synth_model='sersic'):
 
 
     image_shape = exp.getDimensions().getY(), exp.getDimensions().getX()
@@ -68,8 +89,12 @@ def inject_synths(cat, exp, bbox_num_reff=10, band='i', psf_convolve=True,
 
     # make synthetic image
     for src in cat:
-        galaxy = _make_galaxy(
-            src, band=band.lower(), bbox_num_reff=bbox_num_reff)
+        if synth_model == 'sersic':
+            galaxy = _make_galaxy(
+                src, band=band.lower(), bbox_num_reff=bbox_num_reff)
+        elif synth_model == 'disk' or synth_model == 'inclined disk':
+            galaxy = _make_inclined_disk(
+                src, band=band.lower(), bbox_num_reff=bbox_num_reff)
         gal_pos = np.array([int(src['y']), int(src['x'])])
         img_slice, gal_slice = embed_slices(gal_pos, 
                                             galaxy.shape, 

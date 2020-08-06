@@ -11,6 +11,7 @@ color_dict = dict(
 parser = ArgumentParser()
 parser.add_argument('-o', '--out-fn', dest='out_fn', required=True)
 parser.add_argument('--synth-color', required=True)
+parser.add_argument('--q0', default=None, type=float)
 parser.add_argument('-c', '--config-fn', dest='config_fn', default=None, 
                     help='non-defulat synth parameters')
 args = parser.parse_args()
@@ -30,6 +31,9 @@ else:
                   mu_type='average')
 
 kwargs.update(color_dict[args.synth_color])
+
+if args.q0 is not None:
+    kwargs['q0'] = args.q0
 
 cat = hugs.synths.catalog.build_catalog_survey(**kwargs)
 syncat = hugs.synths.catalog.GlobalSynthCat(catalog=cat)

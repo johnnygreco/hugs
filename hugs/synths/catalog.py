@@ -11,9 +11,9 @@ from ..utils import ra_dec_to_xyz, angular_dist_to_euclidean_dist
 from ..utils import euclidean_dist_to_angular_dist, read_config, solid_angle
 
 
-__all__ = ['random_radec', 'synthetic_sersics', 'build_catalog_field',
-           'build_catalog_survey', 'random_positions', 'generate_patch_cat', 
-           'GlobalSynthCat', 'random_colors']
+__all__ = ['random_radec', 'synthetic_sersics', 'inclined_disks', 
+           'build_catalog_field', 'build_catalog_survey', 'random_positions', 
+           'generate_patch_cat', 'GlobalSynthCat', 'random_colors']
 
 
 def random_radec(nsynths, ra_lim=[0, 360], dec_lim=[-90, 90],
@@ -144,7 +144,7 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
 
     if type(g_i) == str or type(g_r) == str:
         if g_i == 'random' or g_r == 'random':
-            g_i, g_r = random_colors(nsynths, random_state=random_state)
+            g_i, g_r = random_colors(nsynths, random_state=rng)
         else:
             raise Exception('invalid g_i or g_r option given')
 
@@ -182,7 +182,86 @@ def synthetic_sersics(mu_range=[23, 28], r_eff_range=[3, 15],
     return cat
 
 
-def build_catalog_field(min_sep=None, **kwargs):
+def inclined_disks(mu_range=[23, 28], r_eff_range=[3, 15], 
+                   incl_range=[0., 90.0], theta_range=[0, 180], 
+                   nsynths=100, q0=0.2, random_state=None,  
+                   master_band='g', mu_type="central", 
+                   g_i=0.6, g_r=0.4, **kwargs):
+
+    size = int(nsynths)
+    rng = check_random_state(random_state)
+
+    cosi = rng.uniform(0, 1, size=size)
+    incl_deg = np.rad2deg(np.arccos(cosi))
+    b_a = np.sqrt((1 - q0**2) * cosi**2 + q0**2)
+    theta = rng.uniform(*theta_range, size=size)    
+   
+    sersic_n = 1
+    mu = rng.uniform(*mu_range, size=size)    
+    r_eff = rng.uniform(*r_eff_range, size=size)    
+    b_n = gammaincinv(2.*sersic_n, 0.5)
+    f_n = gamma(2*sersic_n)*sersic_n*np.exp(b_n)/b_n**(2*sersic_n)
+
+    if mu_type=='central':
+        mu_0 = mu
+        mu_e = mu_0 + 2.5*b_n/np.log(10)
+        mu_e_ave = mu_e - 2.5*np.log10(f_n)
+    elif mu_type=='average':
+        mu_e_ave = mu
+        mu_e = mu_e_ave + 2.5*np.log10(f_n)
+        mu_0 = mu_e - 2.5*b_n/np.log(10) 
+    else:
+        raise Exception(mu_type+' is not a valid mu type')
+    
+    # we need the face-on total mag, so r_eff = r_circ
+    r_circ = r_eff 
+    A_eff = np.pi*r_circ**2
+    m_tot = mu_e_ave - 2.5*np.log10(2*A_eff)    
+
+    cat = {'m_' + master_band: m_tot, 
+           'mu_0_' + master_band: mu_0, 
+           'mu_e_ave_' + master_band: mu_e_ave}
+
+    if type(g_i) == str or type(g_r) == str:
+        if g_i == 'random' or g_r == 'random':
+            g_i, g_r = random_colors(nsynths, random_state=rng)
+        else:
+            raise Exception('invalid g_i or g_r option given')
+
+    if master_band == 'g':
+        # write i band
+        cat['m_i'] = m_tot - g_i
+        cat['mu_0_i'] = mu_0 - g_i
+        cat['mu_e_ave_i'] = mu_e_ave - g_i
+        # write r band
+        cat['m_r'] = m_tot - g_r
+        cat['mu_0_r'] = mu_0 - g_r
+        cat['mu_e_ave_r'] = mu_e_ave - g_r
+    elif master_band == 'i':
+        # write g band
+        cat['m_g'] = m_tot + g_i
+        cat['mu_0_g'] = mu_0 + g_i
+        cat['mu_e_ave_g'] = mu_e_ave + g_i
+        # write r band
+        cat['m_r'] = m_tot + g_i - g_r
+        cat['mu_0_r'] = mu_0 + g_i - g_r
+        cat['mu_e_ave_r'] = mu_e_ave + g_i - g_r
+    else:
+        raise Exception('master_band must be g or i')
+
+    cat = Table(cat)
+   
+    cat['theta'] = theta
+    cat['PA'] = theta - 90
+    cat['r_e'] = r_eff
+    cat['ell'] = 1 - b_a 
+    cat['incl'] = incl_deg
+    cat['q0'] = q0
+
+    return cat
+
+
+def build_catalog_field(min_sep=None, model='sersic', **kwargs):
     """
     Build a catalog of synthetic sersic galaxies within a single field 
     (which may be as big as the entire sky).
@@ -204,15 +283,20 @@ def build_catalog_field(min_sep=None, **kwargs):
                     coords = np.append(coords, [[ra, dec]], axis=0)
                     count += 1
 
-    catalog = synthetic_sersics(nsynths=nsynths, **kwargs)
+    if model == 'sersic':
+        catalog = synthetic_sersics(nsynths=nsynths, **kwargs)
+    elif model == 'inclined disk' or model == 'disk':
+        catalog = inclined_disks(nsynths=nsynths, **kwargs)
+    else:
+        raise Exception(f'{model} is not a valid model type')
+
     catalog['ra'] = coords[:, 0]
     catalog['dec'] = coords[:, 1]
 
     return catalog
 
 
-def build_catalog_survey(density, ra_lim_list, dec_lim_list, mu_range, 
-                         r_eff_range, n_range, theta_range, min_sep, **kwargs):
+def build_catalog_survey(density, ra_lim_list, dec_lim_list, **kwargs):
     """
     Build a catalog of synthetic sersic galaxies for a survey that is specified
     by a list of ra and dec limits. 
@@ -249,11 +333,7 @@ def build_catalog_survey(density, ra_lim_list, dec_lim_list, mu_range,
         logger.info('generating catalog over {:.2f} deg^2'.format(area))
         nsynths = int(np.ceil(density * area))
         logger.info('nsynths = {}'.format(nsynths))
-        kws = dict(
-            nsynths=nsynths, ra_lim=ra_lim, dec_lim=dec_lim, mu_range=mu_range,
-            r_eff_range=r_eff_range, n_range=n_range, theta_range=theta_range, 
-            min_sep=min_sep
-        )
+        kws = dict(nsynths=nsynths, ra_lim=ra_lim, dec_lim=dec_lim)
         kws.update(kwargs)
         cat.append(build_catalog_field(**kws))
     cat = vstack(cat)
